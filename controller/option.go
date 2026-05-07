@@ -70,7 +70,8 @@ func GetOptions(c *gin.Context) {
 			strings.HasSuffix(k, "Secret") ||
 			strings.HasSuffix(k, "Key") ||
 			strings.HasSuffix(k, "secret") ||
-			strings.HasSuffix(k, "api_key") {
+			strings.HasSuffix(k, "api_key") ||
+			k == "zs_payment.enabled" { // 移除冗余的 lowercase 版本
 			continue
 		}
 		options = append(options, &model.Option{
