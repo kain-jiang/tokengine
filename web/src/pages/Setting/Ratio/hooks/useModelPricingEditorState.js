@@ -243,9 +243,9 @@ export const getModelWarnings = (model, t) => {
   return warnings;
 };
 
-export const buildSummaryText = (model, t) => {
+export const buildSummaryText = (model, t, currencySymbol = '$') => {
   if (model.billingMode === 'per-request' && hasValue(model.fixedPrice)) {
-    return `${t('按次')} $${model.fixedPrice} / ${t('次')}`;
+    return `${t('按次')} ${currencySymbol}${model.fixedPrice} / ${t('次')}`;
   }
 
   if (hasValue(model.inputPrice)) {
@@ -259,7 +259,7 @@ export const buildSummaryText = (model, t) => {
     ].filter(hasValue).length;
     const extraLabel =
       extraCount > 0 ? `，${t('额外价格项')} ${extraCount}` : '';
-    return `${t('输入')} $${model.inputPrice}${extraLabel}`;
+    return `${t('输入')} ${currencySymbol}${model.inputPrice}${extraLabel}`;
   }
 
   return t('未设置价格');

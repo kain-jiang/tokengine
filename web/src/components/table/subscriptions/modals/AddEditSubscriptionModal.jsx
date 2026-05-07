@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useContext } from 'react';
 import {
   Avatar,
   Button,
@@ -45,6 +45,7 @@ import {
   displayAmountToQuota,
 } from '../../../../helpers/quota';
 import { useIsMobile } from '../../../../hooks/common/useIsMobile';
+import { StatusContext } from '../../../../context/Status';
 
 const { Text, Title } = Typography;
 
@@ -77,6 +78,9 @@ const AddEditSubscriptionModal = ({
   const [groupLoading, setGroupLoading] = useState(false);
   const isMobile = useIsMobile();
   const formApiRef = useRef(null);
+  const [statusState] = useContext(StatusContext);
+  const quotaDisplayType = statusState?.status?.quota_display_type || 'USD';
+  const currency = quotaDisplayType === 'TOKENS' ? 'USD' : quotaDisplayType;
   const isEdit = editingPlan?.plan?.id !== undefined;
   const formKey = isEdit ? `edit-${editingPlan?.plan?.id}` : 'create';
 
@@ -84,7 +88,7 @@ const AddEditSubscriptionModal = ({
     title: '',
     subtitle: '',
     price_amount: 0,
-    currency: 'USD',
+    currency: currency,
     duration_unit: 'month',
     duration_value: 1,
     custom_seconds: 0,
@@ -108,7 +112,7 @@ const AddEditSubscriptionModal = ({
       title: p.title || '',
       subtitle: p.subtitle || '',
       price_amount: Number(p.price_amount || 0),
-      currency: 'USD',
+      currency: currency,
       duration_unit: p.duration_unit || 'month',
       duration_value: Number(p.duration_value || 1),
       custom_seconds: Number(p.custom_seconds || 0),
@@ -152,7 +156,7 @@ const AddEditSubscriptionModal = ({
         plan: {
           ...values,
           price_amount: Number(values.price_amount || 0),
-          currency: 'USD',
+          currency: currency,
           duration_value: Number(values.duration_value || 0),
           custom_seconds: Number(values.custom_seconds || 0),
           quota_reset_period: values.quota_reset_period || 'never',

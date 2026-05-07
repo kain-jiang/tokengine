@@ -138,7 +138,14 @@ const PaymentSetting = () => {
           case 'CreemTestMode':
           case 'WaffoEnabled':
           case 'WaffoSandbox':
+          case 'zs_payment.Enabled':
             newInputs[item.key] = toBoolean(item.value);
+            break;
+          case 'zs_payment.NotifyPath':
+            newInputs['ZSPayNotifyPath'] = item.value;
+            break;
+          case 'zs_payment.PayValidTime':
+            newInputs['ZSPayPayValidTime'] = item.value;
             break;
           default:
             if (item.key.endsWith('Enabled')) {

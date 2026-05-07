@@ -3586,7 +3586,7 @@
     "敏感配置信息（商户号、AppID、密钥等）请在 .env 文件中通过 ZS_PAYMENT_* 环境变量配置。": "Sensitive configuration information (Merchant ID, AppID, keys, etc.) should be configured via ZS_PAYMENT_* environment variables in the .env file.",
     "回调地址格式：服务器地址 + 回调路径，例如：https://your-domain.com/api/user/zs_pay/notify": "Callback address format: Server Address + Callback Path, e.g., https://your-domain.com/api/user/zs_pay/notify",
     "使用招商银行聚合支付": "Use China Merchants Bank Aggregate Payment",
-    "支持支付宝、微信扫码支付": "Supports Alipay, WeChat scan payment",
+    "支持支付宝、微信、银联扫码支付": "Supports Alipay, WeChat, UnionPay scan payment",
     "管理员未开启招商银行聚合支付！": "Admin has not enabled China Merchants Bank Aggregate Payment!",
     "招商银行聚合支付二维码": "China Merchants Bank Aggregate Payment QR Code",
     "扫码完成后请耐心等待充值结果": "Please wait patiently for the recharge result after scanning the code",

@@ -93,7 +93,7 @@ func GetOptions(c *gin.Context) {
 			Value: eo.Value,
 		})
 	}
-	
+
 	options = append(options, &model.Option{
 		Key:   "CompletionRatioMeta",
 		Value: buildCompletionRatioMetaValue(optionValues),

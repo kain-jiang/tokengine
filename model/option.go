@@ -179,6 +179,10 @@ func InitOptionMap() {
 func loadOptionsFromDatabase() {
 	options, _ := AllOption()
 	for _, option := range options {
+		// zs_payment 配置的特殊处理：跳过 lowercase 版本的加载，避免覆盖大写版本的值
+		if option.Key == "zs_payment.enabled" {
+			continue
+		}
 		err := updateOptionMap(option.Key, option.Value)
 		if err != nil {
 			common.SysLog("failed to update option map: " + err.Error())
@@ -214,6 +218,19 @@ func updateOptionMap(key string, value string) (err error) {
 	common.OptionMapRWMutex.Lock()
 	defer common.OptionMapRWMutex.Unlock()
 	common.OptionMap[key] = value
+
+	// zs_payment 配置需要保持 Enabled 和 enabled 两个键的一致性
+	if strings.HasPrefix(key, "zs_payment.") {
+		parts := strings.SplitN(key, ".", 2)
+		if len(parts) == 2 {
+			fieldName := parts[1]
+			// 对于 Enabled 字段，保持大写和小写版本同步
+			if strings.EqualFold(fieldName, "Enabled") {
+				common.OptionMap["zs_payment.Enabled"] = value
+				common.OptionMap["zs_payment.enabled"] = value
+			}
+		}
+	}
 
 	// 检查是否是模型配置 - 使用更规范的方式处理
 	if handleConfigUpdate(key, value) {
@@ -535,6 +552,13 @@ func handleConfigUpdate(key, value string) bool {
 	configMap := map[string]string{
 		configKey: value,
 	}
+
+	// zs_payment 配置需要特殊处理：前端使用 Enabled，结构体 json tag 是 enabled
+	// 只对 Enabled 字段创建小写版本，因为只有它的 json tag 是小写匹配的
+	if configName == "zs_payment" && configKey == "Enabled" {
+		configMap["enabled"] = value
+	}
+
 	config.UpdateConfigFromMap(cfg, configMap)
 
 	// 特定配置的后处理

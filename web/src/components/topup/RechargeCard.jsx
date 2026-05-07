@@ -630,7 +630,7 @@ const RechargeCard = ({
                       {t('立即支付')}
                     </Button>
                     <Text type='tertiary' style={{ fontSize: '12px' }}>
-                      {t('支持支付宝、微信扫码支付')}
+                      {t('支持支付宝、微信、银联扫码支付')}
                     </Text>
                   </div>
                 </Form.Slot>
