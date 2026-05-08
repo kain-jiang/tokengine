@@ -184,6 +184,14 @@ export const useModelPricingData = () => {
       priceInUSD = (usdPrice * priceRate) / usdExchangeRate;
     }
 
+    // 如果定价类型已经是目标货币，直接显示（不进行汇率转换）
+    if (siteDisplayType === 'CNY' && currency === 'CNY') {
+      return `¥${priceInUSD.toFixed(3)}`;
+    } else if (siteDisplayType === 'CUSTOM' && currency === 'CUSTOM') {
+      return `${customCurrencySymbol}${priceInUSD.toFixed(3)}`;
+    }
+
+    // 否则进行汇率转换（定价是USD，显示需要转换）
     if (currency === 'CNY') {
       return `¥${(priceInUSD * usdExchangeRate).toFixed(3)}`;
     } else if (currency === 'CUSTOM') {

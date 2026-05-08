@@ -246,15 +246,15 @@ const NotificationSettings = ({
   const sectionConfigs = [
     {
       key: 'chat',
-      title: t('聊天区域'),
-      description: t('操练场和聊天功能'),
+      title: t('体验中心'),
+      description: t('文本对话和应用接入'),
       modules: [
         {
           key: 'playground',
           title: t('文本对话'),
           description: t('AI模型测试环境'),
         },
-        { key: 'chat', title: t('聊天'), description: t('聊天会话管理') },
+        { key: 'chat', title: t('接入应用'), description: t('接入应用会话管理') },
       ],
     },
     {

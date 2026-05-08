@@ -202,7 +202,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         to: '/playground',
       },
       {
-        text: t('体验中心'),
+        text: t('接入应用'),
         itemKey: 'chat',
         items: chatItems,
       },
@@ -438,7 +438,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
           {hasSectionVisibleModules('chat') && (
             <div className='sidebar-section'>
               {!collapsed && (
-                <div className='sidebar-group-label'>{t('聊天')}</div>
+                <div className='sidebar-group-label'>{t('体验中心')}</div>
               )}
               {chatMenuItems.map((item) => renderSubItem(item))}
             </div>

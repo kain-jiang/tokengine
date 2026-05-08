@@ -208,7 +208,7 @@ export default function SettingsSidebarModulesAdmin(props) {
   const sectionConfigs = [
     {
       key: 'chat',
-      title: t('聊天区域'),
+      title: t('体验中心'),
       description: t('文本对话和聊天功能'),
       modules: [
         {
@@ -216,7 +216,7 @@ export default function SettingsSidebarModulesAdmin(props) {
           title: t('文本对话'),
           description: t('AI模型测试环境'),
         },
-        { key: 'chat', title: t('聊天'), description: t('聊天会话管理') },
+        { key: 'chat', title: t('接入应用'), description: t('接入应用会话管理') },
       ],
     },
     {
