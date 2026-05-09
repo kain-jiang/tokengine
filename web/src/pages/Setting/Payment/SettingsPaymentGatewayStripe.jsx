@@ -165,7 +165,7 @@ export default function SettingsPaymentGateway(props) {
         onValueChange={handleFormChange}
         getFormApi={(api) => (formApiRef.current = api)}
       >
-        <Form.Section text={t('Stripe 设置')}>
+        <Form.Section>
           <Text>
             Stripe 密钥、Webhook 等设置请
             <a

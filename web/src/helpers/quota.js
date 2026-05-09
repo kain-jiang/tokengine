@@ -30,9 +30,15 @@ export const quotaToDisplayAmount = (quota) => {
   const abs = Math.abs(q);
   const { type, rate } = getCurrencyConfig();
   if (type === 'TOKENS') return q;
-  const usd = abs / getQuotaPerUnit();
-  if (type === 'USD') return sign * usd;
-  return sign * usd * (rate || 1);
+  const amount = abs / getQuotaPerUnit();
+  // 当定价类型已经是目标货币时（CNY 或 CUSTOM），直接返回，不需要汇率转换
+  if (type === 'CNY' || type === 'CUSTOM') {
+    return Number((sign * amount).toFixed(6));
+  }
+  // 只有定价是 USD 但需要显示为其他货币时，才使用汇率
+  if (type === 'USD') return sign * amount;
+  const result = sign * amount * (rate || 1);
+  return Number(result.toFixed(6));
 };
 
 export const displayAmountToQuota = (amount) => {
@@ -40,8 +46,12 @@ export const displayAmountToQuota = (amount) => {
   if (!Number.isFinite(val) || val === 0) return 0;
   const sign = Math.sign(val);
   const abs = Math.abs(val);
-  const { type, rate } = getCurrencyConfig();
+  const { type } = getCurrencyConfig();
   if (type === 'TOKENS') return Math.round(val);
-  const usd = type === 'USD' ? abs : abs / (rate || 1);
-  return sign * Math.round(usd * getQuotaPerUnit());
+  // 当定价类型已经是目标货币时（CNY 或 CUSTOM），直接转换，不需要汇率转换
+  if (type === 'CNY' || type === 'CUSTOM') {
+    return sign * Math.round(abs * getQuotaPerUnit());
+  }
+  // 当定价是 USD 时，也直接转换
+  return sign * Math.round(abs * getQuotaPerUnit());
 };

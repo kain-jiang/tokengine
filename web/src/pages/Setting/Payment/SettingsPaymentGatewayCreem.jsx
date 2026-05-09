@@ -259,7 +259,7 @@ export default function SettingsPaymentGatewayCreem(props) {
         onValueChange={handleFormChange}
         getFormApi={(api) => (formApiRef.current = api)}
       >
-        <Form.Section text={t('Creem 设置')}>
+        <Form.Section>
           <Text>
             {t('Creem 介绍')}
             <a href='https://creem.io' target='_blank' rel='noreferrer'>

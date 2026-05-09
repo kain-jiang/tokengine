@@ -1106,7 +1106,9 @@ export function getCurrencyConfig() {
     try {
       if (statusStr) {
         const s = JSON.parse(statusStr);
-        rate = s?.usd_exchange_rate || 7;
+        // 当定价类型已经是 CNY 时，不需要汇率转换，rate 应为 1
+        // 只有当定价是 USD 但需要显示为 CNY 时，才使用汇率
+        rate = 1;
       }
     } catch (e) {}
   } else if (quotaDisplayType === 'CUSTOM') {
@@ -1114,7 +1116,8 @@ export function getCurrencyConfig() {
       if (statusStr) {
         const s = JSON.parse(statusStr);
         symbol = s?.custom_currency_symbol || '¤';
-        rate = s?.custom_currency_exchange_rate || 1;
+        // 当定价类型已经是 CUSTOM 时，不需要汇率转换，rate 应为 1
+        rate = 1;
       }
     } catch (e) {}
   }
@@ -1145,28 +1148,22 @@ export function renderQuota(quota, digits = 2) {
   let symbol = '$';
   let value = resultUSD;
   if (quotaDisplayType === 'CNY') {
-    const statusStr = localStorage.getItem('status');
-    let usdRate = 1;
-    try {
-      if (statusStr) {
-        const s = JSON.parse(statusStr);
-        usdRate = s?.usd_exchange_rate || 1;
-      }
-    } catch (e) {}
-    value = resultUSD * usdRate;
+    // 当定价类型已经是 CNY 时，不需要汇率转换
+    // 内部额度已经是按人民币定价的
+    value = resultUSD;
     symbol = '¥';
   } else if (quotaDisplayType === 'CUSTOM') {
+    // 当定价类型已经是 CUSTOM 时，不需要汇率转换
+    // 内部额度已经是按自定义货币定价的
     const statusStr = localStorage.getItem('status');
     let symbolCustom = '¤';
-    let rate = 1;
     try {
       if (statusStr) {
         const s = JSON.parse(statusStr);
         symbolCustom = s?.custom_currency_symbol || symbolCustom;
-        rate = s?.custom_currency_exchange_rate || rate;
       }
     } catch (e) {}
-    value = resultUSD * rate;
+    value = resultUSD;
     symbol = symbolCustom;
   }
   const fixedResult = value.toFixed(digits);

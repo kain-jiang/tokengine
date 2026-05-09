@@ -324,7 +324,7 @@ export default function SettingsPaymentGatewayWaffo(props) {
         onValueChange={handleFormChange}
         getFormApi={(api) => (formApiRef.current = api)}
       >
-        <Form.Section text={t('Waffo 设置')}>
+        <Form.Section>
           <Text>
             {t('Waffo 是一个支付聚合平台，支持多种支付方式。')}
             <a href='https://waffo.com' target='_blank' rel='noreferrer'>

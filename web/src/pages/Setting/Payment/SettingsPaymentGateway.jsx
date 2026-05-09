@@ -38,11 +38,8 @@ export default function SettingsPaymentGateway(props) {
     EpayKey: '',
     Price: 7.3,
     MinTopUp: 1,
-    TopupGroupRatio: '',
     CustomCallbackAddress: '',
     PayMethods: '',
-    AmountOptions: '',
-    AmountDiscount: '',
   });
   const [originInputs, setOriginInputs] = useState({});
   const formApiRef = useRef(null);
@@ -61,32 +58,9 @@ export default function SettingsPaymentGateway(props) {
           props.options.MinTopUp !== undefined
             ? parseFloat(props.options.MinTopUp)
             : 1,
-        TopupGroupRatio: props.options.TopupGroupRatio || '',
         CustomCallbackAddress: props.options.CustomCallbackAddress || '',
         PayMethods: props.options.PayMethods || '',
-        AmountOptions: props.options.AmountOptions || '',
-        AmountDiscount: props.options.AmountDiscount || '',
       };
-
-      // 美化 JSON 展示
-      try {
-        if (currentInputs.AmountOptions) {
-          currentInputs.AmountOptions = JSON.stringify(
-            JSON.parse(currentInputs.AmountOptions),
-            null,
-            2,
-          );
-        }
-      } catch {}
-      try {
-        if (currentInputs.AmountDiscount) {
-          currentInputs.AmountDiscount = JSON.stringify(
-            JSON.parse(currentInputs.AmountDiscount),
-            null,
-            2,
-          );
-        }
-      } catch {}
 
       setInputs(currentInputs);
       setOriginInputs({ ...currentInputs });
@@ -104,36 +78,9 @@ export default function SettingsPaymentGateway(props) {
       return;
     }
 
-    if (originInputs['TopupGroupRatio'] !== inputs.TopupGroupRatio) {
-      if (!verifyJSON(inputs.TopupGroupRatio)) {
-        showError(t('充值分组倍率不是合法的 JSON 字符串'));
-        return;
-      }
-    }
-
     if (originInputs['PayMethods'] !== inputs.PayMethods) {
       if (!verifyJSON(inputs.PayMethods)) {
         showError(t('充值方式设置不是合法的 JSON 字符串'));
-        return;
-      }
-    }
-
-    if (
-      originInputs['AmountOptions'] !== inputs.AmountOptions &&
-      inputs.AmountOptions.trim() !== ''
-    ) {
-      if (!verifyJSON(inputs.AmountOptions)) {
-        showError(t('自定义充值数量选项不是合法的 JSON 数组'));
-        return;
-      }
-    }
-
-    if (
-      originInputs['AmountDiscount'] !== inputs.AmountDiscount &&
-      inputs.AmountDiscount.trim() !== ''
-    ) {
-      if (!verifyJSON(inputs.AmountDiscount)) {
-        showError(t('充值金额折扣配置不是合法的 JSON 对象'));
         return;
       }
     }
@@ -162,23 +109,8 @@ export default function SettingsPaymentGateway(props) {
           value: inputs.CustomCallbackAddress,
         });
       }
-      if (originInputs['TopupGroupRatio'] !== inputs.TopupGroupRatio) {
-        options.push({ key: 'TopupGroupRatio', value: inputs.TopupGroupRatio });
-      }
       if (originInputs['PayMethods'] !== inputs.PayMethods) {
         options.push({ key: 'PayMethods', value: inputs.PayMethods });
-      }
-      if (originInputs['AmountOptions'] !== inputs.AmountOptions) {
-        options.push({
-          key: 'payment_setting.amount_options',
-          value: inputs.AmountOptions,
-        });
-      }
-      if (originInputs['AmountDiscount'] !== inputs.AmountDiscount) {
-        options.push({
-          key: 'payment_setting.amount_discount',
-          value: inputs.AmountDiscount,
-        });
       }
 
       // 发送请求
@@ -269,55 +201,11 @@ export default function SettingsPaymentGateway(props) {
             </Col>
           </Row>
           <Form.TextArea
-            field='TopupGroupRatio'
-            label={t('充值分组倍率')}
-            placeholder={t('为一个 JSON 文本，键为组名称，值为倍率')}
-            autosize
-          />
-          <Form.TextArea
             field='PayMethods'
             label={t('充值方式设置')}
             placeholder={t('为一个 JSON 文本')}
             autosize
           />
-
-          <Row
-            gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}
-            style={{ marginTop: 16 }}
-          >
-            <Col span={24}>
-              <Form.TextArea
-                field='AmountOptions'
-                label={t('自定义充值数量选项')}
-                placeholder={t(
-                  '为一个 JSON 数组，例如：[10, 20, 50, 100, 200, 500]',
-                )}
-                autosize
-                extraText={t(
-                  '设置用户可选择的充值数量选项，例如：[10, 20, 50, 100, 200, 500]',
-                )}
-              />
-            </Col>
-          </Row>
-
-          <Row
-            gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}
-            style={{ marginTop: 16 }}
-          >
-            <Col span={24}>
-              <Form.TextArea
-                field='AmountDiscount'
-                label={t('充值金额折扣配置')}
-                placeholder={t(
-                  '为一个 JSON 对象，例如：{"100": 0.95, "200": 0.9, "500": 0.85}',
-                )}
-                autosize
-                extraText={t(
-                  '设置不同充值金额对应的折扣，键为充值金额，值为折扣率，例如：{"100": 0.95, "200": 0.9, "500": 0.85}',
-                )}
-              />
-            </Col>
-          </Row>
 
           <Button onClick={submitPayAddress}>{t('更新支付设置')}</Button>
         </Form.Section>

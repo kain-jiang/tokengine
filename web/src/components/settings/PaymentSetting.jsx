@@ -73,6 +73,8 @@ const PaymentSetting = () => {
     WaffoPayMethods: '',
 
     ZSPayEnabled: false,
+    ZSPayMerID: '',
+    ZSPayBaseURL: 'https://api.cmburl.cn:8065',
     ZSPayNotifyPath: '/api/user/zs_pay/notify',
     ZSPayPayValidTime: '1800',
   });
@@ -91,7 +93,7 @@ const PaymentSetting = () => {
     const res = await API.get('/api/option/');
     const { success, message, data } = res.data;
     if (success) {
-      let newInputs = {};
+      let newInputs = { ...inputs }; // 基于现有状态进行更新
       data.forEach((item) => {
         switch (item.key) {
           case 'TopupGroupRatio':
@@ -142,6 +144,12 @@ const PaymentSetting = () => {
             break;
           case 'zs_payment.Enabled':
             newInputs['ZSPayEnabled'] = toBoolean(item.value);
+            break;
+          case 'zs_payment.MerID':
+            newInputs['ZSPayMerID'] = item.value;
+            break;
+          case 'zs_payment.BaseURL':
+            newInputs['ZSPayBaseURL'] = item.value;
             break;
           case 'zs_payment.NotifyPath':
             newInputs['ZSPayNotifyPath'] = item.value;
@@ -226,6 +234,28 @@ const PaymentSetting = () => {
           )}
         </Card>
 
+        {/* 招商银行聚合支付配置 */}
+        <Card style={{ marginTop: '10px' }}>
+          <div 
+            onClick={() => toggleSection('zs')}
+            style={{ 
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              marginBottom: collapsedSections.zs ? 0 : 16
+            }}
+          >
+            <h4 style={{ margin: 0 }}>
+              {t('招商银行聚合支付配置')}
+            </h4>
+            {getSectionIcon('zs')}
+          </div>
+          {!collapsedSections.zs && (
+            <SettingsPaymentGatewayZS options={inputs} refresh={onRefresh} />
+          )}
+        </Card>
+
         {/* Stripe 配置 */}
         <Card style={{ marginTop: '10px' }}>
           <div 
@@ -289,28 +319,6 @@ const PaymentSetting = () => {
           </div>
           {!collapsedSections.waffo && (
             <SettingsPaymentGatewayWaffo options={inputs} refresh={onRefresh} />
-          )}
-        </Card>
-
-        {/* 招商银行聚合支付配置 */}
-        <Card style={{ marginTop: '10px' }}>
-          <div 
-            onClick={() => toggleSection('zs')}
-            style={{ 
-              cursor: 'pointer', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              marginBottom: collapsedSections.zs ? 0 : 16
-            }}
-          >
-            <h4 style={{ margin: 0 }}>
-              {t('招商银行聚合支付配置')}
-            </h4>
-            {getSectionIcon('zs')}
-          </div>
-          {!collapsedSections.zs && (
-            <SettingsPaymentGatewayZS options={inputs} refresh={onRefresh} />
           )}
         </Card>
       </Spin>

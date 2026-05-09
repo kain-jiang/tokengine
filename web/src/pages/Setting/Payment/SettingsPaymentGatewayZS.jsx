@@ -43,56 +43,18 @@ export default function SettingsPaymentGatewayZS(props) {
     ZSPayEnabled: false,
     ZSPayNotifyPath: '/api/user/zs_pay/notify',
     ZSPayPayValidTime: '1800',
-    TopupGroupRatio: '',
-    AmountOptions: '',
-    AmountDiscount: '',
   });
   const [originInputs, setOriginInputs] = useState({});
   const formApiRef = useRef(null);
 
   useEffect(() => {
     if (props.options && formApiRef.current) {
-      // 美化 JSON 展示
-      let TopupGroupRatio = props.options.TopupGroupRatio || '';
-      try {
-        if (TopupGroupRatio) {
-          TopupGroupRatio = JSON.stringify(
-            JSON.parse(TopupGroupRatio),
-            null,
-            2,
-          );
-        }
-      } catch {}
-
-      let AmountOptions = props.options.AmountOptions || '';
-      try {
-        if (AmountOptions) {
-          AmountOptions = JSON.stringify(
-            JSON.parse(AmountOptions),
-            null,
-            2,
-          );
-        }
-      } catch {}
-
-      let AmountDiscount = props.options.AmountDiscount || '';
-      try {
-        if (AmountDiscount) {
-          AmountDiscount = JSON.stringify(
-            JSON.parse(AmountDiscount),
-            null,
-            2,
-          );
-        }
-      } catch {}
-
       const currentInputs = {
-        ZSPayEnabled: props.options.ZSPayEnabled === 'true' || props.options.ZSPayEnabled === true,
-        ZSPayNotifyPath: props.options.ZSPayNotifyPath || '/api/user/zs_pay/notify',
-        ZSPayPayValidTime: props.options.ZSPayPayValidTime || '1800',
-        TopupGroupRatio: TopupGroupRatio,
-        AmountOptions: AmountOptions,
-        AmountDiscount: AmountDiscount,
+        ZSPayEnabled: props.options['ZSPayEnabled'] || props.options['zs_payment.Enabled'] === 'true' || props.options['zs_payment.Enabled'] === true,
+        ZSPayMerID: props.options['ZSPayMerID'] || props.options['zs_payment.MerID'] || '',
+        ZSPayBaseURL: props.options['ZSPayBaseURL'] || props.options['zs_payment.BaseURL'] || 'https://api.cmburl.cn:8065',
+        ZSPayNotifyPath: props.options['ZSPayNotifyPath'] || props.options['zs_payment.NotifyPath'] || '/api/user/zs_pay/notify',
+        ZSPayPayValidTime: props.options['ZSPayPayValidTime'] || props.options['zs_payment.PayValidTime'] || '1800',
       };
       setInputs(currentInputs);
       setOriginInputs({ ...currentInputs });
@@ -121,33 +83,6 @@ export default function SettingsPaymentGatewayZS(props) {
       return;
     }
 
-    // 充值分组倍率验证（仅在值发生变化且非空时验证）
-    const topupGroupRatio = finalInputs.TopupGroupRatio || inputs.TopupGroupRatio || '';
-    if (originInputs['TopupGroupRatio'] !== topupGroupRatio) {
-      if (topupGroupRatio && topupGroupRatio.trim() !== '' && !verifyJSON(topupGroupRatio)) {
-        showError(t('充值分组倍率不是合法的 JSON 字符串'));
-        return;
-      }
-    }
-
-    // 自定义充值数量选项验证
-    const amountOptions = finalInputs.AmountOptions || inputs.AmountOptions || '';
-    if (originInputs['AmountOptions'] !== amountOptions) {
-      if (amountOptions && amountOptions.trim() !== '' && !verifyJSON(amountOptions)) {
-        showError(t('自定义充值数量选项不是合法的 JSON 数组'));
-        return;
-      }
-    }
-
-    // 充值金额折扣配置验证
-    const amountDiscount = finalInputs.AmountDiscount || inputs.AmountDiscount || '';
-    if (originInputs['AmountDiscount'] !== amountDiscount) {
-      if (amountDiscount && amountDiscount.trim() !== '' && !verifyJSON(amountDiscount)) {
-        showError(t('充值金额折扣配置不是合法的 JSON 对象'));
-        return;
-      }
-    }
-
     setLoading(true);
     try {
       const options = [];
@@ -157,6 +92,12 @@ export default function SettingsPaymentGatewayZS(props) {
         key: 'zs_payment.Enabled',
         value: (finalInputs.ZSPayEnabled || inputs.ZSPayEnabled || false) ? 'true' : 'false',
       });
+
+      // API 地址
+      const baseURL = finalInputs.ZSPayBaseURL || inputs.ZSPayBaseURL || '';
+      if (baseURL !== '') {
+        options.push({ key: 'zs_payment.BaseURL', value: baseURL });
+      }
 
       // 回调路径
       const notifyPath = finalInputs.ZSPayNotifyPath || inputs.ZSPayNotifyPath || '';
@@ -170,27 +111,6 @@ export default function SettingsPaymentGatewayZS(props) {
         options.push({
           key: 'zs_payment.PayValidTime',
           value: payValidTime.toString(),
-        });
-      }
-
-      // 充值分组倍率
-      if (originInputs['TopupGroupRatio'] !== topupGroupRatio) {
-        options.push({ key: 'TopupGroupRatio', value: topupGroupRatio });
-      }
-
-      // 自定义充值数量选项
-      if (originInputs['AmountOptions'] !== amountOptions) {
-        options.push({
-          key: 'payment_setting.amount_options',
-          value: amountOptions,
-        });
-      }
-
-      // 充值金额折扣配置
-      if (originInputs['AmountDiscount'] !== amountDiscount) {
-        options.push({
-          key: 'payment_setting.amount_discount',
-          value: amountDiscount,
         });
       }
 
@@ -252,10 +172,27 @@ export default function SettingsPaymentGatewayZS(props) {
           <Row gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}>
             <Col xs={24} sm={24} md={12} lg={12} xl={12}>
               <Form.Input
+                field='ZSPayMerID'
+                label={t('商户号')}
+                placeholder={t('')}
+                disabled
+              />
+            </Col>
+             <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+              <Form.Input
+                field='ZSPayBaseURL'
+                label={t('API 地址')}
+                placeholder={t('https://api.cmburl.cn:8065')}        
+              />
+            </Col>
+          </Row>
+          
+          <Row gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}>
+            <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+              <Form.Input
                 field='ZSPayNotifyPath'
                 label={t('回调路径')}
                 placeholder={t('/api/user/zs_pay/notify')}
-                extraText={t('支付结果通知接收路径')}
               />
             </Col>
             <Col xs={24} sm={24} md={12} lg={12} xl={12}>
@@ -265,53 +202,6 @@ export default function SettingsPaymentGatewayZS(props) {
                 placeholder={t('1800')}
                 min={60}
                 step={60}
-                extraText={t('二维码有效时间，默认 30 分钟（1800 秒）')}
-              />
-            </Col>
-          </Row>
-
-          <Form.TextArea
-            field='TopupGroupRatio'
-            label={t('充值分组倍率')}
-            placeholder={t('为一个 JSON 文本，键为组名称，值为倍率')}
-            autosize
-            style={{ marginTop: 16 }}
-          />
-
-          <Row
-            gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}
-            style={{ marginTop: 16 }}
-          >
-            <Col span={24}>
-              <Form.TextArea
-                field='AmountOptions'
-                label={t('自定义充值数量选项')}
-                placeholder={t(
-                  '为一个 JSON 数组，例如：[10, 20, 50, 100, 200, 500]',
-                )}
-                autosize
-                extraText={t(
-                  '设置用户可选择的充值数量选项，例如：[10, 20, 50, 100, 200, 500]',
-                )}
-              />
-            </Col>
-          </Row>
-
-          <Row
-            gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}
-            style={{ marginTop: 16 }}
-          >
-            <Col span={24}>
-              <Form.TextArea
-                field='AmountDiscount'
-                label={t('充值金额折扣配置')}
-                placeholder={t(
-                  '为一个 JSON 对象，例如：{"100": 0.95, "200": 0.9, "500": 0.85}',
-                )}
-                autosize
-                extraText={t(
-                  '设置不同充值金额对应的折扣，键为充值金额，值为折扣率，例如：{"100": 0.95, "200": 0.9, "500": 0.85}',
-                )}
               />
             </Col>
           </Row>
