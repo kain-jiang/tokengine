@@ -315,11 +315,11 @@ func InitDB() (err error) {
 			//_, _ = sqlDB.Exec("ALTER TABLE channels MODIFY model_mapping TEXT;") // TODO: delete this line when most users have upgraded
 		}
 		// Check if database migration should be skipped
-		if !common.GetEnvOrDefaultBool("SKIP_DB_MIGRATION", false) {
+		if !common.GetEnvOrDefaultBool("SKIP_AUTO_MIGRATE", false) {
 			// Start database migration asynchronously in background
 			go StartAsyncMigration()
 		} else {
-			common.SysLog("database migration skipped due to SKIP_DB_MIGRATION environment variable")
+			common.SysLog("database migration skipped due to SKIP_AUTO_MIGRATE environment variable")
 			// Close migrationDone channel to avoid blocking
 			close(migrationDone)
 		}

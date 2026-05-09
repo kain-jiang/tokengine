@@ -4,6 +4,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/setting/config"
 )
 
@@ -28,89 +29,39 @@ var zsPaymentSetting = ZSPaymentSetting{
 	AppSecret:    "",
 	PrivateKey:   "",
 	PublicKey:    "",
-	BaseURL:      "",
+	BaseURL:      "https://api.cmburl.cn:8065", // 内置默认 A
 	NotifyPath:   "/api/user/zs_pay/notify",
 	PayValidTime: "1800",
 }
 
 func init() {
-	// 从环境变量加载配置（此时 .env 可能还未加载）
-	loadZSPayFromEnv()
-
 	// 注册到全局配置管理器（仅用于 Enabled 开关，其他配置从环境变量读取）
 	config.GlobalConfig.Register("zs_payment", &zsPaymentSetting)
 }
 
-// loadZSPayFromEnv 从环境变量加载招行支付配置
-func loadZSPayFromEnv() {
+// LoadZSPayFromEnv 从环境变量加载招行支付配置
+// 在 main() 中 godotenv.Load(".env") 之后调用
+func LoadZSPayFromEnv() {
 	// 商户号
 	if merID := os.Getenv("ZS_PAYMENT_MER_ID"); merID != "" {
 		zsPaymentSetting.MerID = merID
 	}
-
 	// AppID
 	if appID := os.Getenv("ZS_PAYMENT_APP_ID"); appID != "" {
 		zsPaymentSetting.AppID = appID
 	}
-
 	// AppSecret
 	if appSecret := os.Getenv("ZS_PAYMENT_APP_SECRET"); appSecret != "" {
 		zsPaymentSetting.AppSecret = appSecret
 	}
-
 	// 私钥
 	if privateKey := os.Getenv("ZS_PAYMENT_PRIVATE_KEY"); privateKey != "" {
 		zsPaymentSetting.PrivateKey = privateKey
 	}
-
 	// 公钥
 	if publicKey := os.Getenv("ZS_PAYMENT_PUBLIC_KEY"); publicKey != "" {
 		zsPaymentSetting.PublicKey = publicKey
 	}
-
-	// 基础 URL
-	if baseURL := os.Getenv("ZS_PAYMENT_BASE_URL"); baseURL != "" {
-		zsPaymentSetting.BaseURL = baseURL
-	}
-
-	// 回调路径
-	if notifyPath := os.Getenv("ZS_PAYMENT_NOTIFY_PATH"); notifyPath != "" {
-		zsPaymentSetting.NotifyPath = notifyPath
-	}
-
-	// 支付有效期
-	if payValidTime := os.Getenv("ZS_PAYMENT_PAY_VALID_TIME"); payValidTime != "" {
-		zsPaymentSetting.PayValidTime = payValidTime
-	}
-
-	// 如果所有必要配置都已设置，则自动启用
-	if zsPaymentSetting.MerID != "" &&
-		zsPaymentSetting.AppID != "" &&
-		zsPaymentSetting.AppSecret != "" &&
-		zsPaymentSetting.PrivateKey != "" &&
-		zsPaymentSetting.PublicKey != "" &&
-		zsPaymentSetting.BaseURL != "" {
-		zsPaymentSetting.Enabled = true
-	}
-}
-
-// ReloadZSPayFromEnv 重新从环境变量加载招行支付配置
-// 用于在 .env 文件加载后重新读取配置
-func ReloadZSPayFromEnv() {
-	// 先重置为默认值
-	zsPaymentSetting = ZSPaymentSetting{
-		Enabled:      false,
-		MerID:        "",
-		AppID:        "",
-		AppSecret:    "",
-		PrivateKey:   "",
-		PublicKey:    "",
-		BaseURL:      "",
-		NotifyPath:   "/api/user/zs_pay/notify",
-		PayValidTime: "1800",
-	}
-	// 重新加载
-	loadZSPayFromEnv()
 }
 
 // GetZSPaymentSetting 获取招商银行聚合支付配置
@@ -185,19 +136,30 @@ func ParseBool(s string) bool {
 }
 
 // ZSEnvOption 环境变量配置项（避免循环导入）
-type ZSEnvOption struct {
+type ZSPayOption struct {
 	Key   string
 	Value string
 }
 
-// GetZSPayEnvOptions 获取环境变量配置，供前端显示用
-func GetZSPayEnvOptions() []ZSEnvOption {
-	return []ZSEnvOption{
-		{Key: "zs_payment.MerID", Value: zsPaymentSetting.MerID},
-		{Key: "zs_payment.AppID", Value: zsPaymentSetting.AppID},
-		{Key: "zs_payment.AppSecret", Value: zsPaymentSetting.AppSecret},
-		{Key: "zs_payment.PrivateKey", Value: zsPaymentSetting.PrivateKey},
-		{Key: "zs_payment.PublicKey", Value: zsPaymentSetting.PublicKey},
-		{Key: "zs_payment.BaseURL", Value: zsPaymentSetting.BaseURL},
+// GetZSPayOptions 获取招行支付配置，供前端显示用
+// 首先从 OptionMap（数据库）读取用户修改的值，不存在则使用内置默认值
+func GetZSPayOptions() []ZSPayOption {
+	common.OptionMapRWMutex.RLock()
+	defer common.OptionMapRWMutex.RUnlock()
+
+	// 从数据库读取用户修改的值，不存在则使用默认值
+	getOptionValue := func(key string, defaultValue string) string {
+		if val, ok := common.OptionMap[key]; ok && val != "" {
+			return val
+		}
+		return defaultValue
+	}
+
+	return []ZSPayOption{
+		{Key: "zs_payment.Enabled", Value: getOptionValue("zs_payment.Enabled", strconv.FormatBool(zsPaymentSetting.Enabled))},
+		{Key: "zs_payment.MerID", Value: zsPaymentSetting.MerID}, // 商户号从环境变量读取
+		{Key: "zs_payment.BaseURL", Value: getOptionValue("zs_payment.BaseURL", zsPaymentSetting.BaseURL)},
+		{Key: "zs_payment.NotifyPath", Value: getOptionValue("zs_payment.NotifyPath", zsPaymentSetting.NotifyPath)},
+		{Key: "zs_payment.PayValidTime", Value: getOptionValue("zs_payment.PayValidTime", zsPaymentSetting.PayValidTime)},
 	}
 }

@@ -70,8 +70,7 @@ func GetOptions(c *gin.Context) {
 			strings.HasSuffix(k, "Secret") ||
 			strings.HasSuffix(k, "Key") ||
 			strings.HasSuffix(k, "secret") ||
-			strings.HasSuffix(k, "api_key") ||
-			k == "zs_payment.enabled" { // 移除冗余的 lowercase 版本
+			strings.HasSuffix(k, "api_key") {
 			continue
 		}
 		options = append(options, &model.Option{
@@ -86,9 +85,9 @@ func GetOptions(c *gin.Context) {
 		}
 	}
 	common.OptionMapRWMutex.Unlock()
-	// 添加环境变量配置到返回结果（招行支付等敏感配置从 .env 加载）
-	envOptions := operation_setting.GetZSPayEnvOptions()
-	for _, eo := range envOptions {
+	// 添加招行支付配置到返回结果（从数据库读取，不存在则使用默认值）
+	zs_payOptions := operation_setting.GetZSPayOptions()
+	for _, eo := range zs_payOptions {
 		options = append(options, &model.Option{
 			Key:   eo.Key,
 			Value: eo.Value,
