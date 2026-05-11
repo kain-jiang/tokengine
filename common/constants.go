@@ -216,8 +216,9 @@ const (
 )
 
 const (
-	TopUpStatusPending = "pending"
+	TopUpStatusPending  = "pending"
 	TopUpStatusSuccess = "success"
 	TopUpStatusFailed  = "failed"
 	TopUpStatusExpired = "expired"
+	TopUpStatusCancelled = "cancelled"
 )

@@ -36,27 +36,21 @@ func RequestZSPay(c *gin.Context) {
 		return
 	}
 
-	minTopup := getMinTopup()
-	if req.Amount < minTopup {
-		c.JSON(200, gin.H{"message": "error", "data": fmt.Sprintf("充值数量不能小于 %d", minTopup)})
-		return
-	}
-
 	id := c.GetInt("id")
-	group, err := model.GetUserGroup(id, true)
-	if err != nil {
-		c.JSON(200, gin.H{"message": "error", "data": "获取用户分组失败"})
-		return
+
+	// 招商银行支付直接使用用户输入的金额，但需要应用折扣
+	originalAmount := float64(req.Amount)
+
+	// 应用充值金额折扣
+	discount := 1.0
+	if ds, ok := operation_setting.GetPaymentSetting().AmountDiscount[int(req.Amount)]; ok && ds > 0 {
+		discount = ds
 	}
 
-	payMoney := getPayMoney(req.Amount, group)
+	payMoney := originalAmount * discount
+
 	if payMoney < 0.01 {
 		c.JSON(200, gin.H{"message": "error", "data": "充值金额过低"})
-		return
-	}
-
-	if !operation_setting.ContainsPayMethod(req.PaymentMethod) {
-		c.JSON(200, gin.H{"message": "error", "data": "支付方式不存在"})
 		return
 	}
 
@@ -99,11 +93,17 @@ func RequestZSPay(c *gin.Context) {
 		return
 	}
 
+	// 计算过期时间
+	payValidTime, _ := strconv.Atoi(operation_setting.GetZSPayPayValidTime())
+	expireAt := time.Now().Add(time.Duration(payValidTime) * time.Second).Format(time.RFC3339)
+
 	c.JSON(200, gin.H{
 		"message":      "success",
-		"data":         qrResult.QRCodeURL,
+		"qr_code_url":  qrResult.QRCodeURL,
 		"cmb_order_id": qrResult.CmbOrderID,
 		"trade_no":     tradeNo,
+		"amount":       payMoney,
+		"expire_at":    expireAt,
 	})
 }
 
@@ -271,18 +271,17 @@ func QueryZSPayStatus(c *gin.Context) {
 
 	resp, err := zsService.OrderQuery(tradeNo)
 	if err != nil {
-		c.JSON(200, gin.H{"message": "error", "data": "查询失败"})
+		c.JSON(200, gin.H{"message": "error", "data": err.Error()})
 		return
 	}
-
+	// 转换状态：C-已关闭 D-已撤销 P-进行中 F-失败 S-成功 R-转入退款
 	status := convertTradeState(resp.TradeState)
+	tradeState := resp.TradeState
+
 	c.JSON(200, gin.H{
-		"message":        "success",
-		"status":         status,
-		"trade_state":    resp.TradeState,
-		"pay_type":       resp.PayType,
-		"third_order_id": resp.ThirdOrderID,
-		"txn_amt":        resp.TxnAmt,
+		"message":    "success",
+		"status":     status,
+		"tradeState": tradeState,
 	})
 }
 
@@ -304,4 +303,25 @@ func convertTradeState(state string) string {
 func FormatZSMoney(fen string) string {
 	f, _ := strconv.ParseFloat(fen, 64)
 	return fmt.Sprintf("%.2f", f/100)
+}
+
+func CancelZSPayOrder(c *gin.Context) {
+	tradeNo := c.Query("trade_no")
+	if tradeNo == "" {
+		c.JSON(200, gin.H{"message": "error", "data": "订单号不能为空"})
+		return
+	}
+
+	userId := c.GetInt("id")
+
+	err := model.CancelTopUpByTradeNo(tradeNo, userId)
+	if err != nil {
+		c.JSON(200, gin.H{"message": "error", "data": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"message": "success",
+		"data":    "订单已取消",
+	})
 }

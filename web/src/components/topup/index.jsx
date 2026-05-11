@@ -38,6 +38,7 @@ import RechargeCard from './RechargeCard';
 import InvitationCard from './InvitationCard';
 import TransferModal from './modals/TransferModal';
 import PaymentConfirmModal from './modals/PaymentConfirmModal';
+import QRCodeModal from './QRCodeModal';
 import TopupHistoryModal from './modals/TopupHistoryModal';
 
 const TopUp = () => {
@@ -78,6 +79,8 @@ const TopUp = () => {
 
   // 招商银行聚合支付相关状态
   const [enableZsPayTopUp, setEnableZsPayTopUp] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [qrCodeData, setQrCodeData] = useState({});
 
   // 判断是否只启用了招行支付（是的话隐藏充值数量输入和支付方式选择）
   const onlyZsPayEnabled = enableZsPayTopUp && !enableOnlineTopUp && !enableStripeTopUp && !enableWaffoTopUp;
@@ -200,7 +203,8 @@ const TopUp = () => {
         }
       } else if (payment === 'stripe') {
         await getStripeAmount();
-      } else {
+      } else if (enableOnlineTopUp) {
+        // 只有易支付启用时才调用 getAmount
         await getAmount();
       }
 
@@ -223,12 +227,10 @@ const TopUp = () => {
         await getStripeAmount();
       }
     } else if (payWay === 'zs_pay') {
-      // 招商银行聚合支付处理
-      if (amount === 0) {
-        await getAmount();
-      }
+      // 招商银行聚合支付处理 - 不调用 getAmount，因为易支付接口不适用于招商银行
+      // 招商银行金额在前端根据币种和折扣直接计算
     } else {
-      // 普通支付处理
+      // 易支付等普通支付处理
       if (amount === 0) {
         await getAmount();
       }
@@ -248,7 +250,7 @@ const TopUp = () => {
           payment_method: 'stripe',
         });
       } else if (payWay === 'zs_pay') {
-        // 招商银行聚合支付请求
+        // 招商银行聚合支付请求 - 后端会处理折扣计算
         res = await API.post('/api/user/zs_pay/pay', {
           amount: parseInt(topUpCount),
           payment_method: 'zs_pay',
@@ -262,15 +264,21 @@ const TopUp = () => {
       }
 
       if (res !== undefined) {
-        const { message, data } = res.data;
+        const { message, data, qr_code_url, trade_no, amount, expire_at } = res.data;
         if (message === 'success') {
           if (payWay === 'stripe') {
             // Stripe 支付回调处理
             window.open(data.pay_link, '_blank');
           } else if (payWay === 'zs_pay') {
             // 招商银行聚合支付 - 显示二维码
-            if (data.qr_code_url) {
-              showQRCodeDialog(data.qr_code_url, data.trade_no);
+            if (qr_code_url) {
+              setQrCodeData({
+                qrCodeUrl: qr_code_url,
+                tradeNo: trade_no,
+                amount: amount,
+                expireAt: expire_at,
+              });
+              setShowQRCode(true);
             } else {
               showError(t('获取支付二维码失败'));
             }
@@ -393,50 +401,6 @@ const TopUp = () => {
   const processCreemCallback = (data) => {
     // 与 Stripe 保持一致的实现方式
     window.open(data.checkout_url, '_blank');
-  };
-
-  // 显示招商银行聚合支付二维码
-  const showQRCodeDialog = (qrCodeUrl, tradeNo) => {
-    Modal.info({
-      title: t('招商银行聚合支付'),
-      content: (
-        <div style={{ textAlign: 'center', padding: '20px' }}>
-          <div style={{ marginBottom: '20px' }}>
-            <img
-              src={qrCodeUrl}
-              alt={t('支付二维码')}
-              style={{ width: '200px', height: '200px' }}
-            />
-          </div>
-          <p style={{ marginBottom: '10px' }}>{t('请使用微信/支付宝/银联扫码支付')}</p>
-          <p style={{ marginBottom: '20px' }}>{t('订单号')}{tradeNo}</p>
-          <p style={{ fontSize: '12px', color: '#666' }}>{t('支付完成后，系统会自动处理您的充值')}</p>
-        </div>
-      ),
-      centered: true,
-      okText: t('我已支付'),
-      cancelText: t('取消支付'),
-      onOk: async () => {
-        // 查询支付状态
-        try {
-          const res = await API.get(`/api/user/zs_pay/status?trade_no=${tradeNo}`);
-          if (res.data?.message === 'success') {
-            const status = res.data?.data?.status;
-            if (status === 'PAID') {
-              showSuccess(t('支付成功！'));
-              // 刷新用户数据
-              getUserQuota();
-            } else {
-              showInfo(t('支付状态') + '：' + status);
-            }
-          } else {
-            showError(t('查询支付状态失败'));
-          }
-        } catch (error) {
-          showError(t('查询支付状态失败'));
-        }
-      }
-    });
   };
 
   const getUserQuota = async () => {
@@ -603,8 +567,11 @@ const TopUp = () => {
             setPresetAmounts(generatePresetAmounts(minTopUpValue));
           }
 
-          // 初始化显示实付金额
-          getAmount(minTopUpValue);
+          // 只有在启用了易支付时才调用 /api/user/amount 接口
+          // 招商银行支付有自己的金额计算逻辑，不依赖此接口
+          if (enableOnlineTopUp) {
+            getAmount(minTopUpValue);
+          }
         } catch (e) {
           setPayMethods([]);
         }
@@ -931,6 +898,18 @@ const TopUp = () => {
           handleAffLinkClick={handleAffLinkClick}
         />
       </div>
+
+      {/* 招商银行聚合支付二维码弹窗 */}
+      {showQRCode && (
+        <QRCodeModal
+          qrCodeUrl={qrCodeData.qrCodeUrl}
+          tradeNo={qrCodeData.tradeNo}
+          amount={qrCodeData.amount}
+          expireAt={qrCodeData.expireAt}
+          onSuccess={getUserQuota}
+          onClose={() => setShowQRCode(false)}
+        />
+      )}
     </div>
   );
 };

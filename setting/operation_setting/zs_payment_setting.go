@@ -99,18 +99,41 @@ func GetZSPayPublicKey() string {
 	return zsPaymentSetting.PublicKey
 }
 
-// GetZSPayBaseURL 获取基础URL
+
+
+
+
+
+// GetZSPayBaseURL 获取API地址
+// 首先从数据库读取用户修改的值，不存在则使用内置默认值
 func GetZSPayBaseURL() string {
+	common.OptionMapRWMutex.RLock()
+	defer common.OptionMapRWMutex.RUnlock()
+	if val, ok := common.OptionMap["zs_payment.BaseURL"]; ok && val != "" {
+		return val
+	}
 	return zsPaymentSetting.BaseURL
 }
 
 // GetZSPayNotifyPath 获取回调路径
+// 首先从数据库读取用户修改的值，不存在则使用内置默认值
 func GetZSPayNotifyPath() string {
+	common.OptionMapRWMutex.RLock()
+	defer common.OptionMapRWMutex.RUnlock()
+	if val, ok := common.OptionMap["zs_payment.NotifyPath"]; ok && val != "" {
+		return val
+	}
 	return zsPaymentSetting.NotifyPath
 }
 
 // GetZSPayPayValidTime 获取支付有效期
+// 首先从数据库读取用户修改的值，不存在则使用内置默认值
 func GetZSPayPayValidTime() string {
+	common.OptionMapRWMutex.RLock()
+	defer common.OptionMapRWMutex.RUnlock()
+	if val, ok := common.OptionMap["zs_payment.PayValidTime"]; ok && val != "" {
+		return val
+	}
 	return zsPaymentSetting.PayValidTime
 }
 

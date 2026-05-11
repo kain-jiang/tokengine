@@ -1,6 +1,7 @@
 package service
 
 import (
+	"crypto/md5"
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/base64"
@@ -11,12 +12,12 @@ import (
 	"math/big"
 	"net/http"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/system_setting"
 	"github.com/tjfoc/gmsm/sm2"
 	"github.com/tjfoc/gmsm/x509"
 )
@@ -128,11 +129,11 @@ func (s *ZSPayService) parseSM2PublicKey(keyStr string) (*sm2.PublicKey, error) 
 }
 
 type ZSBaseRequest struct {
-	Version    string      `json:"version"`
-	Encoding   string      `json:"encoding"`
-	SignMethod string      `json:"signMethod"`
-	Sign       string      `json:"sign"`
-	BizContent interface{} `json:"biz_content"`
+	Version    string `json:"version"`
+	Encoding   string `json:"encoding"`
+	SignMethod string `json:"signMethod"`
+	Sign       string `json:"sign"`
+	BizContent string `json:"biz_content"` // 业务数据（JSON字符串）
 }
 
 type ZSBaseResponse struct {
@@ -162,9 +163,8 @@ type ZSQRCodeApplyResp struct {
 	MerID      string `json:"merId"`
 	OrderID    string `json:"orderId"`
 	CmbOrderID string `json:"cmbOrderId"`
-	QRCodeURL  string `json:"qrCodeUrl"`
-	QRCode     string `json:"qrCode"`
-	QRCodeData string `json:"qrCodeData"`
+	QRCode     string `json:"qrCode"`     // 二维码URL
+	QRCodeData string `json:"qrCodeData"` // 备用字段
 }
 
 type ZSOrderQueryReq struct {
@@ -174,23 +174,24 @@ type ZSOrderQueryReq struct {
 	OutOrderID string `json:"outOrderId,omitempty"`
 }
 
+// OrderQueryResp 支付结果查询响应参数
 type ZSOrderQueryResp struct {
-	MerID               string `json:"merId"`
-	OrderID             string `json:"orderId"`
-	CmbOrderID          string `json:"cmbOrderId"`
-	TxnAmt              string `json:"txnAmt"`
-	DscAmt              string `json:"dscAmt"`
-	PayType             string `json:"payType"`
-	OpenID              string `json:"openId,omitempty"`
-	PayBank             string `json:"payBank,omitempty"`
-	ThirdOrderID        string `json:"thirdOrderId,omitempty"`
-	TradeState          string `json:"tradeState"`
-	TxnTime             string `json:"txnTime"`
-	EndDate             string `json:"endDate,omitempty"`
-	EndTime             string `json:"endTime,omitempty"`
-	MchReserved         string `json:"mchReserved,omitempty"`
-	PromotionDetail     string `json:"promotionDetail,omitempty"`
-	EcnyPromotionDetail string `json:"ecnyPromotionDetail,omitempty"`
+	MerID               string `json:"merId"`                         // 商户号
+	OrderID             string `json:"orderId"`                       // 商户订单号
+	CmbOrderID          string `json:"cmbOrderId"`                    // 招行订单号
+	TxnAmt              string `json:"txnAmt"`                        // 交易金额（分）
+	DscAmt              string `json:"dscAmt"`                        // 优惠金额（分）
+	PayType             string `json:"payType"`                       // 支付方式：ZF-支付宝/WX-微信/YL-银联/EC-数字人民币
+	OpenID              string `json:"openId,omitempty"`              // 用户标识
+	PayBank             string `json:"payBank,omitempty"`             // 付款银行
+	ThirdOrderID        string `json:"thirdOrderId,omitempty"`        // 第三方订单号
+	TradeState          string `json:"tradeState"`                    // 交易状态：C-已关闭/D-已撤销/P-进行中/F-失败/S-成功/R-转入退款
+	TxnTime             string `json:"txnTime"`                       // 订单发送时间
+	EndDate             string `json:"endDate,omitempty"`             // 订单完成日期
+	EndTime             string `json:"endTime,omitempty"`             // 订单完成时间
+	MchReserved         string `json:"mchReserved,omitempty"`         // 商户保留域
+	PromotionDetail     string `json:"promotionDetail,omitempty"`     // 优惠券信息
+	EcnyPromotionDetail string `json:"ecnyPromotionDetail,omitempty"` // 数字人民币优惠详情
 }
 
 type ZSRefundReq struct {
@@ -264,9 +265,6 @@ type ZSQRCodeResult struct {
 
 func (s *ZSPayService) QRCodeApply(orderNo string, amount float64, notifyURL string) (*ZSQRCodeResult, error) {
 	url := s.BaseURL + "/polypay/v1.0/mchorders/qrcodeapply"
-
-	common.SysLog(fmt.Sprintf("[ZS Pay] 申请二维码: orderNo=%s, amount=%.2f, notifyURL=%s, baseURL=%s", orderNo, amount, notifyURL, s.BaseURL))
-
 	req := &ZSQRCodeApplyReq{
 		MerID:        s.MerID,
 		OrderID:      orderNo,
@@ -275,7 +273,6 @@ func (s *ZSPayService) QRCodeApply(orderNo string, amount float64, notifyURL str
 		Body:         "账户充值",
 		PayValidTime: operation_setting.GetZSPayPayValidTime(),
 	}
-
 	common.SysLog(fmt.Sprintf("[ZS Pay] 请求参数: %+v", req))
 
 	resp := &ZSQRCodeApplyResp{}
@@ -285,9 +282,9 @@ func (s *ZSPayService) QRCodeApply(orderNo string, amount float64, notifyURL str
 		return nil, fmt.Errorf("申请收款二维码失败: %w", err)
 	}
 
-	common.SysLog(fmt.Sprintf("[ZS Pay] 招行返回: cmbOrderId=%s, qrCodeURL=%s", resp.CmbOrderID, resp.QRCodeURL))
+	common.SysLog(fmt.Sprintf("[ZS Pay] 招行返回: cmbOrderId=%s, qrCodeURL=%s", resp.CmbOrderID, resp.QRCode))
 
-	qrCodeURL := s.processQRCodeData(resp.QRCodeURL)
+	qrCodeURL := s.processQRCodeData(resp.QRCode)
 
 	return &ZSQRCodeResult{
 		QRCodeURL:  qrCodeURL,
@@ -362,7 +359,11 @@ func (s *ZSPayService) doRequest(reqURL string, reqData interface{}, respData in
 
 	common.SysLog(fmt.Sprintf("[ZS Pay] 业务请求数据: %s", string(bizContent)))
 
-	sign, err := s.sign(string(bizContent))
+	// 构建签名字符串：biz_content=xxx&encoding=UTF-8&signMethod=02&version=0.0.1
+	signString := fmt.Sprintf("biz_content=%s&encoding=UTF-8&signMethod=02&version=0.0.1", string(bizContent))
+	common.SysLog(fmt.Sprintf("[ZS Pay] 待签名字符串: %s", signString))
+
+	sign, err := s.sign(signString)
 	if err != nil {
 		common.SysLog(fmt.Sprintf("[ZS Pay] 签名生成失败: %v", err))
 		return fmt.Errorf("生成签名失败: %w", err)
@@ -373,7 +374,7 @@ func (s *ZSPayService) doRequest(reqURL string, reqData interface{}, respData in
 		Encoding:   "UTF-8",
 		SignMethod: "02",
 		Sign:       sign,
-		BizContent: json.RawMessage(bizContent),
+		BizContent: string(bizContent), // 作为JSON字符串传递
 	}
 
 	reqBody, err := json.Marshal(baseReq)
@@ -384,8 +385,17 @@ func (s *ZSPayService) doRequest(reqURL string, reqData interface{}, respData in
 	common.SysLog(fmt.Sprintf("[ZS Pay] 完整请求体: %s", string(reqBody)))
 	common.SysLog(fmt.Sprintf("[ZS Pay] 请求URL: %s", reqURL))
 
+	// 生成时间戳和API签名
+	timestamp := time.Now().Unix()
+	apiSign := s.generateAPISign(sign, timestamp)
+
+	common.SysLog(fmt.Sprintf("[ZS Pay] appid=%s, timestamp=%d, apisign=%s", s.AppID, timestamp, apiSign))
+
 	headers := map[string]string{
 		"Content-Type": "application/json",
+		"appid":        s.AppID,
+		"timestamp":    fmt.Sprintf("%d", timestamp),
+		"apisign":      apiSign,
 	}
 
 	body, err := s.client.Post(reqURL, reqBody, headers)
@@ -424,14 +434,32 @@ func (s *ZSPayService) doRequest(reqURL string, reqData interface{}, respData in
 	return nil
 }
 
+// generateAPISign 生成API签名（用于报文头，MD5方式）
+func (s *ZSPayService) generateAPISign(sign string, timestamp int64) string {
+	str := fmt.Sprintf("appid=%s&secret=%s&sign=%s&timestamp=%d",
+		s.AppID, s.AppSecret, sign, timestamp)
+
+	hash := md5.Sum([]byte(str))
+	return hex.EncodeToString(hash[:])
+}
+
+// sign 使用SM2withSM3算法签名，USER_ID使用国密局推荐ID
 func (s *ZSPayService) sign(data string) (string, error) {
 	if s.privateKey == nil {
 		return "", fmt.Errorf("SM2私钥未初始化")
 	}
 
-	signature, err := s.privateKey.Sign(rand.Reader, []byte(data), nil)
+	// 使用SM2withSM3签名，USER_ID使用国密局推荐ID
+	uid := []byte("1234567812345678")
+	r, s2, err := sm2.Sm2Sign(s.privateKey, []byte(data), uid, rand.Reader)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("SM2签名失败: %w", err)
+	}
+
+	// 将r和s拼接成DER格式的签名
+	signature, err := sm2.SignDigitToSignData(r, s2)
+	if err != nil {
+		return "", fmt.Errorf("签名编码失败: %w", err)
 	}
 
 	return base64.StdEncoding.EncodeToString(signature), nil
@@ -454,15 +482,15 @@ func (s *ZSPayService) amountToFen(amount float64) string {
 	return fmt.Sprintf("%.0f", amount*100)
 }
 
-func (s *ZSPayService) fenToAmount(fen string) float64 {
-	f, _ := strconv.ParseFloat(fen, 64)
-	return f / 100
-}
-
 func (s *ZSPayService) processQRCodeData(qrCode string) string {
 	if qrCode == "" {
 		return qrCode
 	}
+
+	// 清理URL中的特殊字符和空格
+	qrCode = strings.TrimSpace(qrCode)
+	qrCode = strings.TrimPrefix(qrCode, "`")
+	qrCode = strings.TrimSuffix(qrCode, "`")
 
 	baseURL := operation_setting.GetZSPayBaseURL()
 	if baseURL == "" || !regexp.MustCompile(`api\.cmburl\.cn:8065`).MatchString(baseURL) {
@@ -478,10 +506,7 @@ func (s *ZSPayService) GetNotifyURL() string {
 	if notifyPath == "" {
 		notifyPath = "/api/user/zs_pay/notify"
 	}
-	serverAddress := operation_setting.PayAddress
-	if serverAddress == "" {
-		serverAddress = "http://localhost:3000"
-	}
+	serverAddress := system_setting.ServerAddress
 	return strings.TrimSuffix(serverAddress, "/") + notifyPath
 }
 
@@ -549,8 +574,7 @@ func (c *ZSHttpClient) Post(reqURL string, reqBody []byte, headers map[string]st
 	}
 
 	respBody := buf.String()
-	common.SysLog(fmt.Sprintf("[ZS Pay] 响应长度: %d 字节", len(respBody)))
-	common.SysLog(fmt.Sprintf("[ZS Pay] 响应内容: %s", respBody))
+	common.SysLog(fmt.Sprintf("[ZS Pay] 响应长度: %d 字节,响应内容: %s", len(respBody), respBody))
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		return nil, fmt.Errorf("HTTP 状态码异常: %d, 响应: %s", resp.StatusCode, respBody)

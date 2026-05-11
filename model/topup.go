@@ -435,3 +435,52 @@ func RechargeWaffo(tradeNo string) (err error) {
 
 	return nil
 }
+
+// CancelTopUpByTradeNo 取消充值订单
+func CancelTopUpByTradeNo(tradeNo string, userId int) error {
+	var topUp *TopUp
+	var err error
+
+	refCol := "`trade_no`"
+	if common.UsingPostgreSQL {
+		refCol = `"trade_no"`
+	}
+
+	err = DB.Transaction(func(tx *gorm.DB) error {
+		err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(topUp).Error
+		if err != nil {
+			return errors.New("充值订单不存在")
+		}
+
+		if topUp.UserId != userId {
+			return errors.New("无权取消该订单")
+		}
+
+		if topUp.Status != common.TopUpStatusPending {
+			if topUp.Status == common.TopUpStatusCancelled {
+				return errors.New("订单已取消")
+			}
+			if topUp.Status == common.TopUpStatusSuccess {
+				return errors.New("订单已支付，无法取消")
+			}
+			return errors.New("订单无法取消")
+		}
+
+		topUp.Status = common.TopUpStatusCancelled
+		err = tx.Save(topUp).Error
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		common.SysError("cancel topup failed: " + err.Error())
+		return err
+	}
+
+	RecordLog(userId, LogTypeTopup, fmt.Sprintf("取消充值订单，订单号: %s", tradeNo))
+
+	return nil
+}

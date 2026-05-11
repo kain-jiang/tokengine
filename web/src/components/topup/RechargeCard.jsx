@@ -278,7 +278,7 @@ const RechargeCard = ({
           <div className='py-8 flex justify-center'>
             <Spin size='large' />
           </div>
-        ) : enableOnlineTopUp || enableStripeTopUp || enableCreemTopUp || enableWaffoTopUp || enableZsPayTopUp ? (
+        ) : (enableOnlineTopUp || enableStripeTopUp || enableCreemTopUp || enableWaffoTopUp || enableZsPayTopUp) ? (
           <Form
             getFormApi={(api) => (onlineFormApiRef.current = api)}
             initValues={{ topUpCount: topUpCount }}
@@ -344,16 +344,17 @@ const RechargeCard = ({
                     />
                   </Col>
                   {/* 当只启用招行支付时，隐藏支付方式选择 */}
-                  {!onlyZsPayEnabled && payMethods && payMethods.filter(m => m.type !== 'waffo' && m.type !== 'zs_pay').length > 0 && (
+                  {!onlyZsPayEnabled && (enableOnlineTopUp || enableStripeTopUp) && payMethods && payMethods.filter(m => m.type !== 'waffo' && m.type !== 'zs_pay').length > 0 && (
                   <Col xs={24} sm={24} md={24} lg={14} xl={14}>
                     <Form.Slot label={t('选择支付方式')}>
                         <Space wrap>
                           {payMethods.filter(m => m.type !== 'waffo' && m.type !== 'zs_pay').map((payMethod) => {
                             const minTopupVal = Number(payMethod.min_topup) || 0;
                             const isStripe = payMethod.type === 'stripe';
+                            // 确保只有启用了的支付方式才可以点击
+                            const isEnabled = (isStripe && enableStripeTopUp) || (!isStripe && enableOnlineTopUp);
                             const disabled =
-                              (!enableOnlineTopUp && !isStripe) ||
-                              (!enableStripeTopUp && isStripe) ||
+                              !isEnabled ||
                               minTopupVal > Number(topUpCount || 0);
 
                             const buttonEl = (
