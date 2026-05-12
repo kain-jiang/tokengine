@@ -45,6 +45,7 @@ const STATUS_CONFIG = {
   pending: { type: 'warning', key: '待支付' },
   failed: { type: 'danger', key: '失败' },
   expired: { type: 'danger', key: '已过期' },
+  cancelled: { type: 'default', key: '已取消' },
 };
 
 // 支付方式映射
@@ -54,6 +55,7 @@ const PAYMENT_METHOD_MAP = {
   waffo: 'Waffo',
   alipay: '支付宝',
   wxpay: '微信',
+  zs_pay: '招商银行聚合支付',
 };
 
 const TopupHistoryModal = ({ visible, onCancel, t }) => {

@@ -438,7 +438,7 @@ func RechargeWaffo(tradeNo string) (err error) {
 
 // CancelTopUpByTradeNo 取消充值订单
 func CancelTopUpByTradeNo(tradeNo string, userId int) error {
-	var topUp *TopUp
+	var topUp TopUp  // 使用值类型，确保能正确接收查询结果
 	var err error
 
 	refCol := "`trade_no`"
@@ -447,7 +447,7 @@ func CancelTopUpByTradeNo(tradeNo string, userId int) error {
 	}
 
 	err = DB.Transaction(func(tx *gorm.DB) error {
-		err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(topUp).Error
+		err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(&topUp).Error
 		if err != nil {
 			return errors.New("充值订单不存在")
 		}

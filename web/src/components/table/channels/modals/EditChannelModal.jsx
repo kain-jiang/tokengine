@@ -1000,25 +1000,26 @@ const EditChannelModal = (props) => {
       setIonetMetadata(parsedIonet);
 
       // Smart expand: auto-open advanced settings if any advanced field has a value
-      const hasAdvancedValues =
-        (data.model_mapping && data.model_mapping.trim()) ||
-        (data.param_override && data.param_override.trim()) ||
-        (data.status_code_mapping && data.status_code_mapping.trim()) ||
-        (data.header_override && data.header_override.trim()) ||
-        (data.tag && data.tag.trim()) ||
-        (data.remark && data.remark.trim()) ||
-        (data.priority && data.priority !== 0) ||
-        (data.weight && data.weight !== 0) ||
-        (data.proxy && data.proxy.trim()) ||
-        (data.system_prompt && data.system_prompt.trim()) ||
-        data.thinking_to_content ||
-        data.pass_through_body_enabled ||
-        data.force_format ||
-        data.claude_beta_query ||
-        data.system_prompt_override;
-      if (hasAdvancedValues) {
-        setAdvancedSettingsOpen(true);
-      }
+      // 注释掉智能展开逻辑，编辑时默认不展开高级设置
+      // const hasAdvancedValues =
+      //   (data.model_mapping && data.model_mapping.trim()) ||
+      //   (data.param_override && data.param_override.trim()) ||
+      //   (data.status_code_mapping && data.status_code_mapping.trim()) ||
+      //   (data.header_override && data.header_override.trim()) ||
+      //   (data.tag && data.tag.trim()) ||
+      //   (data.remark && data.remark.trim()) ||
+      //   (data.priority && data.priority !== 0) ||
+      //   (data.weight && data.weight !== 0) ||
+      //   (data.proxy && data.proxy.trim()) ||
+      //   (data.system_prompt && data.system_prompt.trim()) ||
+      //   data.thinking_to_content ||
+      //   data.pass_through_body_enabled ||
+      //   data.force_format ||
+      //   data.claude_beta_query ||
+      //   data.system_prompt_override;
+      // if (hasAdvancedValues) {
+      //   setAdvancedSettingsOpen(true);
+      // }
     } else {
       showError(message);
     }
@@ -1323,10 +1324,8 @@ const EditChannelModal = (props) => {
       fetchModelGroups();
       // 重置手动输入模式状态
       setUseManualInput(false);
-      // 编辑模式下恢复用户偏好，创建模式一律折叠
-      setAdvancedSettingsOpen(
-        isEdit && localStorage.getItem(ADVANCED_SETTINGS_EXPANDED_KEY) === 'true'
-      );
+      // 默认不展开高级设置
+      setAdvancedSettingsOpen(false);
     } else {
       // 统一的模态框关闭重置逻辑
       resetModalState();

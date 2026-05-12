@@ -413,6 +413,28 @@ const TopUp = () => {
     }
   };
 
+  // 刷新二维码
+  const handleRefreshQRCode = async () => {
+    try {
+      const res = await API.post('/api/user/zs_pay/pay', {
+        amount: parseInt(topUpCount),
+        payment_method: 'zs_pay',
+      });
+      if (res.data?.message === 'success' && res.data.qr_code_url) {
+        setQrCodeData({
+          qrCodeUrl: res.data.qr_code_url,
+          tradeNo: res.data.trade_no,
+          amount: res.data.amount,
+          expireAt: res.data.expire_at,
+        });
+      } else {
+        showError(t('获取支付二维码失败'));
+      }
+    } catch (error) {
+      showError(t('获取支付二维码失败'));
+    }
+  };
+
   const getSubscriptionPlans = async () => {
     setSubscriptionLoading(true);
     try {
@@ -907,6 +929,7 @@ const TopUp = () => {
           amount={qrCodeData.amount}
           expireAt={qrCodeData.expireAt}
           onSuccess={getUserQuota}
+          onRefresh={handleRefreshQRCode}
           onClose={() => setShowQRCode(false)}
         />
       )}
