@@ -81,16 +81,20 @@ func GetTopUpInfo(c *gin.Context) {
 	// 检查招行支付是否启用
 	enableZS := operation_setting.IsZSPayEnabled()
 
+	// 检查合利宝支付是否启用
+	enableHelipay := operation_setting.IsHelipayEnabled()
+
 	enableOnlineTopup := operation_setting.PayAddress != "" && operation_setting.EpayId != "" && operation_setting.EpayKey != ""
 	enableStripeTopup := setting.StripeApiSecret != "" && setting.StripeWebhookSecret != "" && setting.StripePriceId != ""
 	enableCreemTopup := setting.CreemApiKey != "" && setting.CreemProducts != "[]"
 
 	data := gin.H{
-		"enable_online_topup": enableOnlineTopup,
-		"enable_stripe_topup": enableStripeTopup,
-		"enable_creem_topup":  enableCreemTopup,
-		"enable_waffo_topup":  enableWaffo,
-		"enable_zs_pay_topup": enableZS,
+		"enable_online_topup":  enableOnlineTopup,
+		"enable_stripe_topup":  enableStripeTopup,
+		"enable_creem_topup":   enableCreemTopup,
+		"enable_waffo_topup":   enableWaffo,
+		"enable_zs_pay_topup":  enableZS,
+		"enable_helipay_topup": enableHelipay,
 		"waffo_pay_methods": func() interface{} {
 			if enableWaffo {
 				return setting.GetWaffoPayMethods()

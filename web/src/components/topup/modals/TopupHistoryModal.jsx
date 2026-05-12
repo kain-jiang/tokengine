@@ -56,6 +56,7 @@ const PAYMENT_METHOD_MAP = {
   alipay: '支付宝',
   wxpay: '微信',
   zs_pay: '招商银行聚合支付',
+  helipay: '合利宝支付',
 };
 
 const TopupHistoryModal = ({ visible, onCancel, t }) => {

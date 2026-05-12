@@ -261,6 +261,8 @@ func InitResources() error {
 
 	// 加载招行支付配置（init() 函数执行时 .env 还未加载，现在 .env 已加载，可以读取了）
 	operation_setting.LoadZSPayFromEnv()
+	// 加载合利宝支付配置
+	operation_setting.LoadHelipayFromEnv()
 
 	// 加载环境变量
 	common.InitEnv()

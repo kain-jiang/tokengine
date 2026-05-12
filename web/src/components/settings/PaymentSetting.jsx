@@ -25,6 +25,7 @@ import SettingsPaymentGatewayStripe from '../../pages/Setting/Payment/SettingsPa
 import SettingsPaymentGatewayCreem from '../../pages/Setting/Payment/SettingsPaymentGatewayCreem';
 import SettingsPaymentGatewayWaffo from '../../pages/Setting/Payment/SettingsPaymentGatewayWaffo';
 import SettingsPaymentGatewayZS from '../../pages/Setting/Payment/SettingsPaymentGatewayZS';
+import SettingsPaymentGatewayHelipay from '../../pages/Setting/Payment/SettingsPaymentGatewayHelipay';
 import { API, showError, toBoolean } from '../../helpers';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronUp } from 'lucide-react';
@@ -77,6 +78,12 @@ const PaymentSetting = () => {
     ZSPayBaseURL: 'https://api.cmburl.cn:8065',
     ZSPayNotifyPath: '/api/user/zs_pay/notify',
     ZSPayPayValidTime: '1800',
+
+    HelipayEnabled: false,
+    HelipayTransactionApi: 'https://api.helipay.com/api/v1/trade/preorder',
+    HelipayQueryApi: 'https://api.helipay.com/api/v1/trade/query',
+    HelipayNotifyPath: '/api/user/helipay/notify',
+    HelipayPayValidTime: '1800',
   });
 
   let [loading, setLoading] = useState(false);
@@ -87,6 +94,7 @@ const PaymentSetting = () => {
     creem: true,
     waffo: true,
     zs: true,
+    helipay: true,
   });
 
   const getOptions = async () => {
@@ -156,6 +164,21 @@ const PaymentSetting = () => {
             break;
           case 'zs_payment.PayValidTime':
             newInputs['ZSPayPayValidTime'] = item.value;
+            break;
+          case 'helipay.Enabled':
+            newInputs['HelipayEnabled'] = toBoolean(item.value);
+            break;
+          case 'helipay.TransactionApi':
+            newInputs['HelipayTransactionApi'] = item.value;
+            break;
+          case 'helipay.QueryApi':
+            newInputs['HelipayQueryApi'] = item.value;
+            break;
+          case 'helipay.NotifyPath':
+            newInputs['HelipayNotifyPath'] = item.value;
+            break;
+          case 'helipay.PayValidTime':
+            newInputs['HelipayPayValidTime'] = item.value;
             break;
           default:
             if (item.key.endsWith('Enabled')) {
@@ -253,6 +276,28 @@ const PaymentSetting = () => {
           </div>
           {!collapsedSections.zs && (
             <SettingsPaymentGatewayZS options={inputs} refresh={onRefresh} />
+          )}
+        </Card>
+
+        {/* 合利宝支付配置 */}
+        <Card style={{ marginTop: '10px' }}>
+          <div 
+            onClick={() => toggleSection('helipay')}
+            style={{ 
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              marginBottom: collapsedSections.helipay ? 0 : 16
+            }}
+          >
+            <h4 style={{ margin: 0 }}>
+              {t('合利宝支付配置')}
+            </h4>
+            {getSectionIcon('helipay')}
+          </div>
+          {!collapsedSections.helipay && (
+            <SettingsPaymentGatewayHelipay options={inputs} refresh={onRefresh} />
           )}
         </Card>
 

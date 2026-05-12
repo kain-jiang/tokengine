@@ -91,6 +91,7 @@ const RechargeCard = ({
   waffoTopUp,
   waffoPayMethods,
   enableZsPayTopUp,
+  enableHelipayTopUp,
   subscriptionLoading = false,
   subscriptionPlans = [],
   billingPreference,
@@ -121,7 +122,7 @@ const RechargeCard = ({
   }, [shouldShowSubscription, activeTab]);
 
   // 判断是否只启用了招行支付（是的话隐藏充值数量输入和支付方式选择）
-  const onlyZsPayEnabled = enableZsPayTopUp && !enableOnlineTopUp && !enableStripeTopUp && !enableWaffoTopUp;
+  const onlyZsPayEnabled = enableZsPayTopUp && !enableOnlineTopUp && !enableStripeTopUp && !enableWaffoTopUp && !enableHelipayTopUp;
 
   // 根据币种获取对应的充值套餐
   const getZSPayPresetAmounts = () => {
@@ -278,7 +279,7 @@ const RechargeCard = ({
           <div className='py-8 flex justify-center'>
             <Spin size='large' />
           </div>
-        ) : (enableOnlineTopUp || enableStripeTopUp || enableCreemTopUp || enableWaffoTopUp || enableZsPayTopUp) ? (
+        ) : (enableOnlineTopUp || enableStripeTopUp || enableCreemTopUp || enableWaffoTopUp || enableZsPayTopUp || enableHelipayTopUp) ? (
           <Form
             getFormApi={(api) => (onlineFormApiRef.current = api)}
             initValues={{ topUpCount: topUpCount }}
@@ -416,7 +417,7 @@ const RechargeCard = ({
               )}
 
               {/* 充值套餐区域 - 所有支付方式都显示 */}
-              {(enableOnlineTopUp || enableStripeTopUp || enableWaffoTopUp || enableZsPayTopUp) && (
+              {(enableOnlineTopUp || enableStripeTopUp || enableWaffoTopUp || enableZsPayTopUp || enableHelipayTopUp) && (
                 <Form.Slot
                   label={
                     <div className='flex items-center gap-2'>
@@ -632,6 +633,27 @@ const RechargeCard = ({
                     </Button>
                     <Text type='tertiary' style={{ fontSize: '12px' }}>
                       {t('支持支付宝、微信、银联扫码支付')}
+                    </Text>
+                  </div>
+                </Form.Slot>
+              )}
+
+              {/* 合利宝支付区域 */}
+              {enableHelipayTopUp && (
+                <Form.Slot label={t('合利宝支付')}>
+                  <div className='flex items-center gap-3'>
+                    <Button
+                      theme='solid'
+                      type='primary'
+                      onClick={() => preTopUp('helipay')}
+                      loading={paymentLoading && payWay === 'helipay'}
+                      icon={<CreditCard size={18} color='white' />}
+                      className='!rounded-lg !px-6 !py-2'
+                    >
+                      {t('立即支付')}
+                    </Button>
+                    <Text type='tertiary' style={{ fontSize: '12px' }}>
+                      {t('支持多种支付方式')}
                     </Text>
                   </div>
                 </Form.Slot>

@@ -66,6 +66,8 @@ func SetApiRouter(router *gin.Engine) {
 			userRoute.GET("/epay/notify", controller.EpayNotify)
 			userRoute.POST("/zs_pay/notify", controller.ZSPayNotify)
 			userRoute.GET("/zs_pay/notify", controller.ZSPayNotify)
+			userRoute.POST("/helipay/notify", controller.HelipayNotify)
+			userRoute.GET("/helipay/notify", controller.HelipayNotify)
 			userRoute.GET("/groups", controller.GetUserGroups)
 
 			selfRoute := userRoute.Group("/")
@@ -91,6 +93,9 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/zs_pay/pay", middleware.CriticalRateLimit(), controller.RequestZSPay)
 				selfRoute.GET("/zs_pay/status", controller.QueryZSPayStatus)
 				selfRoute.POST("/zs_pay/cancel", controller.CancelZSPayOrder)
+				selfRoute.POST("/helipay/pay", middleware.CriticalRateLimit(), controller.RequestHelipay)
+				selfRoute.GET("/helipay/status", controller.QueryHelipayStatus)
+				selfRoute.POST("/helipay/cancel", controller.CancelHelipayOrder)
 				selfRoute.POST("/amount", controller.RequestAmount)
 				selfRoute.POST("/stripe/pay", middleware.CriticalRateLimit(), controller.RequestStripePay)
 				selfRoute.POST("/stripe/amount", controller.RequestStripeAmount)

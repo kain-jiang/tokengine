@@ -78,12 +78,16 @@ const TopUp = () => {
   const [waffoMinTopUp, setWaffoMinTopUp] = useState(1);
 
   // 招商银行聚合支付相关状态
+  // 招商银行聚合支付相关状态
   const [enableZsPayTopUp, setEnableZsPayTopUp] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [qrCodeData, setQrCodeData] = useState({});
 
+  // 合利宝支付相关状态
+  const [enableHelipayTopUp, setEnableHelipayTopUp] = useState(false);
+
   // 判断是否只启用了招行支付（是的话隐藏充值数量输入和支付方式选择）
-  const onlyZsPayEnabled = enableZsPayTopUp && !enableOnlineTopUp && !enableStripeTopUp && !enableWaffoTopUp;
+  const onlyZsPayEnabled = enableZsPayTopUp && !enableOnlineTopUp && !enableStripeTopUp && !enableWaffoTopUp && !enableHelipayTopUp;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
@@ -176,6 +180,11 @@ const TopUp = () => {
         showError(t('管理员未开启招商银行聚合支付！'));
         return;
       }
+    } else if (payment === 'helipay') {
+      if (!enableHelipayTopUp) {
+        showError(t('管理员未开启合利宝支付！'));
+        return;
+      }
     } else {
       if (!enableOnlineTopUp) {
         showError(t('管理员未开启在线充值！'));
@@ -203,8 +212,8 @@ const TopUp = () => {
         }
       } else if (payment === 'stripe') {
         await getStripeAmount();
-      } else if (enableOnlineTopUp) {
-        // 只有易支付启用时才调用 getAmount
+      } else if (payment !== 'zs_pay' && payment !== 'helipay' && enableOnlineTopUp) {
+        // 只有选择易支付（支付宝/微信/银行卡等）时才调用 getAmount
         await getAmount();
       }
 
@@ -229,6 +238,9 @@ const TopUp = () => {
     } else if (payWay === 'zs_pay') {
       // 招商银行聚合支付处理 - 不调用 getAmount，因为易支付接口不适用于招商银行
       // 招商银行金额在前端根据币种和折扣直接计算
+    } else if (payWay === 'helipay') {
+      // 合利宝支付处理 - 不调用 getAmount，因为易支付接口不适用于合利宝
+      // 合利宝金额在前端根据币种和折扣直接计算
     } else {
       // 易支付等普通支付处理
       if (amount === 0) {
@@ -254,6 +266,12 @@ const TopUp = () => {
         res = await API.post('/api/user/zs_pay/pay', {
           amount: parseInt(topUpCount),
           payment_method: 'zs_pay',
+        });
+      } else if (payWay === 'helipay') {
+        // 合利宝支付请求 - 后端会处理折扣计算
+        res = await API.post('/api/user/helipay/pay', {
+          amount: parseInt(topUpCount),
+          payment_method: 'helipay',
         });
       } else {
         // 普通支付请求
@@ -281,6 +299,13 @@ const TopUp = () => {
               setShowQRCode(true);
             } else {
               showError(t('获取支付二维码失败'));
+            }
+          } else if (payWay === 'helipay') {
+            // 合利宝支付 - 新开浏览器标签页支付
+            if (data && data.pay_link) {
+              window.open(data.pay_link, '_blank');
+            } else {
+              showError(t('获取支付链接失败'));
             }
           } else {
             // 普通支付表单提交
