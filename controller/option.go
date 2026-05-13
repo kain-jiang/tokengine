@@ -94,6 +94,15 @@ func GetOptions(c *gin.Context) {
 		})
 	}
 
+	// 添加合利宝支付配置到返回结果（从数据库读取，不存在则使用默认值）
+	helipayOptions := operation_setting.GetHelipayOptions()
+	for _, eo := range helipayOptions {
+		options = append(options, &model.Option{
+			Key:   eo.Key,
+			Value: eo.Value,
+		})
+	}
+
 	options = append(options, &model.Option{
 		Key:   "CompletionRatioMeta",
 		Value: buildCompletionRatioMetaValue(optionValues),

@@ -195,6 +195,19 @@ const PaymentConfirmModal = ({
                           </Text>
                         </>
                       );
+                    } else if (payWay === 'helipay') {
+                      return (
+                        <>
+                          <CreditCard
+                            className='mr-2'
+                            size={16}
+                            color='#FF4500'
+                          />
+                          <Text className='text-slate-900 dark:text-slate-100'>
+                            {t('合利宝支付')}
+                          </Text>
+                        </>
+                      );
                     } else {
                       return (
                         <>

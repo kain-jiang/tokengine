@@ -43,8 +43,7 @@ export default function SettingsPaymentGatewayHelipay(props) {
     HelipayMerchantId: '',
     HelipayNotifyPath: '/api/user/helipay/notify',
     HelipayPayValidTime: '1800',
-    HelipayTransactionApi: 'https://api.helipay.com/api/v1/trade/preorder',
-    HelipayQueryApi: 'https://api.helipay.com/api/v1/trade/query',
+    HelipayTrxURL: 'https://api.helipay.com/api',
   });
   const [originInputs, setOriginInputs] = useState({});
   const formApiRef = useRef(null);
@@ -54,8 +53,7 @@ export default function SettingsPaymentGatewayHelipay(props) {
       const currentInputs = {
         HelipayEnabled: props.options['HelipayEnabled'] || props.options['helipay.Enabled'] === 'true' || props.options['helipay.Enabled'] === true,
         HelipayMerchantId: props.options['HelipayMerchantId'] || props.options['helipay.CustomerNumber'] || '',
-        HelipayTransactionApi: props.options['HelipayTransactionApi'] || props.options['helipay.TransactionApi'] || 'https://api.helipay.com/api/v1/trade/preorder',
-        HelipayQueryApi: props.options['HelipayQueryApi'] || props.options['helipay.QueryApi'] || 'https://api.helipay.com/api/v1/trade/query',
+        HelipayTrxURL: props.options['HelipayTrxURL'] || props.options['helipay.TrxURL'] || 'https://api.helipay.com/api',
         HelipayNotifyPath: props.options['HelipayNotifyPath'] || props.options['helipay.NotifyPath'] || '/api/user/helipay/notify',
         HelipayPayValidTime: props.options['HelipayPayValidTime'] || props.options['helipay.PayValidTime'] || '1800',
       };
@@ -92,14 +90,9 @@ export default function SettingsPaymentGatewayHelipay(props) {
         value: (finalInputs.HelipayEnabled || inputs.HelipayEnabled || false) ? 'true' : 'false',
       });
 
-      const transactionApi = finalInputs.HelipayTransactionApi || inputs.HelipayTransactionApi || '';
-      if (transactionApi !== '') {
-        options.push({ key: 'helipay.TransactionApi', value: transactionApi });
-      }
-
-      const queryApi = finalInputs.HelipayQueryApi || inputs.HelipayQueryApi || '';
-      if (queryApi !== '') {
-        options.push({ key: 'helipay.QueryApi', value: queryApi });
+      const trxURL = finalInputs.HelipayTrxURL || inputs.HelipayTrxURL || '';
+      if (trxURL !== '') {
+        options.push({ key: 'helipay.TrxURL', value: trxURL });
       }
 
       const notifyPath = finalInputs.HelipayNotifyPath || inputs.HelipayNotifyPath || '';
@@ -186,21 +179,14 @@ export default function SettingsPaymentGatewayHelipay(props) {
             </Col>
             <Col xs={24} sm={24} md={12} lg={12} xl={12}>
               <Form.Input
-                field='HelipayTransactionApi'
-                label={t('交易API地址')}
-                placeholder={t('https://api.helipay.com/api/v1/trade/preorder')}
+                field='HelipayTrxURL'
+                label={t('基础API地址')}
+                placeholder={t('https://api.helipay.com/api')}
               />
             </Col>
           </Row>
 
           <Row gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}>
-            <Col xs={24} sm={24} md={12} lg={12} xl={12}>
-              <Form.Input
-                field='HelipayQueryApi'
-                label={t('查询API地址')}
-                placeholder={t('https://api.helipay.com/api/v1/trade/query')}
-              />
-            </Col>
             <Col xs={24} sm={24} md={12} lg={12} xl={12}>
               <Form.Input
                 field='HelipayNotifyPath'
@@ -208,9 +194,6 @@ export default function SettingsPaymentGatewayHelipay(props) {
                 placeholder={t('/api/user/helipay/notify')}
               />
             </Col>
-          </Row>
-
-          <Row gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}>
             <Col xs={24} sm={24} md={12} lg={12} xl={12}>
               <Form.InputNumber
                 field='HelipayPayValidTime'

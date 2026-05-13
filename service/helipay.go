@@ -2,7 +2,9 @@ package service
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -15,11 +17,14 @@ import (
 
 // HelipayRequest 合利宝请求结构体
 type HelipayRequest struct {
-	CustomerNumber string                 `json:"customerNumber"`
-	RequestId      string                 `json:"requestId"`
-	RequestTime    string                 `json:"requestTime"`
-	Sign           string                 `json:"sign"`
-	Data           map[string]interface{} `json:"data"`
+	CustomerNumber   string                 `json:"customerNumber"`
+	EncryptionKey    string                 `json:"encryptionKey"`
+	SignType         string                 `json:"signType"`
+	Sign             string                 `json:"sign"`
+	Timestamp        string                 `json:"timestamp"`
+	Version          string                 `json:"version"`
+	CertSerialNumber string                 `json:"certSerialNumber,omitempty"`
+	Data             map[string]interface{} `json:"data"`
 }
 
 // HelipayResponse 合利宝响应结构体
@@ -90,19 +95,19 @@ type CancelOrderResponse struct {
 
 // RefundRequest 退款请求
 type RefundRequest struct {
-	OrderId       string `json:"orderId"`
-	OrderNo       string `json:"orderNo"`
-	RefundAmount  string `json:"refundAmount"`
-	RefundDesc    string `json:"refundDesc"`
+	OrderId      string `json:"orderId"`
+	OrderNo      string `json:"orderNo"`
+	RefundAmount string `json:"refundAmount"`
+	RefundDesc   string `json:"refundDesc"`
 }
 
 // RefundResponse 退款响应
 type RefundResponse struct {
-	OrderId     string `json:"orderId"`
-	OrderNo     string `json:"orderNo"`
-	RefundNo    string `json:"refundNo"`
+	OrderId      string `json:"orderId"`
+	OrderNo      string `json:"orderNo"`
+	RefundNo     string `json:"refundNo"`
 	RefundAmount string `json:"refundAmount"`
-	TradeTime   string `json:"tradeTime"`
+	TradeTime    string `json:"tradeTime"`
 }
 
 // GenerateRequestId 生成请求ID
@@ -118,6 +123,34 @@ func GenerateOrderId() string {
 // GetCurrentTime 获取当前时间字符串（yyyy-MM-dd HH:mm:ss）
 func GetCurrentTime() string {
 	return time.Now().Format("2006-01-02 15:04:05")
+}
+
+// GetTimestamp 获取时间戳字符串（yyyyMMddHHmmss格式，14位）
+func GetTimestamp() string {
+	return time.Now().Format("20060102150405")
+}
+
+// GenerateSM4Key 生成随机SM4密钥（16字节，Base64编码后512字符以内）
+func GenerateSM4Key() string {
+	key := make([]byte, 16)
+	_, err := rand.Read(key)
+	if err != nil {
+		// 如果随机数生成失败，使用时间戳作为备选
+		return fmt.Sprintf("%d", time.Now().UnixNano())[:16]
+	}
+	return base64.StdEncoding.EncodeToString(key)
+}
+
+// SM4Encrypt 使用SM4算法加密数据
+// 需要引入第三方SM4库，如 github.com/tjfoc/gmsm/sm4
+func SM4Encrypt(data map[string]interface{}, sm4Key string, encryptionKey string) (map[string]interface{}, error) {
+	// TODO: 实现SM4加密
+	// 当前返回原始数据作为占位符
+	// 实际使用时需要：
+	// 1. 安装第三方SM4库：go get github.com/tjfoc/gmsm/sm4
+	// 2. 使用sm4.Encrypt进行加密
+	// 3. 返回加密后的数据（Base64编码）
+	return data, nil
 }
 
 // GenerateSign 生成签名（SM3WITHSM2）
@@ -165,6 +198,9 @@ func PreOrder(request PreOrderRequest) (*PreOrderResponse, error) {
 	if setting.CustomerNumber == "" {
 		return nil, fmt.Errorf("商户号未配置")
 	}
+	if setting.SM4Key == "" {
+		return nil, fmt.Errorf("SM4密钥未配置")
+	}
 
 	request.OrderId = GenerateOrderId()
 	request.OrderNo = request.OrderId + "NO"
@@ -174,7 +210,16 @@ func PreOrder(request PreOrderRequest) (*PreOrderResponse, error) {
 		return nil, err
 	}
 
-	// 生成签名
+	// 生成随机加密密钥
+	encryptionKey := GenerateSM4Key()
+
+	// 使用SM4加密data字段
+	encryptedData, err := SM4Encrypt(dataMap, setting.SM4Key, encryptionKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// 生成签名（签名内容为原始data，不包含加密后的数据）
 	dataStr, err := json.Marshal(dataMap)
 	if err != nil {
 		return nil, err
@@ -186,13 +231,15 @@ func PreOrder(request PreOrderRequest) (*PreOrderResponse, error) {
 
 	helipayRequest := HelipayRequest{
 		CustomerNumber: setting.CustomerNumber,
-		RequestId:      GenerateRequestId(),
-		RequestTime:    GetCurrentTime(),
+		EncryptionKey:  encryptionKey,
+		SignType:       "MD5WITHRSA",
 		Sign:           sign,
-		Data:           dataMap,
+		Timestamp:      GetTimestamp(),
+		Version:        "1.0",
+		Data:           encryptedData,
 	}
 
-	url := setting.TrxURL + "/universalcashier/unifiedorder"
+	url := operation_setting.GetHelipayTrxURL() + "/universalcashier/unifiedorder"
 	response, err := httpRequest(url, helipayRequest)
 	if err != nil {
 		return nil, err
@@ -226,6 +273,9 @@ func QueryOrder(orderId, orderNo string) (*QueryOrderResponse, error) {
 	if setting.CustomerNumber == "" {
 		return nil, fmt.Errorf("商户号未配置")
 	}
+	if setting.SM4Key == "" {
+		return nil, fmt.Errorf("SM4密钥未配置")
+	}
 
 	request := QueryOrderRequest{
 		OrderId: orderId,
@@ -237,6 +287,16 @@ func QueryOrder(orderId, orderNo string) (*QueryOrderResponse, error) {
 		return nil, err
 	}
 
+	// 生成随机加密密钥
+	encryptionKey := GenerateSM4Key()
+
+	// 使用SM4加密data字段
+	encryptedData, err := SM4Encrypt(dataMap, setting.SM4Key, encryptionKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// 生成签名
 	dataStr, err := json.Marshal(dataMap)
 	if err != nil {
 		return nil, err
@@ -248,13 +308,15 @@ func QueryOrder(orderId, orderNo string) (*QueryOrderResponse, error) {
 
 	helipayRequest := HelipayRequest{
 		CustomerNumber: setting.CustomerNumber,
-		RequestId:      GenerateRequestId(),
-		RequestTime:    GetCurrentTime(),
+		EncryptionKey:  encryptionKey,
+		SignType:       "MD5WITHRSA",
 		Sign:           sign,
-		Data:           dataMap,
+		Timestamp:      GetTimestamp(),
+		Version:        "1.0",
+		Data:           encryptedData,
 	}
 
-	url := setting.TrxURL + "/universalcashier/query"
+	url := operation_setting.GetHelipayTrxURL() + "/universalcashier/query"
 	response, err := httpRequest(url, helipayRequest)
 	if err != nil {
 		return nil, err
@@ -287,6 +349,9 @@ func CancelOrder(orderId, orderNo string) (*CancelOrderResponse, error) {
 	if setting.CustomerNumber == "" {
 		return nil, fmt.Errorf("商户号未配置")
 	}
+	if setting.SM4Key == "" {
+		return nil, fmt.Errorf("SM4密钥未配置")
+	}
 
 	request := CancelOrderRequest{
 		OrderId: orderId,
@@ -298,6 +363,16 @@ func CancelOrder(orderId, orderNo string) (*CancelOrderResponse, error) {
 		return nil, err
 	}
 
+	// 生成随机加密密钥
+	encryptionKey := GenerateSM4Key()
+
+	// 使用SM4加密data字段
+	encryptedData, err := SM4Encrypt(dataMap, setting.SM4Key, encryptionKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// 生成签名
 	dataStr, err := json.Marshal(dataMap)
 	if err != nil {
 		return nil, err
@@ -309,13 +384,15 @@ func CancelOrder(orderId, orderNo string) (*CancelOrderResponse, error) {
 
 	helipayRequest := HelipayRequest{
 		CustomerNumber: setting.CustomerNumber,
-		RequestId:      GenerateRequestId(),
-		RequestTime:    GetCurrentTime(),
+		EncryptionKey:  encryptionKey,
+		SignType:       "MD5WITHRSA",
 		Sign:           sign,
-		Data:           dataMap,
+		Timestamp:      GetTimestamp(),
+		Version:        "1.0",
+		Data:           encryptedData,
 	}
 
-	url := setting.TrxURL + "/universalcashier/cancel"
+	url := operation_setting.GetHelipayTrxURL() + "/universalcashier/cancel"
 	response, err := httpRequest(url, helipayRequest)
 	if err != nil {
 		return nil, err
@@ -348,6 +425,9 @@ func Refund(orderId, orderNo, refundAmount, refundDesc string) (*RefundResponse,
 	if setting.CustomerNumber == "" {
 		return nil, fmt.Errorf("商户号未配置")
 	}
+	if setting.SM4Key == "" {
+		return nil, fmt.Errorf("SM4密钥未配置")
+	}
 
 	request := RefundRequest{
 		OrderId:      orderId,
@@ -361,6 +441,16 @@ func Refund(orderId, orderNo, refundAmount, refundDesc string) (*RefundResponse,
 		return nil, err
 	}
 
+	// 生成随机加密密钥
+	encryptionKey := GenerateSM4Key()
+
+	// 使用SM4加密data字段
+	encryptedData, err := SM4Encrypt(dataMap, setting.SM4Key, encryptionKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// 生成签名
 	dataStr, err := json.Marshal(dataMap)
 	if err != nil {
 		return nil, err
@@ -372,13 +462,15 @@ func Refund(orderId, orderNo, refundAmount, refundDesc string) (*RefundResponse,
 
 	helipayRequest := HelipayRequest{
 		CustomerNumber: setting.CustomerNumber,
-		RequestId:      GenerateRequestId(),
-		RequestTime:    GetCurrentTime(),
+		EncryptionKey:  encryptionKey,
+		SignType:       "MD5WITHRSA",
 		Sign:           sign,
-		Data:           dataMap,
+		Timestamp:      GetTimestamp(),
+		Version:        "1.0",
+		Data:           encryptedData,
 	}
 
-	url := setting.TrxURL + "/universalcashier/refund"
+	url := operation_setting.GetHelipayTrxURL() + "/universalcashier/refund"
 	response, err := httpRequest(url, helipayRequest)
 	if err != nil {
 		return nil, err

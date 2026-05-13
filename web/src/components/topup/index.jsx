@@ -200,18 +200,31 @@ const TopUp = () => {
       if (payment === 'zs_pay' && onlyZsPayEnabled && selectedPreset) {
         // 使用选中的充值套餐金额，直接设置 topUpCount
         setTopUpCount(selectedPreset);
-        // 从 presetAmounts 中获取对应的预设选项，计算折扣后的金额
+      }
+      
+      // 计算支付金额
+      if (payment === 'stripe') {
+        await getStripeAmount();
+      } else if (payment === 'zs_pay' && selectedPreset) {
+        // 招商银行聚合支付金额计算 - 直接计算折扣后的金额
         const preset = presetAmounts.find(p => p.value === selectedPreset);
         if (preset) {
           const discount = preset.discount || topupInfo.discount[selectedPreset] || 1.0;
-          // 自定义充值数量选项的值已经是当前币元，直接乘以折扣
           const discountedAmount = selectedPreset * discount;
           setAmount(discountedAmount);
         } else {
           setAmount(selectedPreset);
         }
-      } else if (payment === 'stripe') {
-        await getStripeAmount();
+      } else if (payment === 'helipay' && selectedPreset) {
+        // 合利宝支付金额计算 - 直接计算折扣后的金额（与招商银行聚合支付相同）
+        const preset = presetAmounts.find(p => p.value === selectedPreset);
+        if (preset) {
+          const discount = preset.discount || topupInfo.discount[selectedPreset] || 1.0;
+          const discountedAmount = selectedPreset * discount;
+          setAmount(discountedAmount);
+        } else {
+          setAmount(selectedPreset);
+        }
       } else if (payment !== 'zs_pay' && payment !== 'helipay' && enableOnlineTopUp) {
         // 只有选择易支付（支付宝/微信/银行卡等）时才调用 getAmount
         await getAmount();
@@ -301,9 +314,21 @@ const TopUp = () => {
               showError(t('获取支付二维码失败'));
             }
           } else if (payWay === 'helipay') {
-            // 合利宝支付 - 新开浏览器标签页支付
+            // 合利宝支付 - 使用表单POST提交到收银台地址
             if (data && data.pay_link) {
-              window.open(data.pay_link, '_blank');
+              let form = document.createElement('form');
+              form.action = data.pay_link;
+              form.method = 'POST';
+              form.enctype = 'application/x-www-form-urlencoded';
+              let isSafari =
+                navigator.userAgent.indexOf('Safari') > -1 &&
+                navigator.userAgent.indexOf('Chrome') < 1;
+              if (!isSafari) {
+                form.target = '_blank';
+              }
+              document.body.appendChild(form);
+              form.submit();
+              document.body.removeChild(form);
             } else {
               showError(t('获取支付链接失败'));
             }
@@ -581,6 +606,7 @@ const TopUp = () => {
           const enableOnlineTopUp = data.enable_online_topup || false;
           const enableCreemTopUp = data.enable_creem_topup || false;
           const enableZsPayTopUp = data.enable_zs_pay_topup || false;
+          const enableHelipayTopUp = data.enable_helipay_topup || false;
           const minTopUpValue = enableOnlineTopUp
             ? data.min_topup
             : enableStripeTopUp
@@ -589,11 +615,14 @@ const TopUp = () => {
                 ? data.min_topup
                 : data.enable_waffo_topup
                   ? data.waffo_min_topup
-                  : 1;
+                  : enableHelipayTopUp
+                    ? data.min_topup
+                    : 1;
           setEnableOnlineTopUp(enableOnlineTopUp);
           setEnableStripeTopUp(enableStripeTopUp);
           setEnableCreemTopUp(enableCreemTopUp);
           setEnableZsPayTopUp(enableZsPayTopUp);
+          setEnableHelipayTopUp(enableHelipayTopUp);
           const enableWaffoTopUp = data.enable_waffo_topup || false;
           setEnableWaffoTopUp(enableWaffoTopUp);
           setWaffoPayMethods(data.waffo_pay_methods || []);
@@ -935,6 +964,7 @@ const TopUp = () => {
           activeSubscriptions={activeSubscriptions}
           allSubscriptions={allSubscriptions}
           reloadSubscriptionSelf={getSubscriptionSelf}
+          enableHelipayTopUp={enableHelipayTopUp}
         />
         <InvitationCard
           t={t}

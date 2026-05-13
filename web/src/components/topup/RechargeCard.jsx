@@ -644,7 +644,7 @@ const RechargeCard = ({
                   <div className='flex items-center gap-3'>
                     <Button
                       theme='solid'
-                      type='primary'
+                      type='danger'
                       onClick={() => preTopUp('helipay')}
                       loading={paymentLoading && payWay === 'helipay'}
                       icon={<CreditCard size={18} color='white' />}

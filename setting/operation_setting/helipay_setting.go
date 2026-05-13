@@ -11,34 +11,35 @@ import (
 // HelipaySetting 合利宝支付配置
 type HelipaySetting struct {
 	// 敏感配置（从环境变量读取）
-	CustomerNumber      string `json:"customer_number"`
-	RSAPrivateKey       string `json:"rsa_private_key"`
-	RSAPrivateKeyPwd    string `json:"rsa_private_key_pwd"`
-	RSAPublicKey        string `json:"rsa_public_key"`
-	SM2PrivateKey       string `json:"sm2_private_key"`
-	SM2PrivateKeyPwd    string `json:"sm2_private_key_pwd"`
-	SM2PublicKey        string `json:"sm2_public_key"`
+	CustomerNumber   string `json:"customer_number"`
+	RSAPrivateKey    string `json:"rsa_private_key"`
+	RSAPrivateKeyPwd string `json:"rsa_private_key_pwd"`
+	RSAPublicKey     string `json:"rsa_public_key"`
+	SM2PrivateKey    string `json:"sm2_private_key"`
+	SM2PrivateKeyPwd string `json:"sm2_private_key_pwd"`
+	SM2PublicKey     string `json:"sm2_public_key"`
+	SM4Key           string `json:"sm4_key"`
 
 	// 非敏感配置（从数据库读取，可编辑）
-	Enabled        bool   `json:"enabled"`
-	TrxURL         string `json:"trx_url"`
-	NotifyPath     string `json:"notify_path"`
-	PayValidTime   string `json:"pay_valid_time"`
+	Enabled      bool   `json:"enabled"`
+	TrxURL       string `json:"trx_url"`
+	NotifyPath   string `json:"notify_path"`
+	PayValidTime string `json:"pay_valid_time"`
 }
 
 // 默认配置
 var helipaySetting = HelipaySetting{
-	Enabled:        false,
-	CustomerNumber: "",
-	RSAPrivateKey:  "",
+	Enabled:          false,
+	CustomerNumber:   "",
+	RSAPrivateKey:    "",
 	RSAPrivateKeyPwd: "",
-	RSAPublicKey:   "",
-	SM2PrivateKey:  "",
+	RSAPublicKey:     "",
+	SM2PrivateKey:    "",
 	SM2PrivateKeyPwd: "",
-	SM2PublicKey:   "",
-	TrxURL:         "https://lyyonlinetrx.frp.yyyyyy.top/trx",
-	NotifyPath:     "/api/user/helipay/notify",
-	PayValidTime:   "1800",
+	SM2PublicKey:     "",
+	TrxURL:           "https://lyyonlinetrx.frp.yyyyyy.top/trx",
+	NotifyPath:       "/api/user/helipay/notify",
+	PayValidTime:     "1800",
 }
 
 func init() {
@@ -69,6 +70,9 @@ func LoadHelipayFromEnv() {
 	if sm2PublicKey := os.Getenv("HELIPAY_SM2_PUBLIC_KEY"); sm2PublicKey != "" {
 		helipaySetting.SM2PublicKey = sm2PublicKey
 	}
+	if sm4Key := os.Getenv("HELIPAY_SM4_KEY"); sm4Key != "" {
+		helipaySetting.SM4Key = sm4Key
+	}
 }
 
 // GetHelipaySetting 获取合利宝支付配置
@@ -78,6 +82,11 @@ func GetHelipaySetting() *HelipaySetting {
 
 // IsHelipayEnabled 检查合利宝支付是否启用
 func IsHelipayEnabled() bool {
+	common.OptionMapRWMutex.RLock()
+	defer common.OptionMapRWMutex.RUnlock()
+	if val, ok := common.OptionMap["helipay.Enabled"]; ok && val != "" {
+		return val == "true"
+	}
 	return helipaySetting.Enabled
 }
 
@@ -114,6 +123,11 @@ func GetHelipaySM2PrivateKeyPwd() string {
 // GetHelipaySM2PublicKey 获取SM2公钥
 func GetHelipaySM2PublicKey() string {
 	return helipaySetting.SM2PublicKey
+}
+
+// GetHelipaySM4Key 获取SM4密钥
+func GetHelipaySM4Key() string {
+	return helipaySetting.SM4Key
 }
 
 // GetHelipayTrxURL 获取交易API地址
