@@ -43,6 +43,7 @@ export default function SettingsSidebarModulesAdmin(props) {
     chat: {
       enabled: true,
       playground: true,
+      textToImage: true,
       chat: true,
     },
     console: {
@@ -104,6 +105,7 @@ export default function SettingsSidebarModulesAdmin(props) {
       chat: {
         enabled: true,
         playground: true,
+        textToImage: true,
         chat: true,
       },
       console: {
@@ -178,7 +180,12 @@ export default function SettingsSidebarModulesAdmin(props) {
       } catch (error) {
         // 使用默认配置
         const defaultModules = {
-          chat: { enabled: true, playground: true, chat: true },
+          chat: {
+            enabled: true,
+            playground: true,
+            textToImage: true,
+            chat: true,
+          },
           console: {
             enabled: true,
             detail: true,
@@ -215,6 +222,11 @@ export default function SettingsSidebarModulesAdmin(props) {
           key: 'playground',
           title: t('文本对话'),
           description: t('AI模型测试环境'),
+        },
+        {
+          key: 'textToImage',
+          title: t('文生图'),
+          description: t('文生图功能模块'),
         },
         { key: 'chat', title: t('接入应用'), description: t('接入应用会话管理') },
       ],

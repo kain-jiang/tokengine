@@ -76,9 +76,17 @@ export const DEBUG_TABS = {
 // ========== API 相关常量 ==========
 export const API_ENDPOINTS = {
   CHAT_COMPLETIONS: '/pg/chat/completions',
+  IMAGES_GENERATIONS: '/pg/images/generations',
   USER_MODELS: '/api/user/models',
   USER_GROUPS: '/api/user/self/groups',
 };
+
+/** 体验中心文生图可选模型。当前仅保留 z-image，避免选择到无可用渠道的模型。 */
+export const TEXT_TO_IMAGE_MODEL_OPTIONS = [
+  { label: 'z-image', value: 'z-image' },
+];
+
+export const TEXT_TO_IMAGE_MODEL = TEXT_TO_IMAGE_MODEL_OPTIONS[0].value;
 
 // ========== 配置默认值 ==========
 export const DEFAULT_CONFIG = {
