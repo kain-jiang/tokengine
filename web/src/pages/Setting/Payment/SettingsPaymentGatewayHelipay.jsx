@@ -148,7 +148,7 @@ export default function SettingsPaymentGatewayHelipay(props) {
           <Banner
             type='warning'
             description={t(
-              '敏感配置（商户号、密钥等）需要在环境变量中配置，包括：HELIPAY_CUSTOMER_NUMBER、HELIPAY_RSA_PRIVATE_KEY、HELIPAY_SM2_PRIVATE_KEY、HELIPAY_SM2_PUBLIC_KEY、HELIPAY_SM4_KEY',
+              '敏感配置需要在环境变量中配置，包括：HELIPAY_CUSTOMER_NUMBER、HELIPAY_SM2_PRIVATE_KEY、HELIPAY_SM2_PRIVATE_PWD、HELIPAY_SM2_PUBLIC_KEY',
             )}
           />
           <Banner

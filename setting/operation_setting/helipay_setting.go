@@ -11,14 +11,10 @@ import (
 // HelipaySetting 合利宝支付配置
 type HelipaySetting struct {
 	// 敏感配置（从环境变量读取）
-	CustomerNumber   string `json:"customer_number"`
-	RSAPrivateKey    string `json:"rsa_private_key"`
-	RSAPrivateKeyPwd string `json:"rsa_private_key_pwd"`
-	RSAPublicKey     string `json:"rsa_public_key"`
-	SM2PrivateKey    string `json:"sm2_private_key"`
-	SM2PrivateKeyPwd string `json:"sm2_private_key_pwd"`
-	SM2PublicKey     string `json:"sm2_public_key"`
-	SM4Key           string `json:"sm4_key"`
+	CustomerNumber string `json:"customer_number"`
+	SM2PrivateKey  string `json:"sm2_private_key"`
+	SM2PrivatePwd  string `json:"sm2_private_pwd"`
+	SM2PublicKey   string `json:"sm2_public_key"`
 
 	// 非敏感配置（从数据库读取，可编辑）
 	Enabled      bool   `json:"enabled"`
@@ -29,17 +25,14 @@ type HelipaySetting struct {
 
 // 默认配置
 var helipaySetting = HelipaySetting{
-	Enabled:          false,
-	CustomerNumber:   "",
-	RSAPrivateKey:    "",
-	RSAPrivateKeyPwd: "",
-	RSAPublicKey:     "",
-	SM2PrivateKey:    "",
-	SM2PrivateKeyPwd: "",
-	SM2PublicKey:     "",
-	TrxURL:           "https://lyyonlinetrx.frp.yyyyyy.top/trx",
-	NotifyPath:       "/api/user/helipay/notify",
-	PayValidTime:     "1800",
+	Enabled:        false,
+	CustomerNumber: "",
+	SM2PrivateKey:  "",
+	SM2PrivatePwd:  "",
+	SM2PublicKey:   "",
+	TrxURL:         "https://lyyonlinetrx.frp.yyyyyy.top/trx",
+	NotifyPath:     "/api/user/helipay/notify",
+	PayValidTime:   "1800",
 }
 
 func init() {
@@ -52,26 +45,14 @@ func LoadHelipayFromEnv() {
 	if customerNumber := os.Getenv("HELIPAY_CUSTOMER_NUMBER"); customerNumber != "" {
 		helipaySetting.CustomerNumber = customerNumber
 	}
-	if rsaPrivateKey := os.Getenv("HELIPAY_RSA_PRIVATE_KEY"); rsaPrivateKey != "" {
-		helipaySetting.RSAPrivateKey = rsaPrivateKey
-	}
-	if rsaPrivateKeyPwd := os.Getenv("HELIPAY_RSA_PRIVATE_KEY_PWD"); rsaPrivateKeyPwd != "" {
-		helipaySetting.RSAPrivateKeyPwd = rsaPrivateKeyPwd
-	}
-	if rsaPublicKey := os.Getenv("HELIPAY_RSA_PUBLIC_KEY"); rsaPublicKey != "" {
-		helipaySetting.RSAPublicKey = rsaPublicKey
-	}
 	if sm2PrivateKey := os.Getenv("HELIPAY_SM2_PRIVATE_KEY"); sm2PrivateKey != "" {
 		helipaySetting.SM2PrivateKey = sm2PrivateKey
 	}
-	if sm2PrivateKeyPwd := os.Getenv("HELIPAY_SM2_PRIVATE_KEY_PWD"); sm2PrivateKeyPwd != "" {
-		helipaySetting.SM2PrivateKeyPwd = sm2PrivateKeyPwd
+	if sm2PrivatePwd := os.Getenv("HELIPAY_SM2_PRIVATE_PWD"); sm2PrivatePwd != "" {
+		helipaySetting.SM2PrivatePwd = sm2PrivatePwd
 	}
 	if sm2PublicKey := os.Getenv("HELIPAY_SM2_PUBLIC_KEY"); sm2PublicKey != "" {
 		helipaySetting.SM2PublicKey = sm2PublicKey
-	}
-	if sm4Key := os.Getenv("HELIPAY_SM4_KEY"); sm4Key != "" {
-		helipaySetting.SM4Key = sm4Key
 	}
 }
 
@@ -95,39 +76,19 @@ func GetHelipayCustomerNumber() string {
 	return helipaySetting.CustomerNumber
 }
 
-// GetHelipayRSAPrivateKey 获取RSA私钥
-func GetHelipayRSAPrivateKey() string {
-	return helipaySetting.RSAPrivateKey
-}
-
-// GetHelipayRSAPrivateKeyPwd 获取RSA私钥密码
-func GetHelipayRSAPrivateKeyPwd() string {
-	return helipaySetting.RSAPrivateKeyPwd
-}
-
-// GetHelipayRSAPublicKey 获取RSA公钥
-func GetHelipayRSAPublicKey() string {
-	return helipaySetting.RSAPublicKey
-}
-
 // GetHelipaySM2PrivateKey 获取SM2私钥
 func GetHelipaySM2PrivateKey() string {
 	return helipaySetting.SM2PrivateKey
 }
 
-// GetHelipaySM2PrivateKeyPwd 获取SM2私钥密码
-func GetHelipaySM2PrivateKeyPwd() string {
-	return helipaySetting.SM2PrivateKeyPwd
+// GetHelipaySM2PrivatePwd 获取SM2私钥密码
+func GetHelipaySM2PrivatePwd() string {
+	return helipaySetting.SM2PrivatePwd
 }
 
 // GetHelipaySM2PublicKey 获取SM2公钥
 func GetHelipaySM2PublicKey() string {
 	return helipaySetting.SM2PublicKey
-}
-
-// GetHelipaySM4Key 获取SM4密钥
-func GetHelipaySM4Key() string {
-	return helipaySetting.SM4Key
 }
 
 // GetHelipayTrxURL 获取交易API地址

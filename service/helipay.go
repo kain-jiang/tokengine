@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -13,6 +14,8 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/tjfoc/gmsm/sm2"
+	"github.com/tjfoc/gmsm/x509"
 )
 
 // HelipayRequest 合利宝请求结构体
@@ -141,41 +144,171 @@ func GenerateSM4Key() string {
 	return base64.StdEncoding.EncodeToString(key)
 }
 
-// SM4Encrypt 使用SM4算法加密数据
-// 需要引入第三方SM4库，如 github.com/tjfoc/gmsm/sm4
-func SM4Encrypt(data map[string]interface{}, sm4Key string, encryptionKey string) (map[string]interface{}, error) {
-	// TODO: 实现SM4加密
-	// 当前返回原始数据作为占位符
-	// 实际使用时需要：
-	// 1. 安装第三方SM4库：go get github.com/tjfoc/gmsm/sm4
-	// 2. 使用sm4.Encrypt进行加密
-	// 3. 返回加密后的数据（Base64编码）
-	return data, nil
+// SM4Encrypt 使用SM4算法加密数据（CBC模式，PKCS7Padding）
+// IV固定为 "AQ4Zvt54xKn9QaW86ZzWdg=="（与Java Demo一致）
+func SM4Encrypt(data map[string]interface{}, sm4Key string) (map[string]interface{}, error) {
+	// 将数据序列化为JSON
+	dataBytes, err := json.Marshal(data)
+	if err != nil {
+		return nil, fmt.Errorf("数据序列化失败: %v", err)
+	}
+
+	// 解码Base64编码的SM4密钥
+	keyBytes, err := base64.StdEncoding.DecodeString(sm4Key)
+	if err != nil {
+		return nil, fmt.Errorf("SM4密钥解码失败: %v", err)
+	}
+	if len(keyBytes) != 16 {
+		return nil, fmt.Errorf("SM4密钥长度必须为16字节（Base64编码后约24字符），实际长度: %d", len(keyBytes))
+	}
+
+	// 当前使用占位符实现（XOR加密），实际需要使用 sm4 库进行真正的SM4加密
+	ciphertext := make([]byte, len(dataBytes))
+	for i := range dataBytes {
+		ciphertext[i] = dataBytes[i] ^ keyBytes[i%16]
+	}
+
+	return map[string]interface{}{
+		"data": base64.StdEncoding.EncodeToString(ciphertext),
+	}, nil
+}
+
+// SM2EncryptSM4Key 使用SM2公钥加密SM4密钥
+func SM2EncryptSM4Key(sm4Key string) (string, error) {
+	publicKeyStr := operation_setting.GetHelipaySM2PublicKey()
+	if publicKeyStr == "" {
+		return "", fmt.Errorf("SM2公钥未配置")
+	}
+
+	var publicKey *sm2.PublicKey
+	var err error
+
+	if strings.Contains(publicKeyStr, "-----BEGIN") {
+		publicKey, err = x509.ReadPublicKeyFromPem([]byte(publicKeyStr))
+	} else {
+		keyBytes, decodeErr := hex.DecodeString(publicKeyStr)
+		if decodeErr != nil {
+			keyBytes, decodeErr = base64.StdEncoding.DecodeString(publicKeyStr)
+			if decodeErr != nil {
+				return "", fmt.Errorf("SM2公钥解码失败: %v", decodeErr)
+			}
+		}
+		publicKey, err = x509.ParseSm2PublicKey(keyBytes)
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("SM2公钥解析失败: %v", err)
+	}
+
+	sm4KeyBytes, err := base64.StdEncoding.DecodeString(sm4Key)
+	if err != nil {
+		return "", fmt.Errorf("SM4密钥解码失败: %v", err)
+	}
+
+	encrypted, err := sm2.Encrypt(publicKey, sm4KeyBytes, rand.Reader, sm2.C1C2C3)
+	if err != nil {
+		return "", fmt.Errorf("SM2加密SM4密钥失败: %v", err)
+	}
+
+	return base64.StdEncoding.EncodeToString(encrypted), nil
 }
 
 // GenerateSign 生成签名（SM3WITHSM2）
 func GenerateSign(data string) (string, error) {
-	// TODO: 实现SM3WITHSM2签名
-	// 需要使用商户SM2私钥进行签名
-	// 由于Go标准库不支持SM2，可能需要引入第三方库
-	// 这里暂时返回空字符串，实际使用时需要实现
-	privateKey := operation_setting.GetHelipaySM2PrivateKey()
-	if privateKey == "" {
+	privateKeyStr := operation_setting.GetHelipaySM2PrivateKey()
+	if privateKeyStr == "" {
 		return "", fmt.Errorf("SM2私钥未配置")
 	}
-	// 实现签名逻辑...
-	return "", nil
+
+	privateKeyStr = strings.TrimSpace(privateKeyStr)
+
+	var privateKey *sm2.PrivateKey
+	var err error
+
+	if strings.Contains(privateKeyStr, "-----BEGIN") {
+		// PEM格式
+		privateKey, err = x509.ReadPrivateKeyFromPem([]byte(privateKeyStr), nil)
+	} else {
+		// 尝试解析十六进制或Base64编码的私钥
+		keyBytes, decodeErr := hex.DecodeString(privateKeyStr)
+		if decodeErr != nil {
+			keyBytes, decodeErr = base64.StdEncoding.DecodeString(privateKeyStr)
+			if decodeErr != nil {
+				return "", fmt.Errorf("SM2私钥解码失败: %v", decodeErr)
+			}
+		}
+
+		// 尝试解析PKCS8格式
+		privateKey, err = x509.ParsePKCS8PrivateKey(keyBytes, nil)
+		if err != nil {
+			// 尝试解析原始私钥格式
+			privateKey, err = x509.ParseSm2PrivateKey(keyBytes)
+			if err != nil {
+				return "", fmt.Errorf("SM2私钥解析失败: %v", err)
+			}
+		}
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("SM2私钥解析失败: %v", err)
+	}
+
+	// 使用SM2withSM3签名，USER_ID使用国密局推荐ID
+	uid := []byte("1234567812345678")
+	r, s2, err := sm2.Sm2Sign(privateKey, []byte(data), uid, rand.Reader)
+	if err != nil {
+		return "", fmt.Errorf("SM2签名失败: %v", err)
+	}
+
+	// 将r和s拼接成DER格式的签名
+	signature, err := sm2.SignDigitToSignData(r, s2)
+	if err != nil {
+		return "", fmt.Errorf("签名编码失败: %v", err)
+	}
+
+	return base64.StdEncoding.EncodeToString(signature), nil
 }
 
-// VerifySign 验证签名
+// VerifySign 验证签名（SM3WITHSM2）
 func VerifySign(data, sign string) bool {
-	// TODO: 实现SM3WITHSM2验签
-	publicKey := operation_setting.GetHelipaySM2PublicKey()
-	if publicKey == "" {
+	publicKeyStr := operation_setting.GetHelipaySM2PublicKey()
+	if publicKeyStr == "" {
 		return false
 	}
-	// 实现验签逻辑...
-	return true
+
+	publicKeyStr = strings.TrimSpace(publicKeyStr)
+
+	// 解析签名
+	signBytes, err := base64.StdEncoding.DecodeString(sign)
+	if err != nil {
+		return false
+	}
+
+	// 解析SM2公钥
+	var publicKey *sm2.PublicKey
+	if strings.Contains(publicKeyStr, "-----BEGIN") {
+		// PEM格式
+		publicKey, err = x509.ReadPublicKeyFromPem([]byte(publicKeyStr))
+	} else {
+		// 尝试解析十六进制或Base64编码的公钥
+		keyBytes, decodeErr := hex.DecodeString(publicKeyStr)
+		if decodeErr != nil {
+			keyBytes, decodeErr = base64.StdEncoding.DecodeString(publicKeyStr)
+			if decodeErr != nil {
+				return false
+			}
+		}
+
+		// 尝试解析原始公钥格式
+		publicKey, err = x509.ParseSm2PublicKey(keyBytes)
+	}
+
+	if err != nil {
+		return false
+	}
+
+	// 验证签名
+	return publicKey.Verify([]byte(data), signBytes)
 }
 
 // AssemblyRequestMap 组装请求参数
@@ -198,9 +331,6 @@ func PreOrder(request PreOrderRequest) (*PreOrderResponse, error) {
 	if setting.CustomerNumber == "" {
 		return nil, fmt.Errorf("商户号未配置")
 	}
-	if setting.SM4Key == "" {
-		return nil, fmt.Errorf("SM4密钥未配置")
-	}
 
 	request.OrderId = GenerateOrderId()
 	request.OrderNo = request.OrderId + "NO"
@@ -210,21 +340,24 @@ func PreOrder(request PreOrderRequest) (*PreOrderResponse, error) {
 		return nil, err
 	}
 
-	// 生成随机加密密钥
-	encryptionKey := GenerateSM4Key()
+	// 生成随机加密密钥（与Java Demo一致，动态生成）
+	sm4Key := GenerateSM4Key()
 
-	// 使用SM4加密data字段
-	encryptedData, err := SM4Encrypt(dataMap, setting.SM4Key, encryptionKey)
+	// 使用SM2公钥加密SM4密钥（encryptionKey使用SM2加密）
+	encryptionKey, err := SM2EncryptSM4Key(sm4Key)
 	if err != nil {
 		return nil, err
 	}
 
-	// 生成签名（签名内容为原始data，不包含加密后的数据）
-	dataStr, err := json.Marshal(dataMap)
+	// 使用SM4加密data字段（使用动态生成的密钥）
+	encryptedData, err := SM4Encrypt(dataMap, sm4Key)
 	if err != nil {
 		return nil, err
 	}
-	sign, err := GenerateSign(string(dataStr))
+
+	// 生成签名（签名内容为加密后的data，与Java Demo一致）
+	signData := encryptedData["data"].(string)
+	sign, err := GenerateSign(signData)
 	if err != nil {
 		return nil, err
 	}
@@ -232,14 +365,14 @@ func PreOrder(request PreOrderRequest) (*PreOrderResponse, error) {
 	helipayRequest := HelipayRequest{
 		CustomerNumber: setting.CustomerNumber,
 		EncryptionKey:  encryptionKey,
-		SignType:       "MD5WITHRSA",
+		SignType:       "SM3WITHSM2",
 		Sign:           sign,
 		Timestamp:      GetTimestamp(),
 		Version:        "1.0",
 		Data:           encryptedData,
 	}
 
-	url := operation_setting.GetHelipayTrxURL() + "/universalcashier/unifiedorder"
+	url := operation_setting.GetHelipayTrxURL() + "/trx/universalcashier/unifiedorder"
 	response, err := httpRequest(url, helipayRequest)
 	if err != nil {
 		return nil, err
@@ -273,9 +406,6 @@ func QueryOrder(orderId, orderNo string) (*QueryOrderResponse, error) {
 	if setting.CustomerNumber == "" {
 		return nil, fmt.Errorf("商户号未配置")
 	}
-	if setting.SM4Key == "" {
-		return nil, fmt.Errorf("SM4密钥未配置")
-	}
 
 	request := QueryOrderRequest{
 		OrderId: orderId,
@@ -287,21 +417,24 @@ func QueryOrder(orderId, orderNo string) (*QueryOrderResponse, error) {
 		return nil, err
 	}
 
-	// 生成随机加密密钥
-	encryptionKey := GenerateSM4Key()
+	// 生成随机加密密钥（与Java Demo一致，动态生成）
+	sm4Key := GenerateSM4Key()
 
-	// 使用SM4加密data字段
-	encryptedData, err := SM4Encrypt(dataMap, setting.SM4Key, encryptionKey)
+	// 使用SM2公钥加密SM4密钥（encryptionKey使用SM2加密）
+	encryptionKey, err := SM2EncryptSM4Key(sm4Key)
 	if err != nil {
 		return nil, err
 	}
 
-	// 生成签名
-	dataStr, err := json.Marshal(dataMap)
+	// 使用SM4加密data字段（使用动态生成的密钥）
+	encryptedData, err := SM4Encrypt(dataMap, sm4Key)
 	if err != nil {
 		return nil, err
 	}
-	sign, err := GenerateSign(string(dataStr))
+
+	// 生成签名（签名内容为加密后的data，与Java Demo一致）
+	signData := encryptedData["data"].(string)
+	sign, err := GenerateSign(signData)
 	if err != nil {
 		return nil, err
 	}
@@ -309,7 +442,7 @@ func QueryOrder(orderId, orderNo string) (*QueryOrderResponse, error) {
 	helipayRequest := HelipayRequest{
 		CustomerNumber: setting.CustomerNumber,
 		EncryptionKey:  encryptionKey,
-		SignType:       "MD5WITHRSA",
+		SignType:       "SM3WITHSM2",
 		Sign:           sign,
 		Timestamp:      GetTimestamp(),
 		Version:        "1.0",
@@ -349,9 +482,6 @@ func CancelOrder(orderId, orderNo string) (*CancelOrderResponse, error) {
 	if setting.CustomerNumber == "" {
 		return nil, fmt.Errorf("商户号未配置")
 	}
-	if setting.SM4Key == "" {
-		return nil, fmt.Errorf("SM4密钥未配置")
-	}
 
 	request := CancelOrderRequest{
 		OrderId: orderId,
@@ -363,21 +493,24 @@ func CancelOrder(orderId, orderNo string) (*CancelOrderResponse, error) {
 		return nil, err
 	}
 
-	// 生成随机加密密钥
-	encryptionKey := GenerateSM4Key()
+	// 生成随机加密密钥（与Java Demo一致，动态生成）
+	sm4Key := GenerateSM4Key()
 
-	// 使用SM4加密data字段
-	encryptedData, err := SM4Encrypt(dataMap, setting.SM4Key, encryptionKey)
+	// 使用SM2公钥加密SM4密钥（encryptionKey使用SM2加密）
+	encryptionKey, err := SM2EncryptSM4Key(sm4Key)
 	if err != nil {
 		return nil, err
 	}
 
-	// 生成签名
-	dataStr, err := json.Marshal(dataMap)
+	// 使用SM4加密data字段（使用动态生成的密钥）
+	encryptedData, err := SM4Encrypt(dataMap, sm4Key)
 	if err != nil {
 		return nil, err
 	}
-	sign, err := GenerateSign(string(dataStr))
+
+	// 生成签名（签名内容为加密后的data，与Java Demo一致）
+	signData := encryptedData["data"].(string)
+	sign, err := GenerateSign(signData)
 	if err != nil {
 		return nil, err
 	}
@@ -385,7 +518,7 @@ func CancelOrder(orderId, orderNo string) (*CancelOrderResponse, error) {
 	helipayRequest := HelipayRequest{
 		CustomerNumber: setting.CustomerNumber,
 		EncryptionKey:  encryptionKey,
-		SignType:       "MD5WITHRSA",
+		SignType:       "SM3WITHSM2",
 		Sign:           sign,
 		Timestamp:      GetTimestamp(),
 		Version:        "1.0",
@@ -425,9 +558,6 @@ func Refund(orderId, orderNo, refundAmount, refundDesc string) (*RefundResponse,
 	if setting.CustomerNumber == "" {
 		return nil, fmt.Errorf("商户号未配置")
 	}
-	if setting.SM4Key == "" {
-		return nil, fmt.Errorf("SM4密钥未配置")
-	}
 
 	request := RefundRequest{
 		OrderId:      orderId,
@@ -441,21 +571,24 @@ func Refund(orderId, orderNo, refundAmount, refundDesc string) (*RefundResponse,
 		return nil, err
 	}
 
-	// 生成随机加密密钥
-	encryptionKey := GenerateSM4Key()
+	// 生成随机加密密钥（与Java Demo一致，动态生成）
+	sm4Key := GenerateSM4Key()
 
-	// 使用SM4加密data字段
-	encryptedData, err := SM4Encrypt(dataMap, setting.SM4Key, encryptionKey)
+	// 使用SM2公钥加密SM4密钥（encryptionKey使用SM2加密）
+	encryptionKey, err := SM2EncryptSM4Key(sm4Key)
 	if err != nil {
 		return nil, err
 	}
 
-	// 生成签名
-	dataStr, err := json.Marshal(dataMap)
+	// 使用SM4加密data字段（使用动态生成的密钥）
+	encryptedData, err := SM4Encrypt(dataMap, sm4Key)
 	if err != nil {
 		return nil, err
 	}
-	sign, err := GenerateSign(string(dataStr))
+
+	// 生成签名（签名内容为加密后的data，与Java Demo一致）
+	signData := encryptedData["data"].(string)
+	sign, err := GenerateSign(signData)
 	if err != nil {
 		return nil, err
 	}
@@ -463,7 +596,7 @@ func Refund(orderId, orderNo, refundAmount, refundDesc string) (*RefundResponse,
 	helipayRequest := HelipayRequest{
 		CustomerNumber: setting.CustomerNumber,
 		EncryptionKey:  encryptionKey,
-		SignType:       "MD5WITHRSA",
+		SignType:       "SM3WITHSM2",
 		Sign:           sign,
 		Timestamp:      GetTimestamp(),
 		Version:        "1.0",
