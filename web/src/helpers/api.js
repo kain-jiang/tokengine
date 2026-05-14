@@ -191,13 +191,49 @@ export const handleApiError = (error, response = null) => {
   return errorInfo;
 };
 
-// 处理模型数据
-export const processModelsData = (data, currentModel) => {
-  const modelOptions = data
-    .filter((model) => model !== 'z-image')
-    .map((model) => ({
-      label: model,
+const MODEL_TYPE = {
+  TEXT: 1,
+  IMAGE: 2,
+  VIDEO: 3,
+};
+
+const normalizeModelItem = (model) => {
+  if (typeof model === 'string') {
+    return {
       value: model,
+      label: model,
+      model_type: MODEL_TYPE.TEXT,
+    };
+  }
+
+  if (model && typeof model === 'object') {
+    return {
+      ...model,
+      value: model.value ?? model.model_name ?? model.name ?? model.model ?? '',
+      label: model.label ?? model.model_name ?? model.name ?? model.model ?? '',
+      model_type: Number(model.model_type ?? MODEL_TYPE.TEXT),
+    };
+  }
+
+  return { value: '', label: '', model_type: MODEL_TYPE.TEXT };
+};
+
+const isMatchModelKind = (modelType, modelKind) => {
+  if (modelKind === 'image') return modelType === MODEL_TYPE.IMAGE;
+  if (modelKind === 'video') return modelType === MODEL_TYPE.VIDEO;
+  return modelType === MODEL_TYPE.TEXT;
+};
+
+// 处理模型数据
+export const processModelsData = (data, currentModel, modelKind = 'text') => {
+  const source = Array.isArray(data) ? data : data?.items || data?.data || [];
+  const modelOptions = (source || [])
+    .map(normalizeModelItem)
+    .filter((model) => model.value)
+    .filter((model) => isMatchModelKind(model.model_type, modelKind))
+    .map((model) => ({
+      label: model.label,
+      value: model.value,
     }));
 
   const hasCurrentModel = modelOptions.some(
@@ -420,3 +456,4 @@ export function getChannelModels(type) {
   }
   return [];
 }
+

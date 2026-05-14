@@ -37,11 +37,7 @@ import {
   processGroupsData,
   showError,
 } from '../../helpers';
-import {
-  API_ENDPOINTS,
-  TEXT_TO_IMAGE_MODEL,
-  TEXT_TO_IMAGE_MODEL_OPTIONS,
-} from '../../constants/playground.constants';
+import { API_ENDPOINTS } from '../../constants/playground.constants';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -58,7 +54,8 @@ const TextToImage = () => {
   const [size, setSize] = useState('1024x1024');
   const [group, setGroup] = useState('');
   const [groups, setGroups] = useState([]);
-  const [model, setModel] = useState(TEXT_TO_IMAGE_MODEL);
+  const [models, setModels] = useState([]);
+  const [model, setModel] = useState('');
   const [temperature, setTemperature] = useState(0.7);
   const [maxLength, setMaxLength] = useState(2048);
   const [loading, setLoading] = useState(false);
@@ -94,6 +91,35 @@ const TextToImage = () => {
       loadGroups();
     }
   }, [userState?.user, loadGroups]);
+
+  useEffect(() => {
+    if (!userState?.user) return;
+    const loadTextToImageModels = async () => {
+      try {
+        const res = await API.get(API_ENDPOINTS.USER_MODELS, {
+          params: { model_type: 2 },
+        });
+        const { success, message, data } = res.data;
+        if (!success) {
+          showError(t(message));
+          return;
+        }
+        const modelList = Array.isArray(data) ? data : data?.items || [];
+        const options = modelList
+          .map((item) => ({
+            label: item.model_name || item,
+            value: item.model_name || item,
+          }))
+          .filter((item) => item.value);
+        setModels(options);
+        setModel(options[0]?.value || '');
+      } catch (e) {
+        showError(t('加载模型失败'));
+      }
+    };
+
+    loadTextToImageModels();
+  }, [t, userState?.user]);
 
   const handleGenerate = async () => {
     const trimmed = prompt.trim();
@@ -243,9 +269,11 @@ const TextToImage = () => {
                 </Text>
                 <Select
                   style={{ width: '100%' }}
-                  optionList={TEXT_TO_IMAGE_MODEL_OPTIONS}
+                  optionList={models}
                   value={model}
                   onChange={setModel}
+                  disabled={!models.length}
+                  placeholder={t('暂无可用文生图模型')}
                 />
               </div>
 
@@ -332,7 +360,7 @@ const TextToImage = () => {
                   type='tertiary'
                   onClick={() =>
                     alert(
-                      `模型: ${model}\n温度: ${temperature.toFixed(1)}\n最大长度: ${maxLength}\n尺寸: ${size}\n分组: ${group || 'default'}\n注意: 文生图当前仅支持 z-image，其他模型会导致无可用渠道。`,
+                      `模型: ${model || '无可用模型'}\n温度: ${temperature.toFixed(1)}\n最大长度: ${maxLength}\n尺寸: ${size}\n分组: ${group || 'default'}\n注意: 使用 openapi 生成图片，计费规则与 /v1/images/generations 一致。`, 
                     )
                   }
                   style={{ borderRadius: 9999, paddingInline: 24 }}

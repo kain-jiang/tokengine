@@ -17,7 +17,13 @@ import (
 func GetAllModelsMeta(c *gin.Context) {
 
 	pageInfo := common.GetPageQuery(c)
-	modelsMeta, err := model.GetAllModels(pageInfo.GetStartIdx(), pageInfo.GetPageSize())
+	var modelType *int
+	if mt := c.Query("model_type"); mt != "" {
+		if v, err := strconv.Atoi(mt); err == nil {
+			modelType = &v
+		}
+	}
+	modelsMeta, err := model.GetAllModels(pageInfo.GetStartIdx(), pageInfo.GetPageSize(), modelType)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -47,8 +53,14 @@ func SearchModelsMeta(c *gin.Context) {
 	keyword := c.Query("keyword")
 	vendor := c.Query("vendor")
 	pageInfo := common.GetPageQuery(c)
+	var modelType *int
+	if mt := c.Query("model_type"); mt != "" {
+		if v, err := strconv.Atoi(mt); err == nil {
+			modelType = &v
+		}
+	}
 
-	modelsMeta, total, err := model.SearchModels(keyword, vendor, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
+	modelsMeta, total, err := model.SearchModels(keyword, vendor, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), modelType)
 	if err != nil {
 		common.ApiError(c, err)
 		return
