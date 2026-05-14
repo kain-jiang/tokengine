@@ -533,6 +533,29 @@ func GetUserModels(c *gin.Context) {
 			}
 		}
 	}
+
+	modelType := c.Query("model_type")
+	if modelType != "" {
+		allModels, err := model.GetModelsByNames(models)
+		if err != nil {
+			common.ApiError(c, err)
+			return
+		}
+		filtered := make([]string, 0, len(allModels))
+		for _, m := range allModels {
+			if modelType == "1" && m.ModelType == 1 {
+				filtered = append(filtered, m.ModelName)
+			}
+			if modelType == "2" && m.ModelType == 2 {
+				filtered = append(filtered, m.ModelName)
+			}
+			if modelType == "3" && m.ModelType == 3 {
+				filtered = append(filtered, m.ModelName)
+			}
+		}
+		models = filtered
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",

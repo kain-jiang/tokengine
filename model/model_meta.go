@@ -26,6 +26,7 @@ type Model struct {
 	Description  string         `json:"description,omitempty" gorm:"type:text"`
 	Icon         string         `json:"icon,omitempty" gorm:"type:varchar(128)"`
 	Tags         string         `json:"tags,omitempty" gorm:"type:varchar(255)"`
+	ModelType    int            `json:"model_type" gorm:"default:1;index"`
 	VendorID     int            `json:"vendor_id,omitempty" gorm:"index"`
 	Endpoints    string         `json:"endpoints,omitempty" gorm:"type:text"`
 	Status       int            `json:"status" gorm:"default:1"`
@@ -58,7 +59,7 @@ func (mi *Model) Insert() error {
 	}
 
 	// 使用保存的原始值进行更新，确保零值能正确保存
-	return DB.Model(&Model{}).Where("id = ?", mi.Id).Updates(map[string]interface{}{
+	return DB.Model(&Model{}).Where("id = ?", mi.Id).Updates(map[string]any{
 		"status":        originalStatus,
 		"sync_official": originalSyncOfficial,
 	}).Error
@@ -77,7 +78,7 @@ func (mi *Model) Update() error {
 	mi.UpdatedTime = common.GetTimestamp()
 	// 使用 Select 强制更新所有字段，包括零值
 	return DB.Model(&Model{}).Where("id = ?", mi.Id).
-		Select("model_name", "description", "icon", "tags", "vendor_id", "endpoints", "status", "sync_official", "name_rule", "updated_time").
+		Select("model_name", "description", "icon", "tags", "model_type", "vendor_id", "endpoints", "status", "sync_official", "name_rule", "updated_time").
 		Updates(mi).Error
 }
 
@@ -103,9 +104,13 @@ func GetVendorModelCounts() (map[int64]int64, error) {
 	return m, nil
 }
 
-func GetAllModels(offset int, limit int) ([]*Model, error) {
+func GetAllModels(offset int, limit int, modelType *int) ([]*Model, error) {
 	var models []*Model
-	err := DB.Order("id DESC").Offset(offset).Limit(limit).Find(&models).Error
+	db := DB.Model(&Model{})
+	if modelType != nil {
+		db = db.Where("model_type = ?", *modelType)
+	}
+	err := db.Order("id DESC").Offset(offset).Limit(limit).Find(&models).Error
 	return models, err
 }
 
@@ -135,9 +140,12 @@ func GetBoundChannelsByModelsMap(modelNames []string) (map[string][]BoundChannel
 	return result, nil
 }
 
-func SearchModels(keyword string, vendor string, offset int, limit int) ([]*Model, int64, error) {
+func SearchModels(keyword string, vendor string, offset int, limit int, modelType *int) ([]*Model, int64, error) {
 	var models []*Model
 	db := DB.Model(&Model{})
+	if modelType != nil {
+		db = db.Where("model_type = ?", *modelType)
+	}
 	if keyword != "" {
 		like := "%" + keyword + "%"
 		db = db.Where("model_name LIKE ? OR description LIKE ? OR tags LIKE ?", like, like, like)
@@ -157,4 +165,15 @@ func SearchModels(keyword string, vendor string, offset int, limit int) ([]*Mode
 		return nil, 0, err
 	}
 	return models, total, nil
+}
+
+func GetModelsByNames(names []string) ([]*Model, error) {
+	if len(names) == 0 {
+		return []*Model{}, nil
+	}
+	var models []*Model
+	if err := DB.Where("model_name IN ?", names).Find(&models).Error; err != nil {
+		return nil, err
+	}
+	return models, nil
 }

@@ -33,13 +33,16 @@ export const useDataLoader = (
 
   const loadModels = useCallback(async () => {
     try {
-      const res = await API.get(API_ENDPOINTS.USER_MODELS);
+      const res = await API.get(API_ENDPOINTS.USER_MODELS, {
+        params: { model_type: 1 },
+      });
       const { success, message, data } = res.data;
 
       if (success) {
         const { modelOptions, selectedModel } = processModelsData(
           data,
           inputs.model,
+          'text',
         );
         setModels(modelOptions);
 

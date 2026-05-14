@@ -43,6 +43,7 @@ import Pricing from './pages/Pricing';
 import Task from './pages/Task';
 import ModelPage from './pages/Model';
 import Playground from './pages/Playground';
+import TextToImage from './pages/TextToImage';
 import Subscription from './pages/Subscription';
 import OAuth2Callback from './components/auth/OAuth2Callback';
 import PersonalSetting from './components/settings/PersonalSetting';
@@ -143,6 +144,14 @@ function App() {
           element={
             <PrivateRoute>
               <Playground />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='/console/text-to-image'
+          element={
+            <PrivateRoute>
+              <TextToImage />
             </PrivateRoute>
           }
         />

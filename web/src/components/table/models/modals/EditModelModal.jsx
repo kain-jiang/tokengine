@@ -117,6 +117,7 @@ const EditModelModal = (props) => {
     description: '',
     icon: '',
     tags: [],
+    model_type: 1,
     vendor_id: undefined,
     vendor: '',
     vendor_icon: '',
@@ -151,6 +152,7 @@ const EditModelModal = (props) => {
         // 处理status/sync_official，将数字转为布尔值
         data.status = data.status === 1;
         data.sync_official = (data.sync_official ?? 1) === 1;
+        data.model_type = data.model_type || 1;
         if (formApiRef.current) {
           formApiRef.current.setValues({ ...getInitValues(), ...data });
         }
@@ -196,6 +198,7 @@ const EditModelModal = (props) => {
         ...values,
         tags: Array.isArray(values.tags) ? values.tags.join(',') : values.tags,
         endpoints: values.endpoints || '',
+        model_type: values.model_type || 1,
         status: values.status ? 1 : 0,
         sync_official: values.sync_official ? 1 : 0,
       };
@@ -353,6 +356,23 @@ const EditModelModal = (props) => {
                         </span>
                       }
                       showClear
+                    />
+                  </Col>
+
+                  <Col span={24}>
+                    <Form.Select
+                      field='model_type'
+                      label={t('模型类型')}
+                      placeholder={t('请选择模型类型')}
+                      optionList={[
+                        { label: t('文生文'), value: 1 },
+                        { label: t('文生图'), value: 2 },
+                        { label: t('文生视频'), value: 3 },
+                      ]}
+                      rules={[
+                        { required: true, message: t('请选择模型类型') },
+                      ]}
+                      style={{ width: '100%' }}
                     />
                   </Col>
 

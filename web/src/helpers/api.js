@@ -191,12 +191,50 @@ export const handleApiError = (error, response = null) => {
   return errorInfo;
 };
 
+const MODEL_TYPE = {
+  TEXT: 1,
+  IMAGE: 2,
+  VIDEO: 3,
+};
+
+const normalizeModelItem = (model) => {
+  if (typeof model === 'string') {
+    return {
+      value: model,
+      label: model,
+      model_type: MODEL_TYPE.TEXT,
+    };
+  }
+
+  if (model && typeof model === 'object') {
+    return {
+      ...model,
+      value: model.value ?? model.model_name ?? model.name ?? model.model ?? '',
+      label: model.label ?? model.model_name ?? model.name ?? model.model ?? '',
+      model_type: Number(model.model_type ?? MODEL_TYPE.TEXT),
+    };
+  }
+
+  return { value: '', label: '', model_type: MODEL_TYPE.TEXT };
+};
+
+const isMatchModelKind = (modelType, modelKind) => {
+  if (modelKind === 'image') return modelType === MODEL_TYPE.IMAGE;
+  if (modelKind === 'video') return modelType === MODEL_TYPE.VIDEO;
+  return modelType === MODEL_TYPE.TEXT;
+};
+
 // 处理模型数据
-export const processModelsData = (data, currentModel) => {
-  const modelOptions = data.map((model) => ({
-    label: model,
-    value: model,
-  }));
+export const processModelsData = (data, currentModel, modelKind = 'text') => {
+  const source = Array.isArray(data) ? data : data?.items || data?.data || [];
+  const modelOptions = (source || [])
+    .map(normalizeModelItem)
+    .filter((model) => model.value)
+    .filter((model) => isMatchModelKind(model.model_type, modelKind))
+    .map((model) => ({
+      label: model.label,
+      value: model.value,
+    }));
 
   const hasCurrentModel = modelOptions.some(
     (option) => option.value === currentModel,
@@ -211,24 +249,47 @@ export const processModelsData = (data, currentModel) => {
 
 // 处理分组数据
 export const processGroupsData = (data, userGroup) => {
-  let groupOptions = Object.entries(data).map(([group, info]) => ({
-    label:
-      info.desc.length > 20 ? info.desc.substring(0, 20) + '...' : info.desc,
-    value: group,
-    ratio: info.ratio,
-    fullLabel: info.desc,
-  }));
+  let groupOptions = Object.entries(data).map(([group, info]) => {
+    const normalizedGroup = group === '' ? 'default' : group;
+    const normalizedLabel =
+      normalizedGroup === 'default'
+        ? 'default'
+        : (info.desc || normalizedGroup);
+
+    return {
+      label:
+        normalizedLabel.length > 20
+          ? normalizedLabel.substring(0, 20) + '...'
+          : normalizedLabel,
+      value: normalizedGroup,
+      ratio: info.ratio,
+      fullLabel: normalizedLabel,
+    };
+  });
+
+  if (!groupOptions.some((g) => g.value === 'default')) {
+    groupOptions.unshift({
+      label: 'default',
+      value: 'default',
+      ratio: 1,
+      fullLabel: 'default',
+    });
+  }
 
   if (groupOptions.length === 0) {
     groupOptions = [
       {
-        label: '用户分组',
-        value: '',
+        label: 'default',
+        value: 'default',
         ratio: 1,
+        fullLabel: 'default',
       },
     ];
   } else if (userGroup) {
-    const userGroupIndex = groupOptions.findIndex((g) => g.value === userGroup);
+    const normalizedUserGroup = userGroup === '' ? 'default' : userGroup;
+    const userGroupIndex = groupOptions.findIndex(
+      (g) => g.value === normalizedUserGroup,
+    );
     if (userGroupIndex > -1) {
       const userGroupOption = groupOptions.splice(userGroupIndex, 1)[0];
       groupOptions.unshift(userGroupOption);
@@ -395,3 +456,4 @@ export function getChannelModels(type) {
   }
   return [];
 }
+
