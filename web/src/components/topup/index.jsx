@@ -271,25 +271,25 @@ const TopUp = () => {
       if (payWay === 'stripe') {
         // Stripe 支付请求
         res = await API.post('/api/user/stripe/pay', {
-          amount: parseInt(topUpCount),
+          amount: parseFloat(topUpCount),
           payment_method: 'stripe',
         });
       } else if (payWay === 'zs_pay') {
         // 招商银行聚合支付请求 - 后端会处理折扣计算
         res = await API.post('/api/user/zs_pay/pay', {
-          amount: parseInt(topUpCount),
+          amount: parseFloat(topUpCount),
           payment_method: 'zs_pay',
         });
       } else if (payWay === 'helipay') {
         // 合利宝支付请求 - 后端会处理折扣计算
         res = await API.post('/api/user/helipay/pay', {
-          amount: parseInt(topUpCount),
+          amount: parseFloat(topUpCount),
           payment_method: 'helipay',
         });
       } else {
         // 普通支付请求
         res = await API.post('/api/user/pay', {
-          amount: parseInt(topUpCount),
+          amount: parseFloat(topUpCount),
           payment_method: payWay,
         });
       }
@@ -425,7 +425,7 @@ const TopUp = () => {
         }
         setPaymentLoading(true);
         const requestBody = {
-            amount: parseInt(topUpCount),
+            amount: parseFloat(topUpCount),
         };
         if (payMethodIndex != null) {
             requestBody.pay_method_index = payMethodIndex;
@@ -467,7 +467,7 @@ const TopUp = () => {
   const handleRefreshQRCode = async () => {
     try {
       const res = await API.post('/api/user/zs_pay/pay', {
-        amount: parseInt(topUpCount),
+        amount: parseFloat(topUpCount),
         payment_method: 'zs_pay',
       });
       if (res.data?.message === 'success' && res.data.qr_code_url) {

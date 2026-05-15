@@ -215,7 +215,7 @@ const ParamOverrideModal = ({
                   key={`${item.action}-${index}`}
                   style={{
                     padding: '10px 12px',
-                    borderRadius: 10,
+                    borderRadius: 8,
                     border: '1px solid var(--semi-color-border)',
                     background: 'var(--semi-color-fill-0)',
                     display: 'flex',

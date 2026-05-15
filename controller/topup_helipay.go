@@ -44,7 +44,7 @@ func RequestHelipay(c *gin.Context) {
 
 	// 应用充值金额折扣
 	discount := 1.0
-	if ds, ok := operation_setting.GetPaymentSetting().AmountDiscount[int(req.Amount)]; ok && ds > 0 {
+	if ds, ok := operation_setting.GetPaymentSetting().AmountDiscount[strconv.FormatFloat(float64(req.Amount), 'f', -1, 64)]; ok && ds > 0 {
 		discount = ds
 	}
 

@@ -419,7 +419,7 @@ export default function SettingsSidebarModulesAdmin(props) {
             type='tertiary'
             onClick={resetSidebarModules}
             style={{
-              borderRadius: '6px',
+              borderRadius: '4px',
               fontWeight: '500',
             }}
           >
@@ -431,7 +431,7 @@ export default function SettingsSidebarModulesAdmin(props) {
             onClick={onSubmit}
             loading={loading}
             style={{
-              borderRadius: '6px',
+              borderRadius: '4px',
               fontWeight: '500',
               minWidth: '100px',
             }}

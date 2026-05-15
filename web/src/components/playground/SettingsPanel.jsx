@@ -18,8 +18,8 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React from 'react';
-import { Card, Select, Typography, Button, Switch } from '@douyinfe/semi-ui';
-import { Sparkles, Users, ToggleLeft, X, Settings } from 'lucide-react';
+import { Card, Select, Typography, Button, Switch, TextArea } from '@douyinfe/semi-ui';
+import { Sparkles, Users, ToggleLeft, X, Settings, Image as ImageIcon, PenTool } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { renderGroupOption, selectFilter } from '../../helpers';
 import ParameterControl from './ParameterControl';
@@ -45,6 +45,10 @@ const SettingsPanel = ({
   onCustomRequestBodyChange,
   previewPayload,
   messages,
+  sizeOptions = [],
+  hideParameterControl = false,
+  hideConfigManager = false,
+  children,
 }) => {
   const { t } = useTranslation();
 
@@ -90,8 +94,8 @@ const SettingsPanel = ({
         )}
       </div>
 
-      {/* 移动端配置管理 */}
-      {styleState.isMobile && (
+      {/* 移动端配置管理 - 文生图页面不显示 */}
+      {!hideConfigManager && styleState.isMobile && (
         <div className='mb-4 flex-shrink-0'>
           <ConfigManager
             currentConfig={currentConfig}
@@ -189,24 +193,13 @@ const SettingsPanel = ({
           />
         </div>
 
-        {/* 参数控制组件 */}
-        <div className={customRequestMode ? 'opacity-50' : ''}>
-          <ParameterControl
-            inputs={inputs}
-            parameterEnabled={parameterEnabled}
-            onInputChange={onInputChange}
-            onParameterToggle={onParameterToggle}
-            disabled={customRequestMode}
-          />
-        </div>
-
-        {/* 流式输出开关 */}
-        <div className={customRequestMode ? 'opacity-50' : ''}>
-          <div className='flex items-center justify-between'>
-            <div className='flex items-center gap-2'>
-              <ToggleLeft size={16} className='text-gray-500' />
+        {/* 文生图专用：尺寸选择 */}
+        {sizeOptions && sizeOptions.length > 0 && (
+          <div className={customRequestMode ? 'opacity-50' : ''}>
+            <div className='flex items-center gap-2 mb-2'>
+              <ImageIcon size={16} className='text-gray-500' />
               <Typography.Text strong className='text-sm'>
-                {t('流式输出')}
+                {t('尺寸')}
               </Typography.Text>
               {customRequestMode && (
                 <Typography.Text className='text-xs text-orange-600'>
@@ -214,20 +207,94 @@ const SettingsPanel = ({
                 </Typography.Text>
               )}
             </div>
-            <Switch
-              checked={inputs.stream}
-              onChange={(checked) => onInputChange('stream', checked)}
-              checkedText={t('开')}
-              uncheckedText={t('关')}
-              size='small'
+            <Select
+              placeholder={t('请选择图片尺寸')}
+              name='size'
+              selection
+              filter={selectFilter}
+              autoClearSearchValue={false}
+              onChange={(value) => onInputChange('size', value)}
+              value={inputs.size}
+              autoComplete='new-password'
+              optionList={sizeOptions}
+              style={{ width: '100%' }}
+              dropdownStyle={{ width: '100%', maxWidth: '100%' }}
+              className='!rounded-lg'
               disabled={customRequestMode}
             />
           </div>
-        </div>
+        )}
+
+        {/* 文生图专用：提示词输入 */}
+        {sizeOptions && sizeOptions.length > 0 && (
+          <div className={customRequestMode ? 'opacity-50' : ''}>
+            <div className='flex items-center gap-2 mb-2'>
+              <PenTool size={16} className='text-gray-500' />
+              <Typography.Text strong className='text-sm'>
+                {t('提示词')}
+              </Typography.Text>
+              {customRequestMode && (
+                <Typography.Text className='text-xs text-orange-600'>
+                  ({t('已在自定义模式中忽略')})
+                </Typography.Text>
+              )}
+            </div>
+            <TextArea
+              value={inputs.prompt || ''}
+              onChange={(value) => onInputChange('prompt', value)}
+              rows={4}
+              placeholder={t('请输入画面描述')}
+              style={{ borderRadius: 4 }}
+              disabled={customRequestMode}
+            />
+            {/* 生成图片按钮 - 紧跟在提示词输入框下方 */}
+            {children}
+          </div>
+        )}
+        
+        {/* 参数控制组件 - 文生图页面不显示 */}
+        {!hideParameterControl && (
+          <div className={customRequestMode ? 'opacity-50' : ''}>
+            <ParameterControl
+              inputs={inputs}
+              parameterEnabled={parameterEnabled}
+              onInputChange={onInputChange}
+              onParameterToggle={onParameterToggle}
+              disabled={customRequestMode}
+            />
+          </div>
+        )}
+
+        {/* 流式输出开关 - 文生图页面不显示 */}
+        {!hideParameterControl && (
+          <div className={customRequestMode ? 'opacity-50' : ''}>
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center gap-2'>
+                <ToggleLeft size={16} className='text-gray-500' />
+                <Typography.Text strong className='text-sm'>
+                  {t('流式输出')}
+                </Typography.Text>
+                {customRequestMode && (
+                  <Typography.Text className='text-xs text-orange-600'>
+                    ({t('已在自定义模式中忽略')})
+                  </Typography.Text>
+                )}
+              </div>
+              <Switch
+                checked={inputs.stream}
+                onChange={(checked) => onInputChange('stream', checked)}
+                checkedText={t('开')}
+                uncheckedText={t('关')}
+                size='small'
+                disabled={customRequestMode}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* 桌面端的配置管理放在底部 */}
-      {!styleState.isMobile && (
+      {/* 桌面端的配置管理放在底部 - 文生图页面不显示 */}
+      {!hideConfigManager && !styleState.isMobile && (
         <div className='flex-shrink-0 pt-3'>
           <ConfigManager
             currentConfig={currentConfig}
@@ -238,6 +305,7 @@ const SettingsPanel = ({
           />
         </div>
       )}
+
     </Card>
   );
 };

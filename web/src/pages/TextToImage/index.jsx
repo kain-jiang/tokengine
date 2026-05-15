@@ -36,8 +36,15 @@ import {
   getUserIdFromLocalStorage,
   processGroupsData,
   showError,
+  renderGroupOption,
+  selectFilter,
 } from '../../helpers';
 import { API_ENDPOINTS } from '../../constants/playground.constants';
+import { useIsMobile } from '../../hooks/common/useIsMobile';
+import SettingsPanel from '../../components/playground/SettingsPanel';
+import ChatArea from '../../components/playground/ChatArea';
+import FloatingButtons from '../../components/playground/FloatingButtons';
+import { PlaygroundProvider } from '../../contexts/PlaygroundContext';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -50,18 +57,48 @@ const SIZE_OPTIONS = [
 const TextToImage = () => {
   const { t } = useTranslation();
   const [userState] = useContext(UserContext);
-  const [prompt, setPrompt] = useState('');
-  const [size, setSize] = useState('1024x1024');
-  const [group, setGroup] = useState('');
-  const [groups, setGroups] = useState([]);
+  const isMobile = useIsMobile();
+  const styleState = { isMobile };
+
+  // 使用与 Playground 一致的状态管理
+  const [inputs, setInputs] = useState({
+    model: '',
+    group: '',
+    size: '1024x1024',
+    prompt: '',
+    temperature: 0.7,
+    top_p: 1,
+    max_tokens: 4096,
+    frequency_penalty: 0,
+    presence_penalty: 0,
+    seed: null,
+    stream: true,
+    imageEnabled: false,
+    imageUrls: [''],
+  });
+  const [parameterEnabled, setParameterEnabled] = useState({
+    temperature: true,
+    top_p: true,
+    max_tokens: false,
+    frequency_penalty: true,
+    presence_penalty: true,
+    seed: false,
+  });
   const [models, setModels] = useState([]);
-  const [model, setModel] = useState('');
-  const [temperature, setTemperature] = useState(0.7);
-  const [maxLength, setMaxLength] = useState(2048);
+  const [groups, setGroups] = useState([]);
+  const [showSettings, setShowSettings] = useState(!isMobile);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
+  const [customRequestMode, setCustomRequestMode] = useState(false);
+  const [customRequestBody, setCustomRequestBody] = useState('');
+  const [previewPayload, setPreviewPayload] = useState(null);
+
+  // 图片展示状态
   const [loading, setLoading] = useState(false);
   const [imageSrc, setImageSrc] = useState('');
   const [showGenerationPreview, setShowGenerationPreview] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
 
+  // 加载分组
   const loadGroups = useCallback(async () => {
     try {
       const res = await API.get(API_ENDPOINTS.USER_GROUPS);
@@ -75,56 +112,68 @@ const TextToImage = () => {
         JSON.parse(localStorage.getItem('user') || '{}')?.group;
       const groupOptions = processGroupsData(data, userGroup);
       setGroups(groupOptions);
-      const first = groupOptions[0]?.value || 'default';
-      setGroup((g) => {
-        const normalizedG = g === '' ? 'default' : g;
-        if (normalizedG && groupOptions.some((o) => o.value === normalizedG)) return normalizedG;
-        return first;
-      });
+      const first = groupOptions[0]?.value || '';
+      setInputs((prev) => ({ ...prev, group: first }));
     } catch (e) {
       showError(t('加载分组失败'));
     }
   }, [t, userState?.user?.group]);
 
+  // 加载文生图模型
+  const loadTextToImageModels = useCallback(async () => {
+    try {
+      const res = await API.get(API_ENDPOINTS.USER_MODELS, {
+        params: { model_type: 2 },
+      });
+      const { success, message, data } = res.data;
+      if (!success) {
+        showError(t(message));
+        return;
+      }
+      const modelList = Array.isArray(data) ? data : data?.items || [];
+      const options = modelList
+        .map((item) => ({
+          label: item.model_name || item,
+          value: item.model_name || item,
+        }))
+        .filter((item) => item.value);
+      setModels(options);
+      if (options.length > 0) {
+        setInputs((prev) => ({ ...prev, model: options[0].value }));
+      }
+    } catch (e) {
+      showError(t('加载模型失败'));
+    }
+  }, [t]);
+
   useEffect(() => {
     if (userState?.user) {
       loadGroups();
+      loadTextToImageModels();
     }
-  }, [userState?.user, loadGroups]);
+  }, [userState?.user, loadGroups, loadTextToImageModels]);
 
-  useEffect(() => {
-    if (!userState?.user) return;
-    const loadTextToImageModels = async () => {
-      try {
-        const res = await API.get(API_ENDPOINTS.USER_MODELS, {
-          params: { model_type: 2 },
-        });
-        const { success, message, data } = res.data;
-        if (!success) {
-          showError(t(message));
-          return;
-        }
-        const modelList = Array.isArray(data) ? data : data?.items || [];
-        const options = modelList
-          .map((item) => ({
-            label: item.model_name || item,
-            value: item.model_name || item,
-          }))
-          .filter((item) => item.value);
-        setModels(options);
-        setModel(options[0]?.value || '');
-      } catch (e) {
-        showError(t('加载模型失败'));
-      }
-    };
+  // 处理输入变化
+  const handleInputChange = useCallback((name, value) => {
+    setInputs((prev) => ({ ...prev, [name]: value }));
+  }, []);
 
-    loadTextToImageModels();
-  }, [t, userState?.user]);
+  const handleParameterToggle = useCallback((paramName) => {
+    setParameterEnabled((prev) => ({
+      ...prev,
+      [paramName]: !prev[paramName],
+    }));
+  }, []);
 
+  // 生成图片
   const handleGenerate = async () => {
-    const trimmed = prompt.trim();
+    const trimmed = inputs.prompt.trim();
     if (!trimmed) {
       showError(t('请输入画面描述'));
+      return;
+    }
+    if (!inputs.model) {
+      showError(t('暂无可用文生图模型'));
       return;
     }
     setLoading(true);
@@ -132,13 +181,11 @@ const TextToImage = () => {
     setImageSrc('');
     try {
       const body = {
-        model,
+        model: inputs.model,
         prompt: trimmed,
-        size,
+        size: inputs.size,
         response_format: 'b64_json',
-        group: group || undefined,
-        temperature,
-        max_length: maxLength,
+        group: inputs.group || undefined,
       };
       const res = await fetch(API_ENDPOINTS.IMAGES_GENERATIONS, {
         method: 'POST',
@@ -163,6 +210,7 @@ const TextToImage = () => {
           text ||
           t('文生图请求失败');
         showError(typeof msg === 'string' ? msg : t('文生图请求失败'));
+        setShowGenerationPreview(false);
         return;
       }
       const b64 = json?.data?.[0]?.b64_json;
@@ -185,6 +233,7 @@ const TextToImage = () => {
     }
   };
 
+  // 提示词示例
   const promptExamples = [
     {
       title: '未来城市',
@@ -208,416 +257,336 @@ const TextToImage = () => {
     },
   ];
 
-  const [previewImage, setPreviewImage] = useState(null);
-
   const handleExamplePromptClick = (item) => {
-    setPrompt(item.prompt);
+    handleInputChange('prompt', item.prompt);
   };
 
   const handleExampleImageClick = (item) => {
     setPreviewImage(item);
   };
 
+  // 构建预览请求体
+  const constructPreviewPayload = useCallback(() => {
+    try {
+      const body = {
+        model: inputs.model,
+        prompt: inputs.prompt,
+        size: inputs.size,
+        response_format: 'b64_json',
+        group: inputs.group || undefined,
+      };
+      return body;
+    } catch (error) {
+      console.error('构造预览请求体失败:', error);
+      return null;
+    }
+  }, [inputs]);
+
+  // 构建预览payload
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const preview = constructPreviewPayload();
+      setPreviewPayload(preview);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [inputs, constructPreviewPayload]);
+
+  // 处理粘贴图片
+  const handlePasteImage = useCallback(
+    (base64Data) => {
+      if (!inputs.imageEnabled) {
+        return;
+      }
+      const newUrls = [...(inputs.imageUrls || []), base64Data];
+      handleInputChange('imageUrls', newUrls);
+    },
+    [inputs.imageEnabled, inputs.imageUrls, handleInputChange],
+  );
+
+  // Playground Context 值
+  const playgroundContextValue = {
+    onPasteImage: handlePasteImage,
+    imageUrls: inputs.imageUrls || [],
+    imageEnabled: inputs.imageEnabled || false,
+  };
+
   return (
-    <Layout
-      style={{
-        minHeight: '100vh',
-        background:
-          'radial-gradient(circle at top left, rgba(99, 102, 241, 0.12), transparent 28%), radial-gradient(circle at top right, rgba(236, 72, 153, 0.09), transparent 24%), linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%)',
-        padding: '2rem',
-      }}
-    >
-      <Layout.Content
-        style={{
-          width: '100%',
-          maxWidth: 1280,
-          margin: '0 auto',
-        }}
-      >
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(340px, 440px) minmax(0, 1fr)',
-            gap: 24,
-            alignItems: 'stretch',
-          }}
-        >
-          <Card
-            style={{
-              borderRadius: 32,
-              padding: 32,
-              boxShadow: '0 24px 70px rgba(15, 23, 42, 0.14)',
-              background: 'rgba(255, 255, 255, 0.9)',
-              backdropFilter: 'blur(18px)',
-              height: 'fit-content',
-            }}
-            bodyStyle={{ padding: 0 }}
-          >
-            <div style={{ marginBottom: 28 }}>
-              <Title heading={2} style={{ marginBottom: 12 }}>
-                {t('文生图')}
-              </Title>
-              <Paragraph type='tertiary' style={{ marginBottom: 0, fontSize: 16 }}>
-                {t('文生图说明')}
-              </Paragraph>
-            </div>
-
-            <div style={{ display: 'grid', gap: 20 }}>
-              <div>
-                <Text strong style={{ display: 'block', marginBottom: 8 }}>
-                  {t('模型')}
-                </Text>
-                <Select
-                  style={{ width: '100%' }}
-                  optionList={models}
-                  value={model}
-                  onChange={setModel}
-                  disabled={!models.length}
-                  placeholder={t('暂无可用文生图模型')}
-                />
-              </div>
-
-              <div>
-                <Text strong style={{ display: 'block', marginBottom: 8 }}>
-                  {t('分组')}
-                </Text>
-                <Select
-                  style={{ width: '100%' }}
-                  optionList={groups}
-                  value={group || 'default'}
-                  onChange={setGroup}
-                  disabled={!groups.length}
-                />
-              </div>
-
-              <div>
-                <Text strong style={{ display: 'block', marginBottom: 8 }}>
-                  {t('尺寸')}
-                </Text>
-                <Select
-                  style={{ width: '100%' }}
-                  optionList={SIZE_OPTIONS}
-                  value={size}
-                  onChange={setSize}
-                />
-              </div>
-
-              <div>
-                <Text strong style={{ display: 'block', marginBottom: 10 }}>
-                  温度：{temperature.toFixed(1)}
-                </Text>
-                <input
-                  type='range'
-                  min='0'
-                  max='1.5'
-                  step='0.1'
-                  value={temperature}
-                  onChange={(e) => setTemperature(Number(e.target.value))}
-                  style={{ width: '100%', accentColor: '#6366f1' }}
-                />
-              </div>
-
-              <div>
-                <Text strong style={{ display: 'block', marginBottom: 10 }}>
-                  最大长度：{maxLength}
-                </Text>
-                <input
-                  type='range'
-                  min='256'
-                  max='4096'
-                  step='256'
-                  value={maxLength}
-                  onChange={(e) => setMaxLength(Number(e.target.value))}
-                  style={{ width: '100%', accentColor: '#ec4899' }}
-                />
-              </div>
-
-              <div>
-                <Text strong style={{ display: 'block', marginBottom: 8 }}>
-                  {t('输入')}
-                </Text>
-                <TextArea
-                  value={prompt}
-                  onChange={setPrompt}
-                  rows={6}
-                  placeholder={t('请输入画面描述')}
-                  style={{ marginTop: 0, borderRadius: 20 }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+    <PlaygroundProvider value={playgroundContextValue}>
+      <div className='h-full'>
+        <Layout className='h-full bg-transparent flex flex-col md:flex-row'>
+          {(showSettings || !isMobile) && (
+            <Layout.Sider
+              className={`
+              bg-transparent border-r-0 flex-shrink-0 overflow-auto mt-[60px]
+              ${
+                isMobile
+                  ? 'fixed top-0 left-0 right-0 bottom-0 z-[1000] w-full h-auto bg-white shadow-lg'
+                  : 'relative z-[1] w-80 h-[calc(100vh-66px)]'
+              }
+            `}
+              width={isMobile ? '100%' : 320}
+            >
+              <SettingsPanel
+                inputs={inputs}
+                parameterEnabled={parameterEnabled}
+                models={models}
+                groups={groups}
+                styleState={styleState}
+                showSettings={showSettings}
+                showDebugPanel={showDebugPanel}
+                customRequestMode={customRequestMode}
+                customRequestBody={customRequestBody}
+                onInputChange={handleInputChange}
+                onParameterToggle={handleParameterToggle}
+                onCloseSettings={() => setShowSettings(false)}
+                onConfigImport={() => {}}
+                onConfigReset={() => {
+                  setInputs({
+                    model: inputs.model,
+                    group: inputs.group,
+                    size: '1024x1024',
+                    prompt: '',
+                    temperature: 0.7,
+                    top_p: 1,
+                    max_tokens: 4096,
+                    frequency_penalty: 0,
+                    presence_penalty: 0,
+                    seed: null,
+                    stream: true,
+                    imageEnabled: false,
+                    imageUrls: [''],
+                  });
+                  setParameterEnabled({
+                    temperature: true,
+                    top_p: true,
+                    max_tokens: false,
+                    frequency_penalty: true,
+                    presence_penalty: true,
+                    seed: false,
+                  });
+                }}
+                onCustomRequestModeChange={setCustomRequestMode}
+                onCustomRequestBodyChange={setCustomRequestBody}
+                previewPayload={previewPayload}
+                messages={[]}
+                sizeOptions={SIZE_OPTIONS}
+                hideParameterControl={true}
+                hideConfigManager={true}
+              >
                 <Button
                   theme='solid'
                   type='primary'
                   onClick={handleGenerate}
                   loading={loading}
-                  disabled={loading}
-                  style={{ borderRadius: 9999, paddingInline: 24 }}
+                  disabled={loading || !inputs.model}
+                  block
+                  style={{ borderRadius: 4 }}
                 >
-                  {t('生成')}
+                  {t('生成图片')}
                 </Button>
-                <Button
-                  type='tertiary'
-                  onClick={() =>
-                    alert(
-                      `模型: ${model || '无可用模型'}\n温度: ${temperature.toFixed(1)}\n最大长度: ${maxLength}\n尺寸: ${size}\n分组: ${group || 'default'}\n注意: 使用 openapi 生成图片，计费规则与 /v1/images/generations 一致。`, 
-                    )
-                  }
-                  style={{ borderRadius: 9999, paddingInline: 24 }}
-                >
-                  应用参数
-                </Button>
-              </div>
-            </div>
-          </Card>
+              </SettingsPanel>
+            </Layout.Sider>
+          )}
 
-          <Card
-            style={{
-              borderRadius: 32,
-              padding: 24,
-              boxShadow: '0 24px 70px rgba(15, 23, 42, 0.1)',
-              background: 'rgba(255, 255, 255, 0.82)',
-              backdropFilter: 'blur(18px)',
-              minHeight: 720,
-            }}
-            bodyStyle={{ padding: 0, height: '100%' }}
-          >
-            <div
-              style={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 20,
-              }}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {showGenerationPreview ? null : (
-                  <>
-                    <Title heading={4} style={{ marginBottom: 0 }}>
-                      图片示例区
-                    </Title>
-                    <Paragraph type='tertiary' style={{ marginBottom: 0 }}>
-                      点击卡片可将提示词填入输入框，直接体验生成效果。
-                    </Paragraph>
-                  </>
-                )}
-              </div>
-
-              <div
-                style={{
-                  position: 'relative',
-                  flex: 1,
-                  minHeight: 0,
-                }}
-              >
-                {showGenerationPreview ? (
+          <Layout.Content className='relative flex-1 overflow-hidden'>
+            <div className='overflow-hidden flex flex-col lg:flex-row h-[calc(100vh-66px)] mt-[60px]'>
+              <div className='flex-1 flex flex-col'>
+                <div className='p-4 md:p-8 h-full overflow-y-auto'>
                   <div
                     style={{
-                      position: 'absolute',
-                      inset: 0,
-                      zIndex: 5,
-                      borderRadius: 22,
-                      overflow: 'hidden',
-                      background: 'rgba(255, 255, 255, 0.98)',
-                      boxShadow: '0 18px 40px rgba(15, 23, 42, 0.08)',
-                      display: 'flex',
-                      flexDirection: 'column',
+                      maxWidth: 1280,
+                      margin: '0 auto',
                     }}
                   >
-                    <div style={{ padding: 16, borderBottom: '1px solid rgba(15,23,42,0.08)' }}>
-                      <Text strong style={{ display: 'block', marginBottom: 8, fontSize: 18, color: '#0f172a' }}>
-                        生成图片预览
-                      </Text>
-                      <Paragraph style={{ marginBottom: 0, lineHeight: 1.7, color: '#475569' }}>
-                        {loading ? '图片正在生成中，请稍候…' : '这里显示最新生成的图片。'}
-                      </Paragraph>
-                    </div>
-                    <div
+                    <Card
                       style={{
-                        flex: 1,
-                        padding: 16,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        borderRadius: 8,
+                        boxShadow: '0 4px 12px rgba(1, 1, 32, 0.1)',
+                        background: 'rgba(255, 255, 255, 0.9)',
+                        height: '100%',
+                        minHeight: 500,
                       }}
+                      bodyStyle={{ padding: 24, height: '100%', display: 'flex', flexDirection: 'column' }}
                     >
-                      <div
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          borderRadius: 18,
-                          overflow: 'hidden',
-                          background: '#ffffff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          border: '1px solid rgba(15,23,42,0.08)',
-                        }}
-                      >
-                        {loading && !imageSrc ? (
-                          <Spin size='large' tip='正在生成...' />
-                        ) : (
-                          <img
-                            src={imageSrc}
-                            alt='generated preview'
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                              display: 'block',
-                              cursor: 'zoom-in',
-                            }}
-                            onClick={() => setPreviewImage({ title: '生成图片预览', image: imageSrc, prompt })}
-                          />
-                        )}
-                      </div>
-                    </div>
-                    <div style={{ padding: 16, borderTop: '1px solid rgba(15,23,42,0.08)' }}>
-                      <Text strong style={{ display: 'block', marginBottom: 8, color: '#0f172a' }}>
-                        当前提示词
-                      </Text>
-                      <Paragraph style={{ marginBottom: 0, lineHeight: 1.7, color: '#475569' }}>
-                        {prompt || '暂无提示词'}
-                      </Paragraph>
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                      gap: 16,
-                      alignItems: 'stretch',
-                    }}
-                  >
-                    {promptExamples.map((item) => (
-                      <Card
-                        key={item.title}
-                        bodyStyle={{ padding: 0 }}
-                        style={{
-                          borderRadius: 22,
-                          overflow: 'hidden',
-                          background: 'rgba(255,255,255,0.9)',
-                          border: '1px solid rgba(99, 102, 241, 0.12)',
-                          boxShadow: '0 12px 30px rgba(15, 23, 42, 0.08)',
-                          cursor: 'pointer',
-                          transition: 'transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'translateY(-6px)';
-                          e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.28)';
-                          e.currentTarget.style.boxShadow = '0 18px 40px rgba(15, 23, 42, 0.14)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'translateY(0)';
-                          e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.12)';
-                          e.currentTarget.style.boxShadow = '0 12px 30px rgba(15, 23, 42, 0.08)';
-                        }}
-                      >
-                        <div
-                          style={{
-                            position: 'relative',
-                            aspectRatio: '4 / 3',
-                            overflow: 'hidden',
-                            background: '#e2e8f0',
-                          }}
-                        >
-                          <img
-                            src={item.image}
-                            alt={item.title}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                              display: 'block',
-                              transition: 'transform 0.3s ease',
-                            }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleExampleImageClick(item);
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = 'scale(1.08)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.transform = 'scale(1)';
-                            }}
-                          />
-                          <div
-                            style={{
-                              position: 'absolute',
-                              left: 12,
-                              top: 12,
-                              padding: '6px 10px',
-                              borderRadius: 9999,
-                              background: 'rgba(15, 23, 42, 0.72)',
-                              color: '#fff',
-                              fontSize: 12,
-                              fontWeight: 600,
-                            }}
-                          >
-                            点击放大
-                          </div>
-                        </div>
-                        <div
-                          style={{ padding: 16 }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleExamplePromptClick(item);
-                          }}
-                        >
-                          <Text strong style={{ display: 'block', marginBottom: 8 }}>
-                            {item.title}
-                          </Text>
-                          <Paragraph style={{ marginBottom: 0, lineHeight: 1.7 }}>
-                            {item.prompt}
-                          </Paragraph>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                        {/* 图片展示区 */}
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                          {showGenerationPreview ? (
+                            <div
+                              style={{
+                                flex: 1,
+                                minHeight: 300,
+                                borderRadius: 8,
+                                overflow: 'hidden',
+                                background: '#f8fafc',
+                                border: '1px solid rgba(15,23,42,0.08)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              {loading && !imageSrc ? (
+                                <div style={{ textAlign: 'center' }}>
+                                  <Spin size='large' tip={t('正在生成...')} />
+                                  <Paragraph type='tertiary' style={{ marginTop: 16 }}>
+                                    {t('图片正在生成中，请稍候')}
+                                  </Paragraph>
+                                </div>
+                              ) : imageSrc ? (
+                                <img
+                                  src={imageSrc}
+                                  alt={t('生成的图片')}
+                                  style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'contain',
+                                    display: 'block',
+                                    cursor: 'zoom-in',
+                                  }}
+                                  onClick={() => setPreviewImage({ title: t('生成图片预览'), image: imageSrc, prompt: inputs.prompt })}
+                                />
+                              ) : null}
+                            </div>
+                          ) : (
+                            <>
+                              {/* 图片示例区 */}
+                              <div style={{ marginBottom: 8 }}>
+                                <Title heading={5} style={{ marginBottom: 8 }}>
+                                  {t('灵光一闪')}
+                                </Title>
+                                <Paragraph type='tertiary' style={{ marginBottom: 0, fontSize: 14 }}>
+                                  {t('点击卡片可将提示词填入输入框，直接体验生成效果')}
+                                </Paragraph>
+                              </div>
 
-              <Modal
-                title={previewImage?.title || '图片预览'}
-                visible={Boolean(previewImage)}
-                onCancel={() => setPreviewImage(null)}
-                footer={null}
-                centered
-                width={840}
-                bodyStyle={{ padding: 0, overflow: 'hidden', borderRadius: 24 }}
-              >
-                {previewImage && (
-                  <div style={{ background: '#0f172a' }}>
-                    <div style={{ width: '100%', aspectRatio: '16 / 10', overflow: 'hidden' }}>
-                      <img
-                        src={previewImage.image}
-                        alt={previewImage.title}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          display: 'block',
-                        }}
-                      />
-                    </div>
-                    <div style={{ padding: 20, background: '#fff' }}>
-                      <Text strong style={{ display: 'block', marginBottom: 10, fontSize: 18 }}>
-                        {previewImage.title}
-                      </Text>
-                      <Paragraph style={{ marginBottom: 0, lineHeight: 1.75, fontSize: 15 }}>
-                        {previewImage.prompt}
-                      </Paragraph>
-                    </div>
+                              <div
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
+                                  gap: 20,
+                                }}
+                              >
+                                {promptExamples.map((item) => (
+                                  <Card
+                                    key={item.title}
+                                    bodyStyle={{ padding: 0 }}
+                                    style={{
+                                      borderRadius: 8,
+                                      overflow: 'hidden',
+                                      background: '#fff',
+                                      border: '1px solid rgba(99, 102, 241, 0.12)',
+                                      cursor: 'pointer',
+                                      transition: 'transform 0.25s ease, box-shadow 0.25s ease',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.transform = 'translateY(-4px)';
+                                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(1, 1, 32, 0.12)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.transform = 'translateY(0)';
+                                      e.currentTarget.style.boxShadow = 'none';
+                                    }}
+                                    onClick={() => handleExamplePromptClick(item)}
+                                  >
+                                    <div
+                                      style={{
+                                        position: 'relative',
+                                        aspectRatio: '16 / 9',
+                                        overflow: 'hidden',
+                                        background: '#f1f5f9',
+                                      }}
+                                    >
+                                      <img
+                                        src={item.image}
+                                        alt={item.title}
+                                        style={{
+                                          width: '100%',
+                                          height: '100%',
+                                          objectFit: 'cover',
+                                          display: 'block',
+                                          cursor: 'zoom-in',
+                                        }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleExamplePromptClick(item);
+                                          setPreviewImage(item);
+                                        }}
+                                      />
+                                    </div>
+                                    <div
+                                      style={{ padding: 16 }}
+                                    >
+                                      <Text strong style={{ display: 'block', marginBottom: 6, fontSize: 15 }}>
+                                        {item.title}
+                                      </Text>
+                                      <Paragraph style={{ marginBottom: 0, fontSize: 14, lineHeight: 1.6 }}>
+                                        {item.prompt}
+                                      </Paragraph>
+                                    </div>
+                                  </Card>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </Card>
                   </div>
-                )}
-              </Modal>
+                </div>
+              </div>
             </div>
-          </Card>
-        </div>
-      </Layout.Content>
-    </Layout>
+
+            {/* 浮动按钮 */}
+            <FloatingButtons
+              styleState={styleState}
+              showSettings={showSettings}
+              showDebugPanel={showDebugPanel}
+              onToggleSettings={() => setShowSettings(!showSettings)}
+              onToggleDebugPanel={() => setShowDebugPanel(!showDebugPanel)}
+            />
+          </Layout.Content>
+        </Layout>
+      </div>
+
+      {/* 图片预览 Modal */}
+      <Modal
+        title={previewImage?.title || t('图片预览')}
+        visible={Boolean(previewImage)}
+        onCancel={() => setPreviewImage(null)}
+        footer={null}
+        centered
+        width={840}
+        bodyStyle={{ padding: 0, overflow: 'hidden', borderRadius: 8 }}
+      >
+        {previewImage && (
+          <div style={{ background: '#0f172a' }}>
+            <div style={{ width: '100%', aspectRatio: '16 / 10', overflow: 'hidden' }}>
+              <img
+                src={previewImage.image}
+                alt={previewImage.title}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                }}
+              />
+            </div>
+            {previewImage.prompt && (
+              <div style={{ padding: 20, background: '#fff' }}>
+                <Text strong style={{ display: 'block', marginBottom: 8, fontSize: 16 }}>
+                  {t('提示词')}
+                </Text>
+                <Paragraph style={{ marginBottom: 0, lineHeight: 1.75, fontSize: 15 }}>
+                  {previewImage.prompt}
+                </Paragraph>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+    </PlaygroundProvider>
   );
 };
 

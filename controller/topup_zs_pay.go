@@ -15,8 +15,8 @@ import (
 )
 
 type ZSPayRequest struct {
-	Amount        int64  `json:"amount"`
-	PaymentMethod string `json:"payment_method"`
+	Amount        float64 `json:"amount"`
+	PaymentMethod string  `json:"payment_method"`
 }
 
 func GetZSPayInfo(c *gin.Context) {
@@ -43,7 +43,7 @@ func RequestZSPay(c *gin.Context) {
 
 	// 应用充值金额折扣
 	discount := 1.0
-	if ds, ok := operation_setting.GetPaymentSetting().AmountDiscount[int(req.Amount)]; ok && ds > 0 {
+	if ds, ok := operation_setting.GetPaymentSetting().AmountDiscount[strconv.FormatFloat(float64(req.Amount), 'f', -1, 64)]; ok && ds > 0 {
 		discount = ds
 	}
 
@@ -73,14 +73,14 @@ func RequestZSPay(c *gin.Context) {
 
 	amount := req.Amount
 	if operation_setting.GetQuotaDisplayType() == operation_setting.QuotaDisplayTypeTokens {
-		dAmount := decimal.NewFromInt(int64(amount))
+		dAmount := decimal.NewFromFloat(amount)
 		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-		amount = dAmount.Div(dQuotaPerUnit).IntPart()
+		amount = dAmount.Div(dQuotaPerUnit).InexactFloat64()
 	}
 
 	topUp := &model.TopUp{
 		UserId:        id,
-		Amount:        amount,
+		Amount:        int64(amount),
 		Money:         payMoney,
 		TradeNo:       tradeNo,
 		PaymentMethod: req.PaymentMethod,

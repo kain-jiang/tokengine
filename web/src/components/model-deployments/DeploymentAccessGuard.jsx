@@ -75,9 +75,9 @@ const DeploymentAccessGuard = ({
           <Card
             style={{
               padding: '60px 40px',
-              borderRadius: '16px',
+              borderRadius: '8px',
               border: '1px solid var(--semi-color-border)',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+              boxShadow: '0 4px 20px rgba(1, 1, 32, 0.1)',
               background:
                 'linear-gradient(135deg, var(--semi-color-bg-0) 0%, var(--semi-color-fill-0) 100%)',
             }}
@@ -132,10 +132,10 @@ const DeploymentAccessGuard = ({
               style={{
                 backgroundColor: 'var(--semi-color-bg-1)',
                 padding: '24px',
-                borderRadius: '12px',
+                borderRadius: '8px',
                 border: '1px solid var(--semi-color-border)',
                 margin: '32px 0',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+                boxShadow: '0 2px 8px rgba(1, 1, 32, 0.08)',
               }}
             >
               <div
@@ -250,7 +250,7 @@ const DeploymentAccessGuard = ({
                   e.currentTarget.style.background = 'var(--semi-color-fill-1)';
                   e.currentTarget.style.transform = 'translateY(-1px)';
                   e.currentTarget.style.boxShadow =
-                    '0 2px 8px rgba(0, 0, 0, 0.1)';
+                    '0 2px 8px rgba(1, 1, 32, 0.1)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'var(--semi-color-fill-0)';
@@ -321,9 +321,9 @@ const DeploymentAccessGuard = ({
           <Card
             style={{
               padding: '60px 40px',
-              borderRadius: '16px',
+              borderRadius: '8px',
               border: '1px solid var(--semi-color-border)',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+              boxShadow: '0 4px 20px rgba(1, 1, 32, 0.1)',
               background:
                 'linear-gradient(135deg, var(--semi-color-bg-0) 0%, var(--semi-color-fill-0) 100%)',
             }}

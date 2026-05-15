@@ -241,7 +241,7 @@ export function PreCode(props) {
                 borderRadius: '4px',
                 cursor: 'pointer',
                 border: '1px solid var(--semi-color-border)',
-                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+                boxShadow: '0 1px 2px rgba(1, 1, 32, 0.1)',
               }}
             />
           </Tooltip>
@@ -590,7 +590,7 @@ function _MarkdownContent(props) {
                 border: isUserMessage
                   ? '1px solid rgba(255, 255, 255, 0.3)'
                   : '1px solid var(--semi-color-border)',
-                borderRadius: '6px',
+                borderRadius: '4px',
                 overflow: 'hidden',
               }}
             />

@@ -45,7 +45,7 @@ const FloatingButtons = ({
             height: 36,
             borderRadius: '50%',
             padding: 0,
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+            boxShadow: '0 4px 12px rgba(1, 1, 32, 0.2)',
             background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
           }}
           onClick={onToggleSettings}
@@ -71,7 +71,7 @@ const FloatingButtons = ({
             height: 36,
             borderRadius: '50%',
             padding: 0,
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+            boxShadow: '0 4px 12px rgba(1, 1, 32, 0.2)',
             background: showDebugPanel
               ? 'linear-gradient(to right, #e11d48, #be123c)'
               : 'linear-gradient(to right, #4f46e5, #6366f1)',

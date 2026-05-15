@@ -135,7 +135,7 @@ const PricingCardView = ({
           style={{
             width: 48,
             height: 48,
-            borderRadius: 16,
+            borderRadius: 8,
             fontSize: 16,
             fontWeight: 'bold',
           }}

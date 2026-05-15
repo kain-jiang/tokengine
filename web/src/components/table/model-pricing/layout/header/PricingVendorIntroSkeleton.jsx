@@ -76,7 +76,7 @@ const SKELETON_STYLES = {
       : THEME_COLORS.specific;
     return {
       backgroundColor: colors.background,
-      borderRadius: 12,
+      borderRadius: 8,
       border: `1px solid ${colors.border}`,
     };
   },

@@ -50,7 +50,7 @@ const LogsActions = ({
             color='blue'
             style={{
               fontWeight: 500,
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              boxShadow: '0 2px 8px rgba(1, 1, 32, 0.1)',
               padding: 13,
             }}
             className='!rounded-lg'
@@ -61,7 +61,7 @@ const LogsActions = ({
             color='pink'
             style={{
               fontWeight: 500,
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              boxShadow: '0 2px 8px rgba(1, 1, 32, 0.1)',
               padding: 13,
             }}
             className='!rounded-lg'
@@ -72,7 +72,7 @@ const LogsActions = ({
             color='white'
             style={{
               border: 'none',
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
+              boxShadow: '0 2px 8px rgba(1, 1, 32, 0.1)',
               fontWeight: 500,
               padding: 13,
             }}

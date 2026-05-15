@@ -356,7 +356,7 @@ export default function SettingsChannelAffinity(props) {
               fontSize: 12,
               lineHeight: 1.6,
               padding: 10,
-              borderRadius: 8,
+              borderRadius: 4,
               background: 'var(--semi-color-fill-0)',
               border: '1px solid var(--semi-color-border)',
               whiteSpace: 'pre-wrap',
@@ -1216,7 +1216,7 @@ export default function SettingsChannelAffinity(props) {
                   <div
                     style={{
                       marginTop: 8,
-                      borderRadius: 10,
+                      borderRadius: 8,
                       padding: 10,
                       background: 'var(--semi-color-fill-0)',
                       border: '1px solid var(--semi-color-border)',

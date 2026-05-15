@@ -249,7 +249,7 @@ export default function SettingModelDeployment(props) {
                         style={{
                           height: '32px',
                           fontSize: '13px',
-                          borderRadius: '6px',
+                          borderRadius: '4px',
                           fontWeight: '500',
                           borderColor: testing
                             ? 'var(--semi-color-primary)'

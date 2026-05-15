@@ -455,7 +455,7 @@ export default function GroupRatioSettings(props) {
         background: 'var(--semi-color-bg-2)',
         border: '1px solid var(--semi-color-border)',
         padding: '10px 14px',
-        borderRadius: 6,
+        borderRadius: 4,
         fontFamily: 'monospace',
         fontSize: 13,
         margin: '8px 0',

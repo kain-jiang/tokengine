@@ -26,6 +26,7 @@ import {
   Typography,
   Select,
 } from '@douyinfe/semi-ui';
+import { Key } from 'lucide-react';
 import {
   API,
   showError,
@@ -33,15 +34,17 @@ import {
   selectFilter,
 } from '../../../helpers';
 import CardPro from '../../common/ui/CardPro';
+import CompactModeToggle from '../../common/ui/CompactModeToggle';
 import TokensTable from './TokensTable';
 import TokensActions from './TokensActions';
 import TokensFilters from './TokensFilters';
-import TokensDescription from './TokensDescription';
 import EditTokenModal from './modals/EditTokenModal';
 import CCSwitchModal from './modals/CCSwitchModal';
 import { useTokensData } from '../../../hooks/tokens/useTokensData';
 import { useIsMobile } from '../../../hooks/common/useIsMobile';
 import { createCardProPagination } from '../../../helpers/utils';
+
+const { Text } = Typography;
 
 function TokensPage() {
   // Define the function first, then pass it into the hook to avoid TDZ errors
@@ -392,35 +395,30 @@ function TokensPage() {
       />
 
       <CardPro
-        type='type1'
-        descriptionArea={
-          <TokensDescription
-            compactMode={compactMode}
-            setCompactMode={setCompactMode}
-            t={t}
-          />
-        }
-        actionsArea={
-          <div className='flex flex-col md:flex-row justify-between items-center gap-2 w-full'>
-            <TokensActions
-              selectedKeys={selectedKeys}
-              setEditingToken={setEditingToken}
-              setShowEdit={setShowEdit}
-              batchCopyTokens={batchCopyTokens}
-              batchDeleteTokens={batchDeleteTokens}
+        type='type2'
+        statsArea={
+          <div className='flex flex-col md:flex-row justify-between items-start md:items-center gap-2 w-full'>
+            <div className='flex items-center text-blue-500'>
+              <Key size={16} className='mr-2' />
+              <Text>{t('令牌管理')}</Text>
+            </div>
+            <CompactModeToggle
+              compactMode={compactMode}
+              setCompactMode={setCompactMode}
               t={t}
             />
-
-            <div className='w-full md:w-full lg:w-auto order-1 md:order-2'>
-              <TokensFilters
-                formInitValues={formInitValues}
-                setFormApi={setFormApi}
-                searchTokens={searchTokens}
-                loading={loading}
-                searching={searching}
-                t={t}
-              />
-            </div>
+          </div>
+        }
+        searchArea={
+          <div className='w-full md:w-full lg:w-auto'>
+            <TokensFilters
+              formInitValues={formInitValues}
+              setFormApi={setFormApi}
+              searchTokens={searchTokens}
+              loading={loading}
+              searching={searching}
+              t={t}
+            />
           </div>
         }
         paginationArea={createCardProPagination({

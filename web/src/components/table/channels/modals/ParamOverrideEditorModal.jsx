@@ -3462,7 +3462,7 @@ const ParamOverrideEditorModal = ({ visible, value, onSave, onCancel }) => {
                             style={{
                               background: 'var(--semi-color-bg-1)',
                               border: '1px solid var(--semi-color-border)',
-                              borderRadius: 8,
+                              borderRadius: 4,
                               padding: '4px 8px',
                               width: 'fit-content',
                             }}

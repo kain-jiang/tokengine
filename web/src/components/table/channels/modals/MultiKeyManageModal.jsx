@@ -494,7 +494,7 @@ const MultiKeyManageModal = ({ visible, onCancel, channel, onRefresh }) => {
                 style={{
                   background: 'var(--semi-color-bg-0)',
                   border: '1px solid var(--semi-color-border)',
-                  borderRadius: 12,
+                  borderRadius: 8,
                   padding: 12,
                 }}
               >

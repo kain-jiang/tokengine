@@ -224,7 +224,7 @@ const TwoFAVerification = ({ onSuccess, onBack, isModal = false }) => {
             marginTop: 24,
             padding: 16,
             background: '#f6f8fa',
-            borderRadius: 6,
+            borderRadius: 4,
           }}
         >
           <Text size='small' type='secondary'>
