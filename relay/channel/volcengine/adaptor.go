@@ -33,7 +33,6 @@ type Adaptor struct {
 }
 
 func (a *Adaptor) ConvertGeminiRequest(*gin.Context, *relaycommon.RelayInfo, *dto.GeminiChatRequest) (any, error) {
-	//TODO implement me
 	return nil, errors.New("not implemented")
 }
 
@@ -105,114 +104,57 @@ func (a *Adaptor) ConvertAudioRequest(c *gin.Context, info *relaycommon.RelayInf
 	return bytes.NewReader(jsonData), nil
 }
 
-func (a *Adaptor) ConvertImageRequest(c *gin.Context, info *relaycommon.RelayInfo, request dto.ImageRequest) (any, error) {
-	switch info.RelayMode {
-	case constant.RelayModeImagesGenerations:
-		return request, nil
-	// 根据官方文档,并没有发现豆包生图支持表单请求:https://www.volcengine.com/docs/82379/1824121
-	//case constant.RelayModeImagesEdits:
-	//
-	//	var requestBody bytes.Buffer
-	//	writer := multipart.NewWriter(&requestBody)
-	//
-	//	writer.WriteField("model", request.Model)
-	//
-	//	formData := c.Request.PostForm
-	//	for key, values := range formData {
-	//		if key == "model" {
-	//			continue
-	//		}
-	//		for _, value := range values {
-	//			writer.WriteField(key, value)
-	//		}
-	//	}
-	//
-	//	if err := c.Request.ParseMultipartForm(32 << 20); err != nil {
-	//		return nil, errors.New("failed to parse multipart form")
-	//	}
-	//
-	//	if c.Request.MultipartForm != nil && c.Request.MultipartForm.File != nil {
-	//		var imageFiles []*multipart.FileHeader
-	//		var exists bool
-	//
-	//		if imageFiles, exists = c.Request.MultipartForm.File["image"]; !exists || len(imageFiles) == 0 {
-	//			if imageFiles, exists = c.Request.MultipartForm.File["image[]"]; !exists || len(imageFiles) == 0 {
-	//				foundArrayImages := false
-	//				for fieldName, files := range c.Request.MultipartForm.File {
-	//					if strings.HasPrefix(fieldName, "image[") && len(files) > 0 {
-	//						foundArrayImages = true
-	//						for _, file := range files {
-	//							imageFiles = append(imageFiles, file)
-	//						}
-	//					}
-	//				}
-	//
-	//				if !foundArrayImages && (len(imageFiles) == 0) {
-	//					return nil, errors.New("image is required")
-	//				}
-	//			}
-	//		}
-	//
-	//		for i, fileHeader := range imageFiles {
-	//			file, err := fileHeader.Open()
-	//			if err != nil {
-	//				return nil, fmt.Errorf("failed to open image file %d: %w", i, err)
-	//			}
-	//			defer file.Close()
-	//
-	//			fieldName := "image"
-	//			if len(imageFiles) > 1 {
-	//				fieldName = "image[]"
-	//			}
-	//
-	//			mimeType := detectImageMimeType(fileHeader.Filename)
-	//
-	//			h := make(textproto.MIMEHeader)
-	//			h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, fieldName, fileHeader.Filename))
-	//			h.Set("Content-Type", mimeType)
-	//
-	//			part, err := writer.CreatePart(h)
-	//			if err != nil {
-	//				return nil, fmt.Errorf("create form part failed for image %d: %w", i, err)
-	//			}
-	//
-	//			if _, err := io.Copy(part, file); err != nil {
-	//				return nil, fmt.Errorf("copy file failed for image %d: %w", i, err)
-	//			}
-	//		}
-	//
-	//		if maskFiles, exists := c.Request.MultipartForm.File["mask"]; exists && len(maskFiles) > 0 {
-	//			maskFile, err := maskFiles[0].Open()
-	//			if err != nil {
-	//				return nil, errors.New("failed to open mask file")
-	//			}
-	//			defer maskFile.Close()
-	//
-	//			mimeType := detectImageMimeType(maskFiles[0].Filename)
-	//
-	//			h := make(textproto.MIMEHeader)
-	//			h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="mask"; filename="%s"`, maskFiles[0].Filename))
-	//			h.Set("Content-Type", mimeType)
-	//
-	//			maskPart, err := writer.CreatePart(h)
-	//			if err != nil {
-	//				return nil, errors.New("create form file failed for mask")
-	//			}
-	//
-	//			if _, err := io.Copy(maskPart, maskFile); err != nil {
-	//				return nil, errors.New("copy mask file failed")
-	//			}
-	//		}
-	//	} else {
-	//		return nil, errors.New("no multipart form data found")
-	//	}
-	//
-	//	writer.Close()
-	//	c.Request.Header.Set("Content-Type", writer.FormDataContentType())
-	//	return bytes.NewReader(requestBody.Bytes()), nil
+type volcengineImageRequest struct {
+	Model                     string `json:"model"`
+	Prompt                    string `json:"prompt"`
+	ResponseFormat            string `json:"response_format,omitempty"`
+	Size                      string `json:"size,omitempty"`
+	Stream                    bool   `json:"stream,omitempty"`
+	Watermark                 *bool  `json:"watermark,omitempty"`
+	SequentialImageGeneration string `json:"sequential_image_generation,omitempty"`
+}
 
+func (a *Adaptor) ConvertImageRequest(c *gin.Context, info *relaycommon.RelayInfo, request dto.ImageRequest) (any, error) {
+	if request.Model == "" {
+		request.Model = info.UpstreamModelName
+	}
+	prompt := strings.TrimSpace(request.Prompt)
+	if prompt == "" {
+		return nil, errors.New("prompt is required")
+	}
+	normalizedSize := normalizeVolcengineSeedreamSize(request.Size)
+	converted := volcengineImageRequest{
+		Model:                     request.Model,
+		Prompt:                    prompt,
+		ResponseFormat:            request.ResponseFormat,
+		Size:                      normalizedSize,
+		Stream:                    false,
+		Watermark:                 request.Watermark,
+		SequentialImageGeneration: "disabled",
+	}
+	if converted.ResponseFormat == "" {
+		converted.ResponseFormat = "url"
+	}
+	if request.Model == "doubao-seedream-4-5-251128" || request.Model == "seedream-4-5-251128" {
+		converted.Model = request.Model
+	}
+	return converted, nil
+}
+
+func normalizeVolcengineSeedreamSize(size string) string {
+	s := strings.TrimSpace(strings.ToLower(size))
+	switch s {
+	case "", "1024x1024", "1024×1024":
+		return "2K"
+	case "1536x1024", "1536×1024", "1024x1536", "1024×1536":
+		return "2K"
+	case "2048x2048", "2048×2048":
+		return "4K"
+	case "2k", "4k":
+		return strings.ToUpper(s)
 	default:
-		return request, nil
+		// Seedream 要求至少 3,686,400 像素，默认兜底到 2K。
+		return "2K"
 	}
 }
 
@@ -264,7 +206,8 @@ func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 			return fmt.Sprintf("%s/api/v3/chat/completions", baseUrl), nil
 		case constant.RelayModeEmbeddings:
 			return fmt.Sprintf("%s/api/v3/embeddings", baseUrl), nil
-		//豆包的图生图也走generations接口: https://www.volcengine.com/docs/82379/1824121
+		// 豆包生图/生视频在火山方舟上均走 generations 接口。
+		// 其中 Seedream 4.5 以 images/generations 提供图片生成能力。
 		case constant.RelayModeImagesGenerations, constant.RelayModeImagesEdits:
 			return fmt.Sprintf("%s/api/v3/images/generations", baseUrl), nil
 		//case constant.RelayModeImagesEdits:

@@ -113,10 +113,24 @@ func GetRandomSatisfiedChannel(group string, model string, retry int) (*Channel,
 	// First, try to find channels with the exact model name.
 	channels := group2model2channels[group][model]
 
-	// If no channels found, try to find channels with the normalized model name.
+	// If no channels found, try to find the normalized model name.
 	if len(channels) == 0 {
 		normalizedModel := ratio_setting.FormatMatchingModelName(model)
 		channels = group2model2channels[group][normalizedModel]
+	}
+
+	// Heuristic routing for VolcEngine image models.
+	// Prefer the VolcEngine channel when the requested model is a known Seedream image model.
+	if len(channels) == 0 && (strings.HasPrefix(strings.ToLower(model), "doubao-seedream-") || strings.HasPrefix(strings.ToLower(model), "seedream-")) {
+		for _, channel := range channelsIDM {
+			if channel != nil && channel.Type == constant.ChannelTypeVolcEngine && channel.Status == common.ChannelStatusEnabled {
+				for _, groupName := range channel.GetGroups() {
+					if groupName == group {
+						return channel, nil
+					}
+				}
+			}
+		}
 	}
 
 	if len(channels) == 0 {
