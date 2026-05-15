@@ -24,24 +24,14 @@ import SettingsPaymentGateway from '../../pages/Setting/Payment/SettingsPaymentG
 import SettingsPaymentGatewayStripe from '../../pages/Setting/Payment/SettingsPaymentGatewayStripe';
 import SettingsPaymentGatewayCreem from '../../pages/Setting/Payment/SettingsPaymentGatewayCreem';
 import SettingsPaymentGatewayWaffo from '../../pages/Setting/Payment/SettingsPaymentGatewayWaffo';
-import SettingsPaymentGateway from '../../pages/Setting/Payment/SettingsPaymentGateway';
-import SettingsPaymentGatewayStripe from '../../pages/Setting/Payment/SettingsPaymentGatewayStripe';
-import SettingsPaymentGatewayCreem from '../../pages/Setting/Payment/SettingsPaymentGatewayCreem';
-import SettingsPaymentGatewayWaffo from '../../pages/Setting/Payment/SettingsPaymentGatewayWaffo';
-import { ChevronDown, ChevronUp } from 'lucide-react';
 import SettingsPaymentGatewayZS from '../../pages/Setting/Payment/SettingsPaymentGatewayZS';
 import SettingsPaymentGatewayHelipay from '../../pages/Setting/Payment/SettingsPaymentGatewayHelipay';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { API, showError, toBoolean } from '../../helpers';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronUp } from 'lucide-react';
-    PayAddress: '',
-    EpayId: '',
-    EpayKey: '',
 
 const PaymentSetting = () => {
   const { t } = useTranslation();
-    CustomCallbackAddress: '',
-    PayMethods: '',
   let [inputs, setInputs] = useState({
     ServerAddress: '',
     PayAddress: '',
@@ -83,43 +73,6 @@ const PaymentSetting = () => {
     AmountOptions: '',
     AmountDiscount: '',
 
-    StripeApiSecret: '',
-    StripeWebhookSecret: '',
-    StripePriceId: '',
-    StripeUnitPrice: 8.0,
-  // 控制各个支付方式的折叠状态（默认全部折叠）
-  const [collapsedSections, setCollapsedSections] = useState({
-    epay: true,
-    stripe: true,
-    creem: true,
-    waffo: true,
-    zs: true,
-    helipay: true,
-  });
-    StripeMinTopUp: 1,
-    StripePromotionCodesEnabled: false,
-
-    CreemApiKey: '',
-    CreemWebhookSecret: '',
-      let newInputs = { ...inputs }; // 基于现有状态进行更新
-    CreemTestMode: false,
-
-    WaffoEnabled: false,
-    WaffoApiKey: '',
-    WaffoPrivateKey: '',
-    WaffoPublicCert: '',
-    WaffoSandboxPublicCert: '',
-    WaffoSandboxApiKey: '',
-    WaffoSandboxPrivateKey: '',
-    WaffoSandbox: false,
-    WaffoMerchantId: '',
-    WaffoCurrency: 'USD',
-    WaffoUnitPrice: 1.0,
-    WaffoMinTopUp: 1,
-    WaffoNotifyUrl: '',
-    WaffoReturnUrl: '',
-    WaffoPayMethods: '',
-
     ZSPayEnabled: false,
     ZSPayMerID: '',
     ZSPayBaseURL: 'https://api.cmburl.cn:8065',
@@ -139,17 +92,8 @@ const PaymentSetting = () => {
     epay: true,
     stripe: true,
     creem: true,
-          case 'StripeUnitPrice':
-          case 'StripeMinTopUp':
-          case 'WaffoUnitPrice':
-          case 'WaffoMinTopUp':
     waffo: true,
     zs: true,
-          case 'CreemTestMode':
-          case 'WaffoEnabled':
-          case 'WaffoSandbox':
-            newInputs[item.key] = toBoolean(item.value);
-            break;
     helipay: true,
   });
 
@@ -207,26 +151,10 @@ const PaymentSetting = () => {
             newInputs[item.key] = toBoolean(item.value);
             break;
           case 'zs_payment.Enabled':
-  // 组件挂载时加载配置
             newInputs['ZSPayEnabled'] = toBoolean(item.value);
             break;
           case 'zs_payment.MerID':
             newInputs['ZSPayMerID'] = item.value;
-  const toggleSection = (section) => {
-    setCollapsedSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
-  };
-
-  const getSectionIcon = (section) => {
-    return collapsedSections[section] ? (
-      <ChevronDown size={16} />
-    ) : (
-      <ChevronUp size={16} />
-    );
-  };
-
             break;
           case 'zs_payment.BaseURL':
             newInputs['ZSPayBaseURL'] = item.value;
@@ -235,136 +163,17 @@ const PaymentSetting = () => {
             newInputs['ZSPayNotifyPath'] = item.value;
             break;
           case 'zs_payment.PayValidTime':
-        {/* 易支付配置 */}
-        <Card style={{ marginTop: '10px' }}>
-          <div 
-            onClick={() => toggleSection('epay')}
-            style={{ 
-              cursor: 'pointer', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              marginBottom: collapsedSections.epay ? 0 : 16
-            }}
-          >
-            <h4 style={{ margin: 0 }}>
-              {t('易支付配置')}
-            </h4>
-            {getSectionIcon('epay')}
-          </div>
-          {!collapsedSections.epay && (
-            <SettingsPaymentGateway options={inputs} refresh={onRefresh} />
-          )}
-        </Card>
-
             newInputs['ZSPayPayValidTime'] = item.value;
             break;
-          <div 
-            onClick={() => toggleSection('zs')}
-            style={{ 
-              cursor: 'pointer', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              marginBottom: collapsedSections.zs ? 0 : 16
-            }}
-          >
-            <h4 style={{ margin: 0 }}>
-              {t('招商银行聚合支付配置')}
-            </h4>
-            {getSectionIcon('zs')}
-          </div>
-          {!collapsedSections.zs && (
-            <SettingsPaymentGatewayZS options={inputs} refresh={onRefresh} />
-          )}
+          case 'helipay.TransactionApi':
             newInputs['HelipayTransactionApi'] = item.value;
             break;
           case 'helipay.QueryApi':
             newInputs['HelipayQueryApi'] = item.value;
-          <div 
-            onClick={() => toggleSection('helipay')}
-            style={{ 
-              cursor: 'pointer', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              marginBottom: collapsedSections.helipay ? 0 : 16
-            }}
-          >
-            <h4 style={{ margin: 0 }}>
-              {t('合利宝支付配置')}
-            </h4>
-            {getSectionIcon('helipay')}
-          </div>
-          {!collapsedSections.helipay && (
-            <SettingsPaymentGatewayHelipay options={inputs} refresh={onRefresh} />
-          )}
-        </Card>
-
-        {/* Stripe 配置 */}
-        <Card style={{ marginTop: '10px' }}>
-          <div 
-            onClick={() => toggleSection('stripe')}
-            style={{ 
-              cursor: 'pointer', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              marginBottom: collapsedSections.stripe ? 0 : 16
-            }}
-          >
-            <h4 style={{ margin: 0 }}>
-              {t('Stripe 配置')}
-            </h4>
-            {getSectionIcon('stripe')}
-          </div>
-          {!collapsedSections.stripe && (
-            <SettingsPaymentGatewayStripe options={inputs} refresh={onRefresh} />
-          )}
-        </Card>
-
-        {/* Creem 配置 */}
-        <Card style={{ marginTop: '10px' }}>
-          <div 
-            onClick={() => toggleSection('creem')}
-            style={{ 
-              cursor: 'pointer', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              marginBottom: collapsedSections.creem ? 0 : 16
-            }}
-          >
-            <h4 style={{ margin: 0 }}>
-              {t('Creem 配置')}
-            </h4>
-            {getSectionIcon('creem')}
-          </div>
-          {!collapsedSections.creem && (
-            <SettingsPaymentGatewayCreem options={inputs} refresh={onRefresh} />
-          )}
-        </Card>
-
-        {/* Waffo 配置 */}
-        <Card style={{ marginTop: '10px' }}>
-          <div 
-            onClick={() => toggleSection('waffo')}
-            style={{ 
-              cursor: 'pointer', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              marginBottom: collapsedSections.waffo ? 0 : 16
-            }}
-          >
-            <h4 style={{ margin: 0 }}>
-              {t('Waffo 配置')}
-            </h4>
-            {getSectionIcon('waffo')}
-          </div>
-          {!collapsedSections.waffo && (
-            <SettingsPaymentGatewayWaffo options={inputs} refresh={onRefresh} />
-          )}
+            break;
+          case 'helipay.NotifyPath':
+            newInputs['HelipayNotifyPath'] = item.value;
+            break;
           case 'helipay.PayValidTime':
             newInputs['HelipayPayValidTime'] = item.value;
             break;
