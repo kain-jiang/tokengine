@@ -204,7 +204,8 @@ func ZSPayNotify(c *gin.Context) {
 		}
 	}
 
-	log.Printf("招商银行聚合支付回调: %+v", notifyData)
+	log.Printf("[ZSPay-Notify] 收到回调: orderId=%s, cmbOrderId=%s, txnAmt=%s, payType=%s",
+		notifyData.OrderID, notifyData.CmbOrderID, notifyData.TxnAmt, notifyData.PayType)
 
 	if notifyData.OrderID == "" {
 		log.Println("招商银行聚合支付回调订单号为空")
@@ -277,6 +278,31 @@ func QueryZSPayStatus(c *gin.Context) {
 	// 转换状态：C-已关闭 D-已撤销 P-进行中 F-失败 S-成功 R-转入退款
 	status := convertTradeState(resp.TradeState)
 	tradeState := resp.TradeState
+
+	// 如果查询到订单已支付且当前状态为待支付，则自动更新数据库
+	if tradeState == "S" {
+		LockOrder(tradeNo)
+		defer UnlockOrder(tradeNo)
+
+		topUp := model.GetTopUpByTradeNo(tradeNo)
+		if topUp != nil && topUp.Status == "pending" {
+			topUp.Status = "success"
+			if err := topUp.Update(); err != nil {
+				log.Printf("招商银行聚合支付查询更新订单失败: %s, 错误: %v", tradeNo, err)
+			} else {
+				dAmount := decimal.NewFromInt(topUp.Amount)
+				dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
+				quotaToAdd := int(dAmount.Mul(dQuotaPerUnit).IntPart())
+
+				if err := model.IncreaseUserQuota(topUp.UserId, quotaToAdd, true); err != nil {
+					log.Printf("招商银行聚合支付查询更新用户额度失败: %s, 错误: %v", tradeNo, err)
+				} else {
+					log.Printf("招商银行聚合支付查询自动更新订单成功: %s, 用户: %d, 充值: %d", tradeNo, topUp.UserId, quotaToAdd)
+					model.RecordLog(topUp.UserId, model.LogTypeTopup, fmt.Sprintf("查询支付状态发现已支付，充值金额: %d tokens", quotaToAdd))
+				}
+			}
+		}
+	}
 
 	c.JSON(200, gin.H{
 		"message":    "success",

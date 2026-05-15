@@ -2,7 +2,8 @@ FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/oven/bun:1.3.9-alpine AS
 
 WORKDIR /build
 COPY web/package.json .
-RUN rm -rf ~/.bun/install/cache && BUN_INSTALL_REGISTRY=https://registry.npmmirror.com bun install --force
+COPY web/bun.lock .
+RUN BUN_INSTALL_REGISTRY=https://registry.npmmirror.com bun install
 COPY ./web .
 COPY ./VERSION .
 RUN DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$(cat VERSION) bun run build

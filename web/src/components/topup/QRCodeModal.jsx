@@ -287,10 +287,12 @@ const QRCodeModal = ({ qrCodeUrl, tradeNo, amount, expireAt, onSuccess, onRefres
       onCancel={handleCancel}
       okProps={{
         loading: isManualChecking,
-        disabled: isManualChecking || isManualCheckCooldown || isExpired || isPaid
+        disabled: isManualChecking || isManualCheckCooldown || isExpired || isPaid,
+        hidden: isPaid
       }}
       cancelProps={{
-        disabled: isPaid
+        disabled: isPaid,
+        hidden: isPaid
       }}
     >
       <div style={{ textAlign: 'center', padding: '24px' }}>

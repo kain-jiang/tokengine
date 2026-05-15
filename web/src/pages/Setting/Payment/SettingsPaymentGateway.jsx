@@ -36,6 +36,10 @@ export default function SettingsPaymentGateway(props) {
     PayAddress: '',
     EpayId: '',
     EpayKey: '',
+    EpayId: '',
+    CustomCallbackAddress: '',
+    PayMethods: '',
+    EpayKey: '',
     Price: 7.3,
     MinTopUp: 1,
     CustomCallbackAddress: '',
@@ -43,10 +47,14 @@ export default function SettingsPaymentGateway(props) {
   });
   const [originInputs, setOriginInputs] = useState({});
   const formApiRef = useRef(null);
+        EpayId: props.options.EpayId || '',
+        EpayKey: props.options.EpayKey || '',
 
   useEffect(() => {
     if (props.options && formApiRef.current) {
       const currentInputs = {
+        CustomCallbackAddress: props.options.CustomCallbackAddress || '',
+        PayMethods: props.options.PayMethods || '',
         PayAddress: props.options.PayAddress || '',
         EpayId: props.options.EpayId || '',
         EpayKey: props.options.EpayKey || '',
@@ -65,16 +73,37 @@ export default function SettingsPaymentGateway(props) {
       setInputs(currentInputs);
       setOriginInputs({ ...currentInputs });
       formApiRef.current.setValues(currentInputs);
+    if (originInputs['PayMethods'] !== inputs.PayMethods) {
+      if (!verifyJSON(inputs.PayMethods)) {
+        showError(t('充值方式设置不是合法的 JSON 字符串'));
+        return;
+      }
+    }
+
     }
   }, [props.options]);
+      const options = [
+        { key: 'PayAddress', value: removeTrailingSlash(inputs.PayAddress) },
+      ];
 
-  const handleFormChange = (values) => {
-    setInputs(values);
-  };
+      if (inputs.EpayId !== '') {
+        options.push({ key: 'EpayId', value: inputs.EpayId });
+      }
+      if (inputs.EpayKey !== undefined && inputs.EpayKey !== '') {
+        options.push({ key: 'EpayKey', value: inputs.EpayKey });
 
   const submitPayAddress = async () => {
     if (props.options.ServerAddress === '') {
       showError(t('请先填写服务器地址'));
+      if (inputs.CustomCallbackAddress !== '') {
+        options.push({
+          key: 'CustomCallbackAddress',
+          value: inputs.CustomCallbackAddress,
+        });
+      }
+      if (originInputs['PayMethods'] !== inputs.PayMethods) {
+        options.push({ key: 'PayMethods', value: inputs.PayMethods });
+      }
       return;
     }
 
@@ -94,6 +123,7 @@ export default function SettingsPaymentGateway(props) {
       if (inputs.EpayId !== '') {
         options.push({ key: 'EpayId', value: inputs.EpayId });
       }
+        // 更新本地存储的原始值
       if (inputs.EpayKey !== undefined && inputs.EpayKey !== '') {
         options.push({ key: 'EpayKey', value: inputs.EpayKey });
       }
@@ -120,6 +150,33 @@ export default function SettingsPaymentGateway(props) {
           value: opt.value,
         }),
       );
+              <Form.Input
+                field='EpayId'
+                label={t('易支付商户ID')}
+                placeholder={t('例如：0001')}
+              />
+            </Col>
+            <Col xs={24} sm={24} md={8} lg={8} xl={8}>
+              <Form.Input
+                field='EpayKey'
+                label={t('易支付商户密钥')}
+                placeholder={t('敏感信息不会发送到前端显示')}
+                type='password'
+              />
+            </Col>
+          </Row>
+          <Row
+            gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}
+            style={{ marginTop: 16 }}
+          >
+            <Col xs={24} sm={24} md={8} lg={8} xl={8}>
+              <Form.Input
+                field='CustomCallbackAddress'
+                label={t('回调地址')}
+                placeholder={t('例如：https://yourdomain.com')}
+              />
+            </Col>
+            <Col xs={24} sm={24} md={8} lg={8} xl={8}>
 
       const results = await Promise.all(requestQueue);
 
@@ -128,10 +185,14 @@ export default function SettingsPaymentGateway(props) {
       if (errorResults.length > 0) {
         errorResults.forEach((res) => {
           showError(res.data.message);
+          <Form.TextArea
+            field='PayMethods'
+            label={t('充值方式设置')}
+            placeholder={t('为一个 JSON 文本')}
+            autosize
+          />
         });
-      } else {
-        showSuccess(t('更新成功'));
-        // 更新本地存储的原始值
+          <Button onClick={submitPayAddress}>{t('更新支付设置')}</Button>
         setOriginInputs({ ...inputs });
         props.refresh && props.refresh();
       }
