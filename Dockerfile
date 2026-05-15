@@ -1,8 +1,11 @@
 FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/oven/bun:1.3.9-alpine AS builder
 
+RUN apk add --no-sync python3 make g++ > /dev/null 2>&1 || true
+
 WORKDIR /build
 COPY ./web .
 COPY ./VERSION .
+ENV NODE_ENV=production
 RUN BUN_INSTALL_REGISTRY=https://registry.npmmirror.com bun install --frozen-lockfile || BUN_INSTALL_REGISTRY=https://registry.npmmirror.com bun install
 RUN DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$(cat VERSION) bun run build
 

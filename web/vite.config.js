@@ -53,6 +53,7 @@ export default defineConfig({
     react(),
     vitePluginSemi({
       cssLayer: true,
+      includePaths: ['node_modules'],
     }),
   ],
   optimizeDeps: {
