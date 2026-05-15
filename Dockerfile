@@ -1,11 +1,9 @@
 FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/oven/bun:1.3.9-alpine AS builder
 
 WORKDIR /build
-COPY web/package.json .
-COPY web/bun.lock .
-RUN BUN_INSTALL_REGISTRY=https://registry.npmmirror.com bun install
 COPY ./web .
 COPY ./VERSION .
+RUN BUN_INSTALL_REGISTRY=https://registry.npmmirror.com bun install --frozen-lockfile || BUN_INSTALL_REGISTRY=https://registry.npmmirror.com bun install
 RUN DISABLE_ESLINT_PLUGIN='true' VITE_REACT_APP_VERSION=$(cat VERSION) bun run build
 
 FROM swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/golang:1.26.2-alpine AS builder2
