@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Modal } from '@douyinfe/semi-ui';
+import { Modal, Button } from '@douyinfe/semi-ui';
 import { useTranslation } from 'react-i18next';
 import { API, showError, showInfo, showSuccess } from '../../helpers';
 import QRCode from 'qrcode';
@@ -117,11 +117,11 @@ const QRCodeModal = ({ qrCodeUrl, tradeNo, amount, expireAt, onSuccess, onRefres
           stopPolling();
           stopCountdown();
           stopAutoPollingTimeout();
-          // 2秒后触发成功回调
+          // 2秒后自动关闭弹窗
           setTimeout(() => {
             showSuccess(t('支付成功！'));
-            if (onSuccess) {
-              onSuccess();
+            if (onClose) {
+              onClose();
             }
           }, 2000);
           return true;
@@ -276,24 +276,31 @@ const QRCodeModal = ({ qrCodeUrl, tradeNo, amount, expireAt, onSuccess, onRefres
   
   const isExpired = remainingSeconds <= 0;
   
+  const renderFooter = () => {
+    if (isPaid) return null;
+    return (
+      <>
+        <Button types="danger" onClick={handleCancel}>
+          {t('取消支付')}
+        </Button>
+        <Button
+          types="primary"
+          loading={isManualChecking}
+          disabled={isManualChecking || isManualCheckCooldown || isExpired}
+          onClick={handleManualCheck}
+        >
+          {t('我已支付')}
+        </Button>
+      </>
+    );
+  };
+
   return (
     <Modal
       title={t('扫码支付')}
       visible
       centered
-      okText={t('我已支付')}
-      cancelText={t('取消支付')}
-      onOk={handleManualCheck}
-      onCancel={handleCancel}
-      okProps={{
-        loading: isManualChecking,
-        disabled: isManualChecking || isManualCheckCooldown || isExpired || isPaid,
-        hidden: isPaid
-      }}
-      cancelProps={{
-        disabled: isPaid,
-        hidden: isPaid
-      }}
+      footer={renderFooter()}
     >
       <div style={{ textAlign: 'center', padding: '24px' }}>
         {/* 金额信息 */}

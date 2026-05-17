@@ -71,7 +71,7 @@ export default function SettingsPaymentGateway(props) {
   const handleFormChange = (value) => {
     setInputs(value);
     if (originInputs['PayMethods'] !== value.PayMethods) {
-      if (!verifyJSON(value.PayMethods)) {
+      if (value.PayMethods && !verifyJSON(value.PayMethods)) {
         showError(t('充值方式设置不是合法的 JSON 字符串'));
         return;
       }
@@ -85,7 +85,7 @@ export default function SettingsPaymentGateway(props) {
     }
 
     if (originInputs['PayMethods'] !== inputs.PayMethods) {
-      if (!verifyJSON(inputs.PayMethods)) {
+      if (inputs.PayMethods && !verifyJSON(inputs.PayMethods)) {
         showError(t('充值方式设置不是合法的 JSON 字符串'));
         return;
       }
