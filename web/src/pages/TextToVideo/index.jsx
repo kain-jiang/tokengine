@@ -44,9 +44,11 @@ const resolveVideoUrl = (payload) => {
     payload?.data?.[0]?.url,
     payload?.data?.[0]?.video_url,
     payload?.data?.url,
+    payload?.data?.result_url,
     payload?.url,
     payload?.result?.url,
     payload?.result?.video_url,
+    payload?.result_url,
   ];
   return candidates.find((item) => typeof item === 'string' && item.trim()) || '';
 };
@@ -74,6 +76,14 @@ const DURATION_OPTIONS = [
 ];
 
 const DEFAULT_VIDEO_MODEL_TYPE = 3;
+const VIDEO_GENERATION_STATUS_PATH = '/v1/video/generations';
+const DEFAULT_FALLBACK_GROUP = 'default';
+
+const normalizeErrorMessage = (error, fallbackMessage) => {
+  if (!error) return fallbackMessage;
+  if (typeof error === 'string') return error;
+  return error?.message || fallbackMessage;
+};
 
 const TextToVideo = () => {
   const { t } = useTranslation();
@@ -96,22 +106,27 @@ const TextToVideo = () => {
       const res = await API.get(API_ENDPOINTS.USER_GROUPS);
       const { success, message, data } = res.data;
       if (!success) {
-        showError(t(message));
+        showError(normalizeErrorMessage(message, t('加载分组失败')));
+        setGroups([]);
+        setGroup(DEFAULT_FALLBACK_GROUP);
         return;
       }
       const userGroup =
         userState?.user?.group ||
         JSON.parse(localStorage.getItem('user') || '{}')?.group;
-      const groupOptions = processGroupsData(data, userGroup);
+      const groupOptions = processGroupsData(data, userGroup) || [];
       setGroups(groupOptions);
-      const first = groupOptions[0]?.value || 'default';
+      const first = groupOptions[0]?.value || DEFAULT_FALLBACK_GROUP;
       setGroup((g) => {
-        const normalizedG = g === '' ? 'default' : g;
+        const normalizedG = g === '' ? DEFAULT_FALLBACK_GROUP : g;
         if (normalizedG && groupOptions.some((o) => o.value === normalizedG)) return normalizedG;
         return first;
       });
     } catch (e) {
+      console.error('Failed to load groups for text-to-video:', e);
       showError(t('加载分组失败'));
+      setGroups([]);
+      setGroup(DEFAULT_FALLBACK_GROUP);
     }
   }, [t, userState?.user?.group]);
 
@@ -130,7 +145,9 @@ const TextToVideo = () => {
         });
         const { success, message, data } = res.data;
         if (!success) {
-          showError(t(message));
+          showError(normalizeErrorMessage(message, t('加载模型失败')));
+          setModels([]);
+          setModel('');
           return;
         }
         const modelList = Array.isArray(data) ? data : data?.items || [];
@@ -143,7 +160,10 @@ const TextToVideo = () => {
         setModels(options);
         setModel(options[0]?.value || '');
       } catch (e) {
+        console.error('Failed to load text-to-video models:', e);
         showError(t('加载模型失败'));
+        setModels([]);
+        setModel('');
       }
     };
 
@@ -167,20 +187,21 @@ const TextToVideo = () => {
     try {
       const seedValue = seed.trim();
       const seedNumber = seedValue === '' ? undefined : Number(seedValue);
-      const metadata = {
-        aspect_ratio: aspectRatio,
-        resolution,
-      };
+      const content = [
+        {
+          type: 'text',
+          text: trimmed,
+        },
+      ];
       const body = {
         model,
-        prompt: trimmed,
-        group: group || undefined,
+        content,
+        generate_audio: true,
+        ratio: aspectRatio,
         duration,
-        seed: seedNumber,
-        response_format: 'url',
-        metadata,
+        watermark: false,
       };
-      const res = await fetch(API_ENDPOINTS.VIDEO_GENERATIONS, {
+      const res = await fetch('/api/v3/contents/generations/tasks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -201,47 +222,53 @@ const TextToVideo = () => {
         showError(typeof msg === 'string' ? msg : t('文生视频请求失败'));
         return;
       }
-      const taskId = json?.task_id || json?.data?.task_id || json?.data?.[0]?.task_id;
+      const taskId = json?.task_id || json?.data?.task_id || json?.data?.[0]?.task_id || json?.id;
       const url = resolveVideoUrl(json);
       if (url) {
         setVideoSrc(url);
-      } else if (taskId) {
-        const waitTask = async () => {
-          for (let i = 0; i < 60; i += 1) {
-            await new Promise((resolve) => setTimeout(resolve, 3000));
-            const taskRes = await fetch(`/v1/video/generations/${taskId}`, {
-              headers: { 'New-Api-User': getUserIdFromLocalStorage() },
-            });
-            const taskText = await taskRes.text();
-            let taskJson;
-            try {
-              taskJson = JSON.parse(taskText);
-            } catch {
-              continue;
-            }
-            if (!taskRes.ok) {
-              continue;
-            }
-            const taskStatus = taskJson?.status;
-            if (taskStatus === 'succeeded' || taskStatus === 'completed') {
-              const resolved = resolveVideoUrl(taskJson);
-              if (resolved) {
-                setVideoSrc(resolved);
-                return true;
-              }
-            }
-            if (taskStatus === 'failed' || taskStatus === 'error') {
-              throw new Error(taskJson?.error?.message || t('视频生成失败'));
-            }
-          }
-          throw new Error(t('视频生成超时，请稍后在任务中心查看结果'));
-        };
-        await waitTask();
-      } else {
+        Toast.success(t('视频生成完成'));
+        return;
+      }
+      if (!taskId) {
         showError(t('文生视频请求失败'));
         setShowGenerationPreview(false);
         return;
       }
+
+      const waitTask = async () => {
+        for (let i = 0; i < 60; i += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          const taskRes = await fetch(`${VIDEO_GENERATION_STATUS_PATH}/${taskId}`, {
+            headers: {
+              'Content-Type': 'application/json',
+              'New-Api-User': getUserIdFromLocalStorage(),
+            },
+          });
+          const taskText = await taskRes.text();
+          let taskJson;
+          try {
+            taskJson = JSON.parse(taskText);
+          } catch {
+            continue;
+          }
+          if (!taskRes.ok) {
+            continue;
+          }
+          const taskStatus = (taskJson?.status || taskJson?.data?.status || '').toLowerCase();
+          if (taskStatus === 'succeeded' || taskStatus === 'completed' || taskStatus === 'success' || taskStatus === 'done') {
+            const resolved = resolveVideoUrl(taskJson) || resolveVideoUrl(taskJson?.data);
+            if (resolved) {
+              setVideoSrc(resolved);
+              return true;
+            }
+          }
+          if (taskStatus === 'failed' || taskStatus === 'error') {
+            throw new Error(taskJson?.error?.message || taskJson?.message || t('视频生成失败'));
+          }
+        }
+        throw new Error(t('视频生成超时，请稍后在任务中心查看结果'));
+      };
+      await waitTask();
       Toast.success(t('视频生成完成'));
     } catch (e) {
       showError(e?.message || t('文生视频请求失败'));
