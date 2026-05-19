@@ -25,6 +25,7 @@ import {
   Typography,
   Button,
   Tag,
+  Select,
 } from '@douyinfe/semi-ui';
 import { useTranslation } from 'react-i18next';
 import {
@@ -36,6 +37,9 @@ import {
   Shuffle,
   Check,
   X,
+  Film,
+  Ratio,
+  Maximize,
 } from 'lucide-react';
 
 const ParameterControl = ({
@@ -295,6 +299,96 @@ const ParameterControl = ({
           className='!rounded-lg'
           disabled={!parameterEnabled.seed || disabled}
         />
+      </div>
+
+      {/* 文生视频参数 */}
+      <div className='pt-2 border-t border-gray-100'>
+        <div className='flex items-center gap-2 mb-3'>
+          <Film size={16} className='text-gray-500' />
+          <Typography.Text strong className='text-sm'>
+            {t('文生视频参数')}
+          </Typography.Text>
+        </div>
+
+        <div className='grid grid-cols-1 gap-4'>
+          <div>
+            <Typography.Text className='text-sm' strong>
+              {t('视频时长')}
+            </Typography.Text>
+            <Select
+              value={inputs.videoDuration}
+              onChange={(value) => onInputChange('videoDuration', value)}
+              optionList={[
+                { label: '5s', value: 5 },
+                { label: '10s', value: 10 },
+                { label: '15s', value: 15 },
+              ]}
+              style={{ width: '100%', marginTop: 8 }}
+              disabled={disabled}
+            />
+          </div>
+
+          <div>
+            <div className='flex items-center gap-2 mb-2'>
+              <Ratio size={16} className='text-gray-500' />
+              <Typography.Text className='text-sm' strong>
+                {t('画面比例')}
+              </Typography.Text>
+            </div>
+            <Select
+              value={inputs.videoAspectRatio}
+              onChange={(value) => onInputChange('videoAspectRatio', value)}
+              optionList={[
+                { label: '16:9', value: '16:9' },
+                { label: '9:16', value: '9:16' },
+                { label: '1:1', value: '1:1' },
+              ]}
+              style={{ width: '100%' }}
+              disabled={disabled}
+            />
+          </div>
+
+          <div>
+            <div className='flex items-center gap-2 mb-2'>
+              <Maximize size={16} className='text-gray-500' />
+              <Typography.Text className='text-sm' strong>
+                {t('视频分辨率')}
+              </Typography.Text>
+            </div>
+            <Select
+              value={inputs.videoResolution}
+              onChange={(value) => onInputChange('videoResolution', value)}
+              optionList={[
+                { label: '480p', value: '480p' },
+                { label: '720p', value: '720p' },
+                { label: '1080p', value: '1080p' },
+              ]}
+              style={{ width: '100%' }}
+              disabled={disabled}
+            />
+          </div>
+
+          <div>
+            <Typography.Text className='text-sm' strong>
+              {t('视频 Seed')}
+            </Typography.Text>
+            <Input
+              placeholder={t('输入 -1 或 0 ~ 4294967295')}
+              name='videoSeed'
+              autoComplete='new-password'
+              value={inputs.videoSeed || ''}
+              onChange={(value) =>
+                onInputChange('videoSeed', value === '' ? null : value)
+              }
+              className='!rounded-lg'
+              style={{ marginTop: 8 }}
+              disabled={disabled}
+            />
+            <Typography.Text className='text-xs text-gray-400 mt-1 block'>
+              {t('种子值用于控制生成内容的随机性。设为 -1 表示随机生成；设为固定值（0 ~ 4294967295）可复现相同的生成结果。')}
+            </Typography.Text>
+          </div>
+        </div>
       </div>
     </>
   );
