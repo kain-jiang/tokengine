@@ -88,6 +88,12 @@ func PlaygroundImage(c *gin.Context) {
 	}
 	userCache.WriteContext(c)
 
+	// Check user quota before creating image generation request
+	if userCache.Quota <= 0 {
+		newAPIError = types.NewError(errors.New("quota.insufficient"), types.ErrorCodeInsufficientUserQuota, types.ErrOptionWithSkipRetry())
+		return
+	}
+
 	tempToken := &model.Token{
 		UserId: userId,
 		Name:   fmt.Sprintf("playground-image-%s", relayInfo.UsingGroup),
