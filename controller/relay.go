@@ -486,6 +486,7 @@ func RelayTask(c *gin.Context) {
 		})
 		return
 	}
+	logger.LogInfo(c, fmt.Sprintf("[RelayTask] uri=%s method=%s userId=%d group=%s relayMode=%d originModel=%s", c.Request.RequestURI, c.Request.Method, c.GetInt("id"), c.GetString("group"), relayInfo.RelayMode, relayInfo.OriginModelName))
 
 	if taskErr := relay.ResolveOriginTask(c, relayInfo); taskErr != nil {
 		respondTaskError(c, taskErr)
@@ -586,8 +587,17 @@ func RelayTask(c *gin.Context) {
 		task.Quota = result.Quota
 		task.Data = result.TaskData
 		task.Action = relayInfo.Action
+		logger.LogInfo(c, fmt.Sprintf("[TaskInsert] before insert taskID=%s userId=%d platform=%s action=%s quota=%d originModel=%s upstreamModel=%s properties=%+v privateData=%+v data=%s", task.TaskID, task.UserId, task.Platform, task.Action, task.Quota, task.Properties.OriginModelName, task.Properties.UpstreamModelName, task.Properties, task.PrivateData, string(task.Data)))
 		if insertErr := task.Insert(); insertErr != nil {
 			common.SysError("insert task error: " + insertErr.Error())
+		} else {
+			if fetchedTask, exist, fetchErr := model.GetByOnlyTaskId(task.TaskID); fetchErr != nil {
+				logger.LogError(c, fmt.Sprintf("[TaskInsert] post insert fetch error taskID=%s err=%v", task.TaskID, fetchErr))
+			} else if exist && fetchedTask != nil {
+				logger.LogInfo(c, fmt.Sprintf("[TaskInsert] after insert fetched taskID=%s userId=%d platform=%s action=%s properties=%+v privateData=%+v data=%s", fetchedTask.TaskID, fetchedTask.UserId, fetchedTask.Platform, fetchedTask.Action, fetchedTask.Properties, fetchedTask.PrivateData, string(fetchedTask.Data)))
+			} else {
+				logger.LogWarn(c, fmt.Sprintf("[TaskInsert] post insert fetch not found taskID=%s", task.TaskID))
+			}
 		}
 	}
 

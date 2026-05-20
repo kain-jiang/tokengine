@@ -269,18 +269,37 @@ func (a *TaskAdaptor) GetChannelName() string {
 
 func (a *TaskAdaptor) convertToRequestPayload(req *relaycommon.TaskSubmitReq) (*requestPayload, error) {
 	r := requestPayload{
-		Model:   req.Model,
-		Content: []ContentItem{},
+		Model: req.Model,
+		Content: []ContentItem{{
+			Type: "text",
+			Text: req.Prompt,
+		}},
+		GenerateAudio: lo.ToPtr(dto.BoolValue(true)),
+		Ratio:         req.Size,
 	}
 
-	// Add images if present
-	if req.HasImage() {
+	if r.Ratio == "" {
+		r.Ratio = "16:9"
+	}
+	if sec, _ := strconv.Atoi(req.Seconds); sec > 0 {
+		r.Duration = lo.ToPtr(dto.IntValue(sec))
+	} else if req.Duration > 0 {
+		r.Duration = lo.ToPtr(dto.IntValue(req.Duration))
+	}
+	if r.Duration == nil {
+		defaultDuration := dto.IntValue(5)
+		r.Duration = &defaultDuration
+	}
+
+	if len(req.Images) > 0 {
 		for _, imgURL := range req.Images {
+			if imgURL == "" {
+				continue
+			}
 			r.Content = append(r.Content, ContentItem{
 				Type: "image_url",
-				ImageURL: &MediaURL{
-					URL: imgURL,
-				},
+				ImageURL: &MediaURL{URL: imgURL},
+				Role:     "reference_image",
 			})
 		}
 	}
@@ -290,15 +309,14 @@ func (a *TaskAdaptor) convertToRequestPayload(req *relaycommon.TaskSubmitReq) (*
 		return nil, errors.Wrap(err, "unmarshal metadata failed")
 	}
 
-	if sec, _ := strconv.Atoi(req.Seconds); sec > 0 {
-		r.Duration = lo.ToPtr(dto.IntValue(sec))
+	if r.Watermark == nil {
+		watermark := dto.BoolValue(false)
+		r.Watermark = &watermark
 	}
 
-	r.Content = lo.Reject(r.Content, func(c ContentItem, _ int) bool { return c.Type == "text" })
-	r.Content = append(r.Content, ContentItem{
-		Type: "text",
-		Text: req.Prompt,
-	})
+	if r.Resolution == "" && req.Size != "" {
+		r.Resolution = req.Size
+	}
 
 	return &r, nil
 }
