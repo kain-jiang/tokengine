@@ -290,10 +290,15 @@ const TextToVideo = () => {
             throw new Error(taskJson?.error?.message || taskJson?.message || t('视频生成失败'));
           }
         }
-        throw new Error(t('视频生成超时，请稍后在任务中心查看结果'));
+        return false;
       };
-      await waitTask();
-      Toast.success(t('视频生成完成'));
+      const completedInPreview = await waitTask();
+      if (completedInPreview) {
+        Toast.success(t('视频生成完成'));
+      } else {
+        Toast.info(t('视频任务已提交，生成时间较长，请稍后到任务中心查看结果'));
+        setShowGenerationPreview(false);
+      }
     } catch (e) {
       console.error('[TextToVideo] handleGenerate error', {
         message: e?.message,
