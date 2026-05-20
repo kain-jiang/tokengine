@@ -61,7 +61,7 @@ func RequestHelipay(c *gin.Context) {
 
 	// 获取回调地址
 	callBackAddress := service.GetCallbackAddress()
-	returnUrl, _ := url.Parse(system_setting.ServerAddress + "/console/log")
+	returnUrl, _ := url.Parse(system_setting.ServerAddress + "/console/topup")
 	notifyUrl, _ := url.Parse(callBackAddress + operation_setting.GetHelipayNotifyPath())
 
 	// 构建预下单请求
