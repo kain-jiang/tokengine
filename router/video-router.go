@@ -28,7 +28,7 @@ func SetVideoRouter(router *gin.Engine) {
 	playgroundVideoRouter := router.Group("/pg")
 	playgroundVideoRouter.Use(middleware.RouteTag("relay"))
 	playgroundVideoRouter.Use(middleware.SystemPerformanceCheck())
-	playgroundVideoRouter.Use(middleware.UserAuth(), middleware.Distribute())
+	playgroundVideoRouter.Use(middleware.TokenOrUserAuth(), middleware.Distribute())
 	{
 		playgroundVideoRouter.POST("/video/generations", controller.RelayTask)
 		playgroundVideoRouter.GET("/video/generations/:task_id", controller.RelayTaskFetch)

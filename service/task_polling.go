@@ -226,7 +226,13 @@ func updateSunoTasks(ctx context.Context, channelId int, taskIds []string, taskM
 			continue
 		}
 
-		task.Status = lo.If(model.TaskStatus(responseItem.Status) != "", model.TaskStatus(responseItem.Status)).Else(task.Status)
+		// Map Suno upstream status to system task status
+		mappedStatus := mapSunoStatusToTaskStatus(responseItem.Status)
+		if mappedStatus != "" {
+			task.Status = mappedStatus
+		} else {
+			task.Status = lo.If(model.TaskStatus(responseItem.Status) != "", model.TaskStatus(responseItem.Status)).Else(task.Status)
+		}
 		task.FailReason = lo.If(responseItem.FailReason != "", responseItem.FailReason).Else(task.FailReason)
 		task.SubmitTime = lo.If(responseItem.SubmitTime != 0, responseItem.SubmitTime).Else(task.SubmitTime)
 		task.StartTime = lo.If(responseItem.StartTime != 0, responseItem.StartTime).Else(task.StartTime)
@@ -236,7 +242,7 @@ func updateSunoTasks(ctx context.Context, channelId int, taskIds []string, taskM
 			task.Progress = "100%"
 			RefundTaskQuota(ctx, task, task.FailReason)
 		}
-		if responseItem.Status == model.TaskStatusSuccess {
+		if mappedStatus == model.TaskStatusSuccess {
 			task.Progress = "100%"
 		}
 		task.Data = responseItem.Data
@@ -247,6 +253,24 @@ func updateSunoTasks(ctx context.Context, channelId int, taskIds []string, taskM
 		}
 	}
 	return nil
+}
+
+// mapSunoStatusToTaskStatus 将 Suno 上游状态映射为系统任务状态
+func mapSunoStatusToTaskStatus(sunoStatus string) model.TaskStatus {
+	switch strings.ToLower(sunoStatus) {
+	case "submitted":
+		return model.TaskStatusSubmitted
+	case "queueing":
+		return model.TaskStatusQueued
+	case "processing":
+		return model.TaskStatusInProgress
+	case "success":
+		return model.TaskStatusSuccess
+	case "failed":
+		return model.TaskStatusFailure
+	default:
+		return ""
+	}
 }
 
 // taskNeedsUpdate 检查 Suno 任务是否需要更新
@@ -327,7 +351,10 @@ func updateVideoTasks(ctx context.Context, platform constant.TaskPlatform, chann
 	}
 	info := &relaycommon.RelayInfo{}
 	info.ChannelMeta = &relaycommon.ChannelMeta{
+		ChannelType:    cacheGetChannel.Type,
 		ChannelBaseUrl: cacheGetChannel.GetBaseURL(),
+		ApiKey:         cacheGetChannel.Key,
+		ChannelId:      cacheGetChannel.Id,
 	}
 	info.ApiKey = cacheGetChannel.Key
 	adaptor.Init(info)
@@ -359,6 +386,9 @@ func updateVideoSingleTask(ctx context.Context, adaptor TaskPollingAdaptor, ch *
 	if privateData.Key != "" {
 		key = privateData.Key
 	}
+	logger.LogDebug(ctx, fmt.Sprintf("updateVideoSingleTask: channel #%d, baseURL=%s, upstreamTaskID=%s, channelType=%d",
+		ch.Id, baseURL, task.GetUpstreamTaskID(), ch.Type))
+
 	resp, err := adaptor.FetchTask(baseURL, key, map[string]any{
 		"task_id": task.GetUpstreamTaskID(),
 		"action":  task.Action,
@@ -367,9 +397,49 @@ func updateVideoSingleTask(ctx context.Context, adaptor TaskPollingAdaptor, ch *
 		return fmt.Errorf("fetchTask failed for task %s: %w", taskId, err)
 	}
 	defer resp.Body.Close()
+
+	// Check HTTP status code before reading body
+	if resp.StatusCode != http.StatusOK {
+		// Try to read and log the error response
+		errorBody, _ := io.ReadAll(resp.Body)
+		logger.LogError(ctx, fmt.Sprintf("Channel #%d FetchTask returned HTTP %d for task %s: %s",
+			ch.Id, resp.StatusCode, taskId, string(errorBody)))
+		return fmt.Errorf("fetchTask returned HTTP %d for task %s", resp.StatusCode, taskId)
+	}
+
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("readAll failed for task %s: %w", taskId, err)
+	}
+
+	// Check if the response is an HTML error page (upstream returned HTML instead of JSON)
+	// This can happen when the upstream API returns an error page (e.g., 502, 503, WAF block)
+	// even with HTTP 200 status code
+	responseContentType := resp.Header.Get("Content-Type")
+	responsePreview := string(responseBody)
+	if len(responsePreview) > 0 && responsePreview[0] == '<' {
+		// Log all response headers for debugging
+		logger.LogError(ctx, fmt.Sprintf("Channel #%d FetchTask returned HTML response for task %s (Content-Type: %s). "+
+			"Response headers: %+v. "+
+			"This usually indicates upstream API error, WAF block, or invalid API key. Response body has been logged for debugging.",
+			ch.Id, taskId, responseContentType, resp.Header))
+		logger.LogError(ctx, fmt.Sprintf("Channel #%d HTML response body preview: %s", ch.Id, responsePreview[:min(500, len(responsePreview))]))
+
+		// When upstream returns HTML, it indicates a persistent configuration issue (invalid API key, wrong URL, WAF block).
+		// Mark the task as FAILURE to prevent it from staying in NOT_START forever.
+		// Only do this for tasks that are still in NOT_START status (haven't been successfully submitted yet).
+		if task.Status == model.TaskStatusNotStart {
+			task.FailReason = fmt.Sprintf("上游 API 返回 HTML 响应而非 JSON（渠道 #%d 配置可能有问题，请检查 API Key 或 API 地址）。Content-Type: %s", ch.Id, responseContentType)
+			task.Status = model.TaskStatusFailure
+			task.Progress = "100%"
+			task.FinishTime = time.Now().Unix()
+			if _, updateErr := task.UpdateWithStatus(model.TaskStatusNotStart); updateErr != nil {
+				logger.LogError(ctx, fmt.Sprintf("Failed to mark task %s as FAILURE due to HTML response: %v", taskId, updateErr))
+			} else {
+				logger.LogInfo(ctx, fmt.Sprintf("Task %s marked as FAILURE due to persistent HTML response from channel #%d", taskId, ch.Id))
+			}
+		}
+		return fmt.Errorf("fetchTask returned HTML response instead of JSON for task %s", taskId)
 	}
 
 	logger.LogDebug(ctx, fmt.Sprintf("updateVideoSingleTask response: %s", string(responseBody)))

@@ -357,6 +357,12 @@ func updateChannelMoonshotBalance(channel *model.Channel) (float64, error) {
 }
 
 func updateChannelBalance(channel *model.Channel) (float64, error) {
+	if channel == nil {
+		return 0, errors.New("channel is nil")
+	}
+	if channel.Type < 0 || channel.Type >= len(constant.ChannelBaseURLs) {
+		return 0, fmt.Errorf("unsupported channel type: %d", channel.Type)
+	}
 	baseURL := constant.ChannelBaseURLs[channel.Type]
 	if channel.GetBaseURL() == "" {
 		channel.BaseURL = &baseURL

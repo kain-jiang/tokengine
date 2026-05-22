@@ -486,6 +486,27 @@ func RelayTask(c *gin.Context) {
 		})
 		return
 	}
+
+	// Check user quota before creating video generation request (same as playground image)
+	userId := c.GetInt("id")
+	userCache, err := model.GetUserCache(userId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, &dto.TaskError{
+			Code:       "get_user_info_failed",
+			Message:    err.Error(),
+			StatusCode: http.StatusInternalServerError,
+		})
+		return
+	}
+	if userCache.Quota <= 0 {
+		c.JSON(http.StatusForbidden, &dto.TaskError{
+			Code:       "quota_insufficient",
+			Message:    "quota.insufficient",
+			StatusCode: http.StatusForbidden,
+		})
+		return
+	}
+
 	logger.LogInfo(c, fmt.Sprintf("[RelayTask] uri=%s method=%s userId=%d group=%s relayMode=%d originModel=%s", c.Request.RequestURI, c.Request.Method, c.GetInt("id"), c.GetString("group"), relayInfo.RelayMode, relayInfo.OriginModelName))
 
 	if taskErr := relay.ResolveOriginTask(c, relayInfo); taskErr != nil {
