@@ -124,22 +124,19 @@ func HelipayNotify(c *gin.Context) {
 	log.Printf("合利宝回调原始body: %s", string(bodyBytes))
 	log.Printf("合利宝回调Content-Type: %s", c.Request.Header.Get("Content-Type"))
 
-	var notifyData map[string]interface{}
-
-	// 尝试解析 JSON body
-	if err := common.Unmarshal(bodyBytes, &notifyData); err != nil {
-		// 如果 JSON 解析失败，尝试解析 form 数据
-		if err := c.Request.ParseForm(); err != nil {
-			log.Println("合利宝回调参数解析失败: ", err)
-			c.Writer.Write([]byte("fail"))
-			return
-		}
-		// 将 form 数据转换为 map
-		notifyData = make(map[string]interface{})
-		for key, values := range c.Request.Form {
-			if len(values) > 0 {
-				notifyData[key] = values[0]
-			}
+	// 解析 form-urlencoded 数据
+	formStr := string(bodyBytes)
+	parsedForm, err := url.ParseQuery(formStr)
+	if err != nil {
+		log.Println("合利宝回调参数解析失败: ", err)
+		c.Writer.Write([]byte("fail"))
+		return
+	}
+	// 将 form 数据转换为 map
+	notifyData := make(map[string]interface{})
+	for key, values := range parsedForm {
+		if len(values) > 0 {
+			notifyData[key] = values[0]
 		}
 	}
 
