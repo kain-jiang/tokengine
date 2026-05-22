@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getLucideIcon } from '../../helpers/render';
 import { ChevronLeft } from 'lucide-react';
@@ -54,6 +54,7 @@ const routerMap = {
 
 const SiderBar = ({ onNavigate = () => {} }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [collapsed, toggleCollapsed] = useSidebarCollapsed();
   const {
     isModuleVisible,
@@ -205,7 +206,12 @@ const SiderBar = ({ onNavigate = () => {} }) => {
       {
         text: t('文生图'),
         itemKey: 'textToImage',
-        to: '/text-to-image',
+        to: '/console/text-to-image',
+      },
+      {
+        text: t('文生视频'),
+        itemKey: 'textToVideo',
+        to: '/console/text-to-video',
       },
       {
         text: t('接入应用'),
@@ -428,12 +434,28 @@ const SiderBar = ({ onNavigate = () => {} }) => {
             );
           }}
           onSelect={(key) => {
-            // 如果点击的是已经展开的子菜单的父项，则收起子菜单
-            if (openedKeys.includes(key.itemKey)) {
-              setOpenedKeys(openedKeys.filter((k) => k !== key.itemKey));
+            const itemKey = key.itemKey;
+
+            if (itemKey === 'textToImage') {
+              navigate('/console/text-to-image');
+              onNavigate();
+              setSelectedKeys([itemKey]);
+              return;
             }
 
-            setSelectedKeys([key.itemKey]);
+            if (itemKey === 'textToVideo') {
+              navigate('/console/text-to-video');
+              onNavigate();
+              setSelectedKeys([itemKey]);
+              return;
+            }
+
+            // 如果点击的是已经展开的子菜单的父项，则收起子菜单
+            if (openedKeys.includes(itemKey)) {
+              setOpenedKeys(openedKeys.filter((k) => k !== itemKey));
+            }
+
+            setSelectedKeys([itemKey]);
           }}
           openKeys={openedKeys}
           onOpenChange={(data) => {

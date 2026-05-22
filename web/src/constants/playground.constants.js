@@ -77,6 +77,7 @@ export const DEBUG_TABS = {
 export const API_ENDPOINTS = {
   CHAT_COMPLETIONS: '/pg/chat/completions',
   IMAGES_GENERATIONS: '/pg/images/generations',
+  VIDEO_GENERATIONS: '/pg/video/generations',
   USER_MODELS: '/api/user/models',
   USER_GROUPS: '/api/user/self/groups',
 };
@@ -102,6 +103,10 @@ export const DEFAULT_CONFIG = {
     stream: true,
     imageEnabled: false,
     imageUrls: [''],
+    videoDuration: 5,
+    videoAspectRatio: '16:9',
+    videoResolution: '720p',
+    videoSeed: null,
   },
   parameterEnabled: {
     temperature: true,
@@ -110,6 +115,10 @@ export const DEFAULT_CONFIG = {
     frequency_penalty: true,
     presence_penalty: true,
     seed: false,
+    videoDuration: false,
+    videoAspectRatio: false,
+    videoResolution: false,
+    videoSeed: false,
   },
   systemPrompt: '',
   showDebugPanel: false,

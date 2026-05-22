@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql/driver"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -332,11 +333,24 @@ func GetByTaskId(userId int, taskId string) (*Task, bool, error) {
 	if taskId == "" {
 		return nil, false, nil
 	}
+	fmt.Printf("[GetByTaskId] lookup userId=%d taskId=%s\n", userId, taskId)
+
 	var task *Task
 	var err error
-	err = DB.Where("user_id = ? and task_id = ?", userId, taskId).
-		First(&task).Error
+	err = DB.Where("user_id = ? and task_id = ?", userId, taskId).First(&task).Error
 	exist, err := RecordExist(err)
+	if err == nil && exist {
+		fmt.Printf("[GetByTaskId] result exist=%v err=%v task=%+v\n", exist, err, task)
+		return task, true, nil
+	}
+
+	// Fallback: some task types may be created with a different user context
+	// than the one used by the polling request. In that case, resolve by task_id
+	// so the task can still be fetched and its ownership validated elsewhere.
+	task = nil
+	err = DB.Where("task_id = ?", taskId).First(&task).Error
+	exist, err = RecordExist(err)
+	fmt.Printf("[GetByTaskId] fallback result exist=%v err=%v task=%+v\n", exist, err, task)
 	if err != nil {
 		return nil, false, err
 	}
