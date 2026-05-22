@@ -31,3 +31,8 @@ data/
 .gopath
 
 token_estimator_test.go
+
+.env
+*.cer
+*.pfx
+*.pem

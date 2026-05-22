@@ -124,8 +124,18 @@ const SubscriptionPlansCard = ({
         plan_id: selectedPlan.plan.id,
       });
       if (res.data?.message === 'success') {
-        window.open(res.data.data?.pay_link, '_blank');
-        showSuccess(t('已打开支付页面'));
+        // 使用 <a> 标签方式避免浏览器拦截 popup
+        const payLink = res.data.data?.pay_link;
+        if (payLink) {
+          const link = document.createElement('a');
+          link.href = payLink;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          showSuccess(t('已打开支付页面'));
+        }
         closeBuy();
       } else {
         const errorMsg =

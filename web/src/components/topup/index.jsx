@@ -85,6 +85,9 @@ const TopUp = () => {
 
   // 合利宝支付相关状态
   const [enableHelipayTopUp, setEnableHelipayTopUp] = useState(false);
+  const [helipayPolling, setHelipayPolling] = useState(false);
+  const [helipayTradeNo, setHelipayTradeNo] = useState('');
+  const helipayPollingRef = useRef(null);
 
   // 判断是否只启用了招行支付（是的话隐藏充值数量输入和支付方式选择）
   const onlyZsPayEnabled = enableZsPayTopUp && !enableOnlineTopUp && !enableStripeTopUp && !enableWaffoTopUp && !enableHelipayTopUp;
@@ -299,7 +302,14 @@ const TopUp = () => {
         if (message === 'success') {
           if (payWay === 'stripe') {
             // Stripe 支付回调处理
-            window.open(data.pay_link, '_blank');
+            // 使用 <a> 标签方式避免浏览器拦截 popup
+            const link = document.createElement('a');
+            link.href = data.pay_link;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
           } else if (payWay === 'zs_pay') {
             // 招商银行聚合支付 - 显示二维码
             if (qr_code_url) {
@@ -314,21 +324,22 @@ const TopUp = () => {
               showError(t('获取支付二维码失败'));
             }
           } else if (payWay === 'helipay') {
-            // 合利宝支付 - 使用表单POST提交到收银台地址
+            // 合利宝支付 - 打开支付链接并轮询支付状态
             if (data && data.pay_link) {
-              let form = document.createElement('form');
-              form.action = data.pay_link;
-              form.method = 'POST';
-              form.enctype = 'application/x-www-form-urlencoded';
-              let isSafari =
-                navigator.userAgent.indexOf('Safari') > -1 &&
-                navigator.userAgent.indexOf('Chrome') < 1;
-              if (!isSafari) {
-                form.target = '_blank';
-              }
-              document.body.appendChild(form);
-              form.submit();
-              document.body.removeChild(form);
+              const orderId = data.order_id;
+              // 保存 order_id 并开始轮询
+              setHelipayTradeNo(orderId);
+              setHelipayPolling(true);
+              // 打开支付链接
+              const link = document.createElement('a');
+              link.href = data.pay_link;
+              link.target = '_blank';
+              link.rel = 'noopener noreferrer';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              // 开始轮询支付状态
+              startHelipayPolling(orderId);
             } else {
               showError(t('获取支付链接失败'));
             }
@@ -747,6 +758,16 @@ const TopUp = () => {
     }
   }, [statusState?.status]);
 
+  // 组件卸载时清理合利宝轮询
+  useEffect(() => {
+    return () => {
+      if (helipayPollingRef.current) {
+        clearInterval(helipayPollingRef.current);
+        helipayPollingRef.current = null;
+      }
+    };
+  }, []);
+
   const renderAmount = () => {
     return amount + ' ' + t('元');
   };
@@ -805,7 +826,59 @@ const TopUp = () => {
   };
 
   const handleCancel = () => {
+    // 停止合利宝轮询
+    if (helipayPollingRef.current) {
+      clearInterval(helipayPollingRef.current);
+      helipayPollingRef.current = null;
+    }
+    setHelipayPolling(false);
+    setHelipayTradeNo('');
     setOpen(false);
+  };
+
+  // 合利宝支付状态轮询
+  const startHelipayPolling = (tradeNo) => {
+    // 如果已有轮询，先清除
+    if (helipayPollingRef.current) {
+      clearInterval(helipayPollingRef.current);
+    }
+    let pollCount = 0;
+    const maxPolls = 60; // 最多轮询60次（5分钟）
+    helipayPollingRef.current = setInterval(async () => {
+      pollCount++;
+      try {
+        const res = await API.get(`/api/user/helipay/status?order_id=${tradeNo}`);
+        if (res.data?.message === 'success') {
+          const status = res.data.data?.status;
+          if (status === 'PAID') {
+            // 支付成功
+            clearInterval(helipayPollingRef.current);
+            helipayPollingRef.current = null;
+            setHelipayPolling(false);
+            showSuccess(t('支付成功'));
+            // 关闭弹窗
+            setOpen(false);
+            // 刷新用户配额
+            getUserQuota();
+          } else if (status === 'FAILED' || status === 'CANCELLED') {
+            // 支付失败或取消
+            clearInterval(helipayPollingRef.current);
+            helipayPollingRef.current = null;
+            setHelipayPolling(false);
+            showError(status === 'CANCELLED' ? t('支付已取消') : t('支付失败'));
+          }
+        }
+      } catch (e) {
+        console.error('轮询支付状态失败:', e);
+      }
+      // 超时停止轮询
+      if (pollCount >= maxPolls) {
+        clearInterval(helipayPollingRef.current);
+        helipayPollingRef.current = null;
+        setHelipayPolling(false);
+        showInfo(t('支付查询超时，请稍后手动检查支付状态'));
+      }
+    }, 5000); // 每5秒轮询一次
   };
 
   const handleTransferCancel = () => {
