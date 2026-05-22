@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React from 'react';
-import { Modal, Typography, Card, Skeleton } from '@douyinfe/semi-ui';
+import { Modal, Typography, Card, Skeleton, Button } from '@douyinfe/semi-ui';
 import { SiAlipay, SiWechat, SiStripe } from 'react-icons/si';
 import { CreditCard } from 'lucide-react';
 
@@ -44,6 +44,12 @@ const PaymentConfirmModal = ({
     discountRate && discountRate > 0 && discountRate < 1 && amountNumber > 0;
   const originalAmount = hasDiscount ? amountNumber / discountRate : 0;
   const discountAmount = hasDiscount ? originalAmount - amountNumber : 0;
+
+  // 处理确认按钮点击
+  const handleOk = async () => {
+    await onlineTopUp();
+  };
+
   return (
     <Modal
       title={
@@ -53,12 +59,23 @@ const PaymentConfirmModal = ({
         </div>
       }
       visible={open}
-      onOk={onlineTopUp}
       onCancel={handleCancel}
       maskClosable={false}
       size='small'
       centered
       confirmLoading={confirmLoading}
+      footer={
+        <div className='flex justify-end gap-2'>
+          <Button onClick={handleCancel}>{t('取消')}</Button>
+          <Button
+            type='primary'
+            loading={confirmLoading}
+            onClick={handleOk}
+          >
+            {t('确认')}
+          </Button>
+        </div>
+      }
     >
       <div className='space-y-4'>
         <Card className='!rounded-xl !border-0 bg-slate-50 dark:bg-slate-800'>

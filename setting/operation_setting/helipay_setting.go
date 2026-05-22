@@ -76,7 +76,7 @@ func GetHelipayCustomerNumber() string {
 	return helipaySetting.CustomerNumber
 }
 
-// GetHelipaySM2PrivateKey 获取SM2私钥
+// GetHelipaySM2PrivateKey 获取SM2私钥， 已经是base64 编码的状态
 func GetHelipaySM2PrivateKey() string {
 	return helipaySetting.SM2PrivateKey
 }
@@ -86,7 +86,7 @@ func GetHelipaySM2PrivatePwd() string {
 	return helipaySetting.SM2PrivatePwd
 }
 
-// GetHelipaySM2PublicKey 获取SM2公钥
+// GetHelipaySM2PublicKey 获取SM2公钥, 已经是base64 编码的状态
 func GetHelipaySM2PublicKey() string {
 	return helipaySetting.SM2PublicKey
 }
