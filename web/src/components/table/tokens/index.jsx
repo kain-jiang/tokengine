@@ -409,6 +409,16 @@ function TokensPage() {
             />
           </div>
         }
+        actionsArea={
+          <TokensActions
+            selectedKeys={selectedKeys}
+            setEditingToken={setEditingToken}
+            setShowEdit={setShowEdit}
+            batchCopyTokens={batchCopyTokens}
+            batchDeleteTokens={batchDeleteTokens}
+            t={t}
+          />
+        }
         searchArea={
           <div className='w-full md:w-full lg:w-auto'>
             <TokensFilters
