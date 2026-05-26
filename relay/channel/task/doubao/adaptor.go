@@ -2,13 +2,17 @@ package doubao
 
 import (
 	"bytes"
+	"context"
+	"crypto/rand"
 	"fmt"
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/logger"
 
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/dto"
@@ -121,6 +125,9 @@ func (a *TaskAdaptor) ValidateRequestAndSetAction(c *gin.Context, info *relaycom
 
 // BuildRequestURL constructs the upstream URL.
 func (a *TaskAdaptor) BuildRequestURL(_ *relaycommon.RelayInfo) (string, error) {
+	if a.ChannelType == constant.ChannelTypeZLHub {
+		return fmt.Sprintf("%s/v1/task/create", a.baseURL), nil
+	}
 	return fmt.Sprintf("%s/api/v3/contents/generations/tasks", a.baseURL), nil
 }
 
@@ -128,8 +135,16 @@ func (a *TaskAdaptor) BuildRequestURL(_ *relaycommon.RelayInfo) (string, error) 
 func (a *TaskAdaptor) BuildRequestHeader(_ *gin.Context, req *http.Request, _ *relaycommon.RelayInfo) error {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+a.apiKey)
+	req.Header.Set("Authorization", formatBearerToken(a.apiKey))
 	return nil
+}
+
+func formatBearerToken(apiKey string) string {
+	apiKey = strings.TrimSpace(apiKey)
+	if strings.HasPrefix(strings.ToLower(apiKey), "bearer ") {
+		return apiKey
+	}
+	return "Bearer " + apiKey
 }
 
 // EstimateBilling 检测请求 metadata 中是否包含视频输入，返回视频折扣 OtherRatio。
@@ -219,6 +234,17 @@ func (a *TaskAdaptor) DoResponse(c *gin.Context, resp *http.Response, info *rela
 		return
 	}
 
+	if dResp.ID == "" && a.ChannelType == constant.ChannelTypeZLHub {
+		var wrappedResp struct {
+			Code    string          `json:"code"`
+			Message string          `json:"message"`
+			Data    responsePayload `json:"data"`
+		}
+		if err := common.Unmarshal(responseBody, &wrappedResp); err == nil {
+			dResp = wrappedResp.Data
+		}
+	}
+
 	if dResp.ID == "" {
 		taskErr = service.TaskErrorWrapper(fmt.Errorf("task_id is empty"), "invalid_response", http.StatusInternalServerError)
 		return
@@ -242,6 +268,9 @@ func (a *TaskAdaptor) FetchTask(baseUrl, key string, body map[string]any, proxy 
 	}
 
 	uri := fmt.Sprintf("%s/api/v3/contents/generations/tasks/%s", baseUrl, taskID)
+	if a.ChannelType == constant.ChannelTypeZLHub {
+		uri = fmt.Sprintf("%s/v1/task/get/%s", baseUrl, taskID)
+	}
 
 	req, err := http.NewRequest(http.MethodGet, uri, nil)
 	if err != nil {
@@ -250,13 +279,22 @@ func (a *TaskAdaptor) FetchTask(baseUrl, key string, body map[string]any, proxy 
 
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+key)
+	req.Header.Set("Authorization", formatBearerToken(key))
+	// X-Trace-ID is required by ZLHub API for request tracing
+	req.Header.Set("X-Trace-ID", generateTraceID())
 
 	client, err := service.GetHttpClientWithProxy(proxy)
 	if err != nil {
 		return nil, fmt.Errorf("new proxy http client failed: %w", err)
 	}
-	return client.Do(req)
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	// Log the full request URL and response status for debugging
+	logger.LogDebug(context.Background(), fmt.Sprintf("ZLHub FetchTask: URL=%s, Status=%d, Content-Type=%s",
+		req.URL.String(), resp.StatusCode, resp.Header.Get("Content-Type")))
+	return resp, nil
 }
 
 func (a *TaskAdaptor) GetModelList() []string {
@@ -269,18 +307,37 @@ func (a *TaskAdaptor) GetChannelName() string {
 
 func (a *TaskAdaptor) convertToRequestPayload(req *relaycommon.TaskSubmitReq) (*requestPayload, error) {
 	r := requestPayload{
-		Model:   req.Model,
-		Content: []ContentItem{},
+		Model: req.Model,
+		Content: []ContentItem{{
+			Type: "text",
+			Text: req.Prompt,
+		}},
+		GenerateAudio: lo.ToPtr(dto.BoolValue(true)),
+		Ratio:         req.Size,
 	}
 
-	// Add images if present
-	if req.HasImage() {
+	if r.Ratio == "" {
+		r.Ratio = "16:9"
+	}
+	if sec, _ := strconv.Atoi(req.Seconds); sec > 0 {
+		r.Duration = lo.ToPtr(dto.IntValue(sec))
+	} else if req.Duration > 0 {
+		r.Duration = lo.ToPtr(dto.IntValue(req.Duration))
+	}
+	if r.Duration == nil {
+		defaultDuration := dto.IntValue(5)
+		r.Duration = &defaultDuration
+	}
+
+	if len(req.Images) > 0 {
 		for _, imgURL := range req.Images {
+			if imgURL == "" {
+				continue
+			}
 			r.Content = append(r.Content, ContentItem{
-				Type: "image_url",
-				ImageURL: &MediaURL{
-					URL: imgURL,
-				},
+				Type:     "image_url",
+				ImageURL: &MediaURL{URL: imgURL},
+				Role:     "reference_image",
 			})
 		}
 	}
@@ -290,22 +347,33 @@ func (a *TaskAdaptor) convertToRequestPayload(req *relaycommon.TaskSubmitReq) (*
 		return nil, errors.Wrap(err, "unmarshal metadata failed")
 	}
 
-	if sec, _ := strconv.Atoi(req.Seconds); sec > 0 {
-		r.Duration = lo.ToPtr(dto.IntValue(sec))
+	if r.Watermark == nil {
+		watermark := dto.BoolValue(false)
+		r.Watermark = &watermark
 	}
 
-	r.Content = lo.Reject(r.Content, func(c ContentItem, _ int) bool { return c.Type == "text" })
-	r.Content = append(r.Content, ContentItem{
-		Type: "text",
-		Text: req.Prompt,
-	})
+	// Note: Doubao Seedance video models do not accept 'resolution' parameter.
+	// They use 'ratio' (aspect ratio) instead. Do not set Resolution from Size.
 
 	return &r, nil
 }
 
 func (a *TaskAdaptor) ParseTaskResult(respBody []byte) (*relaycommon.TaskInfo, error) {
 	resTask := responseTask{}
-	if err := common.Unmarshal(respBody, &resTask); err != nil {
+	if a.ChannelType == constant.ChannelTypeZLHub {
+		var wrappedResp struct {
+			Code    string       `json:"code"`
+			Message string       `json:"message"`
+			Data    responseTask `json:"data"`
+		}
+		if err := common.Unmarshal(respBody, &wrappedResp); err != nil {
+			return nil, errors.Wrap(err, "unmarshal zlhub task result failed")
+		}
+		resTask = wrappedResp.Data
+		if resTask.Error.Message == "" {
+			resTask.Error.Message = wrappedResp.Message
+		}
+	} else if err := common.Unmarshal(respBody, &resTask); err != nil {
 		return nil, errors.Wrap(err, "unmarshal task result failed")
 	}
 
@@ -343,7 +411,20 @@ func (a *TaskAdaptor) ParseTaskResult(respBody []byte) (*relaycommon.TaskInfo, e
 
 func (a *TaskAdaptor) ConvertToOpenAIVideo(originTask *model.Task) ([]byte, error) {
 	var dResp responseTask
-	if err := common.Unmarshal(originTask.Data, &dResp); err != nil {
+	if a.ChannelType == constant.ChannelTypeZLHub {
+		var wrappedResp struct {
+			Code    string       `json:"code"`
+			Message string       `json:"message"`
+			Data    responseTask `json:"data"`
+		}
+		if err := common.Unmarshal(originTask.Data, &wrappedResp); err != nil {
+			return nil, errors.Wrap(err, "unmarshal zlhub task data failed")
+		}
+		dResp = wrappedResp.Data
+		if dResp.Error.Message == "" {
+			dResp.Error.Message = wrappedResp.Message
+		}
+	} else if err := common.Unmarshal(originTask.Data, &dResp); err != nil {
 		return nil, errors.Wrap(err, "unmarshal doubao task data failed")
 	}
 
@@ -365,4 +446,11 @@ func (a *TaskAdaptor) ConvertToOpenAIVideo(originTask *model.Task) ([]byte, erro
 	}
 
 	return common.Marshal(openAIVideo)
+}
+
+// generateTraceID 生成 32 位随机字符串，用于 ZLHub API 的 X-Trace-ID 头
+func generateTraceID() string {
+	b := make([]byte, 16)
+	_, _ = rand.Read(b)
+	return fmt.Sprintf("%x", b)
 }

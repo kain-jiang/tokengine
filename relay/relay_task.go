@@ -12,6 +12,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/dto"
+	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/relay/channel"
 	"github.com/QuantumNous/new-api/relay/channel/task/taskcommon"
@@ -343,6 +344,7 @@ func sunoFetchByIDRespBodyBuilder(c *gin.Context) (respBody []byte, taskResp *dt
 	userId := c.GetInt("id")
 
 	originTask, exist, err := model.GetByTaskId(userId, taskId)
+	logger.LogInfo(c, fmt.Sprintf("[videoFetch] get task result exist=%v err=%v userId=%d taskId=%s", exist, err, userId, taskId))
 	if err != nil {
 		taskResp = service.TaskErrorWrapper(err, "get_task_failed", http.StatusInternalServerError)
 		return
@@ -351,6 +353,7 @@ func sunoFetchByIDRespBodyBuilder(c *gin.Context) (respBody []byte, taskResp *dt
 		taskResp = service.TaskErrorWrapperLocal(errors.New("task_not_exist"), "task_not_exist", http.StatusBadRequest)
 		return
 	}
+	logger.LogInfo(c, fmt.Sprintf("[videoFetch] task db record id=%d taskId=%s userId=%d channelId=%d platform=%s status=%s progress=%s", originTask.ID, originTask.TaskID, originTask.UserId, originTask.ChannelId, originTask.Platform, originTask.Status, originTask.Progress))
 
 	respBody, err = common.Marshal(dto.TaskResponse[any]{
 		Code: "success",
@@ -365,6 +368,7 @@ func videoFetchByIDRespBodyBuilder(c *gin.Context) (respBody []byte, taskResp *d
 		taskId = c.GetString("task_id")
 	}
 	userId := c.GetInt("id")
+	logger.LogInfo(c, fmt.Sprintf("[videoFetch] uri=%s taskId=%s userId=%d method=%s", c.Request.RequestURI, taskId, userId, c.Request.Method))
 
 	originTask, exist, err := model.GetByTaskId(userId, taskId)
 	if err != nil {

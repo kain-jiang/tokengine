@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React from 'react';
-import { Card, Select, Typography, Button, Switch, TextArea } from '@douyinfe/semi-ui';
+import { Card, Select, Typography, Button, Switch, TextArea, InputNumber } from '@douyinfe/semi-ui';
 import { Sparkles, Users, ToggleLeft, X, Settings, Image as ImageIcon, PenTool } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { renderGroupOption, selectFilter } from '../../helpers';
@@ -46,8 +46,11 @@ const SettingsPanel = ({
   previewPayload,
   messages,
   sizeOptions = [],
+  ratioOptions = [],
+  durationOptions = [],
   hideParameterControl = false,
   hideConfigManager = false,
+  hideImageUrlInput = false,
   children,
 }) => {
   const { t } = useTranslation();
@@ -181,17 +184,19 @@ const SettingsPanel = ({
         </div>
 
         {/* 图片URL输入 */}
-        <div className={customRequestMode ? 'opacity-50' : ''}>
-          <ImageUrlInput
-            imageUrls={inputs.imageUrls}
-            imageEnabled={inputs.imageEnabled}
-            onImageUrlsChange={(urls) => onInputChange('imageUrls', urls)}
-            onImageEnabledChange={(enabled) =>
-              onInputChange('imageEnabled', enabled)
-            }
-            disabled={customRequestMode}
-          />
-        </div>
+        {!hideImageUrlInput && (
+          <div className={customRequestMode ? 'opacity-50' : ''}>
+            <ImageUrlInput
+              imageUrls={inputs.imageUrls}
+              imageEnabled={inputs.imageEnabled}
+              onImageUrlsChange={(urls) => onInputChange('imageUrls', urls)}
+              onImageEnabledChange={(enabled) =>
+                onInputChange('imageEnabled', enabled)
+              }
+              disabled={customRequestMode}
+            />
+          </div>
+        )}
 
         {/* 文生图专用：尺寸选择 */}
         {sizeOptions && sizeOptions.length > 0 && (
@@ -225,6 +230,138 @@ const SettingsPanel = ({
           </div>
         )}
 
+        {/* 文生视频专用：画面比例 */}
+        {ratioOptions && ratioOptions.length > 0 && (
+          <div className={customRequestMode ? 'opacity-50' : ''}>
+            <div className='flex items-center gap-2 mb-2'>
+              <ImageIcon size={16} className='text-gray-500' />
+              <Typography.Text strong className='text-sm'>
+                {t('画面比例')}
+              </Typography.Text>
+              {customRequestMode && (
+                <Typography.Text className='text-xs text-orange-600'>
+                  ({t('已在自定义模式中忽略')})
+                </Typography.Text>
+              )}
+            </div>
+            <Select
+              placeholder={t('请选择画面比例')}
+              name='ratio'
+              selection
+              filter={selectFilter}
+              autoClearSearchValue={false}
+              onChange={(value) => onInputChange('ratio', value)}
+              value={inputs.ratio}
+              autoComplete='new-password'
+              optionList={ratioOptions}
+              style={{ width: '100%' }}
+              dropdownStyle={{ width: '100%', maxWidth: '100%' }}
+              className='!rounded-lg'
+              disabled={customRequestMode}
+            />
+          </div>
+        )}
+
+        {/* 文生视频专用：视频时长 */}
+        {durationOptions && durationOptions.length > 0 && (
+          <div className={customRequestMode ? 'opacity-50' : ''}>
+            <div className='flex items-center gap-2 mb-2'>
+              <ImageIcon size={16} className='text-gray-500' />
+              <Typography.Text strong className='text-sm'>
+                {t('视频时长')}
+              </Typography.Text>
+              {customRequestMode && (
+                <Typography.Text className='text-xs text-orange-600'>
+                  ({t('已在自定义模式中忽略')})
+                </Typography.Text>
+              )}
+            </div>
+            <Select
+              placeholder={t('请选择视频时长')}
+              name='duration'
+              selection
+              filter={selectFilter}
+              autoClearSearchValue={false}
+              onChange={(value) => onInputChange('duration', value)}
+              value={inputs.duration}
+              autoComplete='new-password'
+              optionList={durationOptions}
+              style={{ width: '100%' }}
+              dropdownStyle={{ width: '100%', maxWidth: '100%' }}
+              className='!rounded-lg'
+              disabled={customRequestMode}
+            />
+          </div>
+        )}
+
+        {/* 文生视频专用：视频分辨率 */}
+        {ratioOptions && ratioOptions.length > 0 && (
+          <div className={customRequestMode ? 'opacity-50' : ''}>
+            <div className='flex items-center gap-2 mb-2'>
+              <ImageIcon size={16} className='text-gray-500' />
+              <Typography.Text strong className='text-sm'>
+                {t('视频分辨率')}
+              </Typography.Text>
+              {customRequestMode && (
+                <Typography.Text className='text-xs text-orange-600'>
+                  ({t('已在自定义模式中忽略')})
+                </Typography.Text>
+              )}
+            </div>
+            <Select
+              placeholder={t('请选择视频分辨率')}
+              name='resolution'
+              selection
+              filter={selectFilter}
+              autoClearSearchValue={false}
+              onChange={(value) => onInputChange('resolution', value)}
+              value={inputs.resolution}
+              autoComplete='new-password'
+              optionList={[
+                { label: '480P', value: '480p' },
+                { label: '720P', value: '720p' },
+                { label: '1080P', value: '1080p' },
+              ]}
+              style={{ width: '100%' }}
+              dropdownStyle={{ width: '100%', maxWidth: '100%' }}
+              className='!rounded-lg'
+              disabled={customRequestMode}
+            />
+          </div>
+        )}
+
+        {/* 文生视频专用：Seed */}
+        {ratioOptions && ratioOptions.length > 0 && (
+          <div className={customRequestMode ? 'opacity-50' : ''}>
+            <div className='flex items-center gap-2 mb-2'>
+              <Settings size={16} className='text-gray-500' />
+              <Typography.Text strong className='text-sm'>
+                {t('Seed')}
+              </Typography.Text>
+              {customRequestMode && (
+                <Typography.Text className='text-xs text-orange-600'>
+                  ({t('已在自定义模式中忽略')})
+                </Typography.Text>
+              )}
+            </div>
+            <InputNumber
+              placeholder={t('输入 -1 或 0 ~ 4294967295')}
+              name='seed'
+              precision={0}
+              min={-1}
+              max={4294967295}
+              value={inputs.seed === null || inputs.seed === undefined ? null : Number(inputs.seed)}
+              onChange={(value) => onInputChange('seed', value === null || value === undefined ? '' : String(value))}
+              style={{ width: '100%' }}
+              className='!rounded-lg'
+              disabled={customRequestMode}
+            />
+            <Typography.Text style={{ display: 'block', marginTop: 8, color: '#64748b', fontSize: 12 }}>
+              {t('Seed：-1 表示随机生成；0 ~ 4294967295 可复现相同结果')}
+            </Typography.Text>
+          </div>
+        )}
+
         {/* 文生图专用：提示词输入 */}
         {sizeOptions && sizeOptions.length > 0 && (
           <div className={customRequestMode ? 'opacity-50' : ''}>
@@ -248,6 +385,33 @@ const SettingsPanel = ({
               disabled={customRequestMode}
             />
             {/* 生成图片按钮 - 紧跟在提示词输入框下方 */}
+            {children}
+          </div>
+        )}
+
+        {/* 文生视频专用：提示词输入 */}
+        {ratioOptions && ratioOptions.length > 0 && (
+          <div className={customRequestMode ? 'opacity-50' : ''}>
+            <div className='flex items-center gap-2 mb-2'>
+              <PenTool size={16} className='text-gray-500' />
+              <Typography.Text strong className='text-sm'>
+                {t('提示词')}
+              </Typography.Text>
+              {customRequestMode && (
+                <Typography.Text className='text-xs text-orange-600'>
+                  ({t('已在自定义模式中忽略')})
+                </Typography.Text>
+              )}
+            </div>
+            <TextArea
+              value={inputs.prompt || ''}
+              onChange={(value) => onInputChange('prompt', value)}
+              rows={4}
+              placeholder={t('请输入视频描述')}
+              style={{ borderRadius: 4 }}
+              disabled={customRequestMode}
+            />
+            {/* 生成视频按钮 - 紧跟在提示词输入框下方 */}
             {children}
           </div>
         )}

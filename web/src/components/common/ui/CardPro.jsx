@@ -38,7 +38,7 @@ const { Text } = Typography;
  *
  * 支持三种布局类型：
  * - type1: 操作型 (如TokensTable) - 描述信息 + 操作按钮 + 搜索表单
- * - type2: 查询型 (如LogsTable) - 统计信息 + 搜索表单
+ * - type2: 查询型 (如LogsTable) - 统计信息 + 操作按钮 + 搜索表单
  * - type3: 复杂型 (如ChannelsTable) - 描述信息 + 类型切换 + 操作按钮 + 搜索表单
  */
 const CardPro = ({
@@ -116,9 +116,8 @@ const CardPro = ({
         <div
           className={`flex flex-col gap-2 ${isMobile && !showMobileActions ? 'hidden' : ''}`}
         >
-          {/* 操作按钮区域 - 用于type1和type3 */}
-          {(type === 'type1' || type === 'type3') &&
-            actionsArea &&
+          {/* 操作按钮区域 - 用于所有类型 */}
+          {actionsArea &&
             (Array.isArray(actionsArea) ? (
               actionsArea.map((area, idx) => (
                 <React.Fragment key={idx}>

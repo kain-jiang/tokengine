@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/url"
 	"strconv"
@@ -118,76 +119,41 @@ func RequestHelipay(c *gin.Context) {
 
 // HelipayNotify 合利宝支付回调处理
 func HelipayNotify(c *gin.Context) {
-	var notifyData map[string]interface{}
-	if err := c.ShouldBindJSON(&notifyData); err != nil {
+	// 先读取原始 body 用于调试
+	bodyBytes, _ := io.ReadAll(c.Request.Body)
+	log.Printf("合利宝回调原始body: %s", string(bodyBytes))
+	log.Printf("合利宝回调Content-Type: %s", c.Request.Header.Get("Content-Type"))
+
+	// 解析 form-urlencoded 数据
+	formStr := string(bodyBytes)
+	parsedForm, err := url.ParseQuery(formStr)
+	if err != nil {
 		log.Println("合利宝回调参数解析失败: ", err)
 		c.Writer.Write([]byte("fail"))
 		return
 	}
+	// 将 form 数据转换为 map
+	notifyData := make(map[string]interface{})
+	for key, values := range parsedForm {
+		if len(values) > 0 {
+			notifyData[key] = values[0]
+		}
+	}
 
 	log.Printf("合利宝回调数据: %+v", notifyData)
 
-	// 1. 解密敏感数据
-	encryptionKey, ok := notifyData["encryptionKey"].(string)
-	if !ok || encryptionKey == "" {
-		log.Println("合利宝回调缺少encryptionKey")
-		c.Writer.Write([]byte("fail"))
-		return
-	}
+	// 合利宝回调无加密data字段，直接使用表单数据
+	log.Println("合利宝回调无加密data字段，直接使用表单数据")
 
-	// SM2 解密 SM4 密钥
-	sm4Key, err := service.SM2Decrypt(encryptionKey)
-	if err != nil {
-		log.Printf("合利宝回调 SM2 解密 SM4 密钥失败: %v", err)
-		c.Writer.Write([]byte("fail"))
-		return
-	}
-
-	// 获取加密的 data 字段
-	data, ok := notifyData["data"]
-	if !ok {
-		log.Println("合利宝回调缺少data字段")
-		c.Writer.Write([]byte("fail"))
-		return
-	}
-
-	// 合利宝回调的 data 可能是 map[string]interface{} 且包含加密的 "data" 字符串
-	var encryptedDataStr string
-	if dataMap, ok := data.(map[string]interface{}); ok {
-		if d, ok := dataMap["data"].(string); ok {
-			encryptedDataStr = d
-		}
-	} else if dStr, ok := data.(string); ok {
-		encryptedDataStr = dStr
-	}
-
-	if encryptedDataStr == "" {
-		log.Println("合利宝回调 data 字段为空或格式不正确")
-		c.Writer.Write([]byte("fail"))
-		return
-	}
-
-	// SM4 解密敏感数据
-	decryptedBytes, err := service.SM4Decrypt(encryptedDataStr, sm4Key)
-	if err != nil {
-		log.Printf("合利宝回调 SM4 解密敏感数据失败: %v", err)
-		c.Writer.Write([]byte("fail"))
-		return
-	}
-
-	var dataMap map[string]interface{}
-	if err := common.Unmarshal(decryptedBytes, &dataMap); err != nil {
-		log.Printf("合利宝回调解密数据解析 JSON 失败: %v", err)
-		c.Writer.Write([]byte("fail"))
-		return
-	}
-
-	orderId, ok := dataMap["orderId"].(string)
+	orderId, ok := notifyData["orderId"].(string)
 	if !ok || orderId == "" {
-		log.Println("合利宝回调解密后订单号为空")
+		log.Println("合利宝回调订单号为空")
 		c.Writer.Write([]byte("fail"))
 		return
 	}
+	tradeState, _ := notifyData["tradeState"].(string)
+	log.Printf("合利宝回调解析完成，订单号: %s, 交易状态: %s", orderId, tradeState)
+
 	//  todo
 	/*
 		// 验证签名
@@ -234,7 +200,6 @@ func HelipayNotify(c *gin.Context) {
 				return
 			}
 	*/
-	tradeStatus, _ := dataMap["tradeStatus"].(string)
 
 	LockOrder(orderId)
 	defer UnlockOrder(orderId)
@@ -247,7 +212,7 @@ func HelipayNotify(c *gin.Context) {
 	}
 
 	if topUp.Status == "pending" {
-		if tradeStatus == "SUCCESS" {
+		if tradeState == "SUCCESS" {
 			topUp.Status = "success"
 			if err := topUp.Update(); err != nil {
 				log.Printf("合利宝回调更新订单失败: %v", err)
@@ -263,9 +228,9 @@ func HelipayNotify(c *gin.Context) {
 				return
 			}
 
-			log.Printf("合利宝支付成功: %s, 用户: %d, 充值: %d", orderId, topUp.UserId, quotaToAdd)
-			model.RecordLog(topUp.UserId, model.LogTypeTopup, fmt.Sprintf("使用合利宝支付成功，充值金额: %v", quotaToAdd))
-		} else if tradeStatus == "FAILED" {
+			log.Printf("合利宝支付成功: %s, 用户: %d, 充值: %.2f元, 配额: %d", orderId, topUp.UserId, topUp.Money, quotaToAdd)
+			model.RecordLog(topUp.UserId, model.LogTypeTopup, fmt.Sprintf("使用合利宝支付成功，充值金额: %.2f元，获得配额: %d", topUp.Money, quotaToAdd))
+		} else if tradeState == "FAILED" {
 			topUp.Status = "failed"
 			if err := topUp.Update(); err != nil {
 				log.Printf("合利宝回调更新订单失败: %v", err)
