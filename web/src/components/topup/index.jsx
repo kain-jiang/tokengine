@@ -963,6 +963,7 @@ const TopUp = () => {
         payMethods={payMethods}
         amountNumber={amount}
         discountRate={topupInfo?.discount?.[topUpCount] || 1.0}
+        isCustomCurrencyAmount={presetAmounts.find(p => p.value === topUpCount)?.isCustomCurrencyAmount || false}
       />
 
       {/* 充值账单模态框 */}

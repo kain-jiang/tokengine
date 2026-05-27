@@ -1069,7 +1069,7 @@ export function getQuotaWithUnit(quota, digits = 6) {
   return (quota / quotaPerUnit).toFixed(digits);
 }
 
-export function renderQuotaWithAmount(amount) {
+export function renderQuotaWithAmount(amount, skipConversion = false) {
   const quotaDisplayType = localStorage.getItem('quota_display_type') || 'USD';
   if (quotaDisplayType === 'TOKENS') {
     return renderNumber(renderUnitWithQuota(amount));
@@ -1079,6 +1079,24 @@ export function renderQuotaWithAmount(amount) {
   const formattedAmount = Number.isFinite(numericAmount)
     ? numericAmount.toFixed(2)
     : amount;
+
+  // 如果 skipConversion 为 true，表示金额已经是当前币元，不需要再转换
+  if (skipConversion) {
+    if (quotaDisplayType === 'CNY') {
+      return '¥' + formattedAmount;
+    } else if (quotaDisplayType === 'CUSTOM') {
+      const statusStr = localStorage.getItem('status');
+      let symbol = '¤';
+      try {
+        if (statusStr) {
+          const s = JSON.parse(statusStr);
+          symbol = s?.custom_currency_symbol || symbol;
+        }
+      } catch (e) {}
+      return symbol + formattedAmount;
+    }
+    return '$' + formattedAmount;
+  }
 
   if (quotaDisplayType === 'CNY') {
     const statusStr = localStorage.getItem('status');
