@@ -229,8 +229,15 @@ const TopUp = () => {
           setAmount(selectedPreset);
         }
       } else if (payment !== 'zs_pay' && payment !== 'helipay' && enableOnlineTopUp) {
-        // 只有选择易支付（支付宝/微信/银行卡等）时才调用 getAmount
-        await getAmount();
+        // 如果选择了自定义币元金额的预设选项，直接计算金额，不调用后端 API
+        const selectedPresetObj = presetAmounts.find(p => p.value === selectedPreset);
+        if (selectedPresetObj && selectedPresetObj.isCustomCurrencyAmount) {
+          const discount = selectedPresetObj.discount || topupInfo.discount[selectedPreset] || 1.0;
+          setAmount(selectedPreset * discount);
+        } else {
+          // 只有选择易支付（支付宝/微信/银行卡等）时才调用 getAmount
+          await getAmount();
+        }
       }
 
       if (topUpCount < minTopUp) {
@@ -905,7 +912,11 @@ const TopUp = () => {
 
     // 计算实际支付金额，考虑折扣
     const discount = preset.discount || topupInfo.discount[preset.value] || 1.0;
-    const discountedAmount = preset.value * priceRatio * discount;
+    // 如果是自定义币元金额（管理员直接设置的当前币元充值选项），不进行汇率换算
+    const isCustomCurrencyAmount = preset.isCustomCurrencyAmount === true;
+    const discountedAmount = isCustomCurrencyAmount
+      ? preset.value * discount
+      : preset.value * priceRatio * discount;
     setAmount(discountedAmount);
   };
 
