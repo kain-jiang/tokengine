@@ -53,8 +53,10 @@ export const useModelPricingData = () => {
   const [statusState] = useContext(StatusContext);
   const [userState] = useContext(UserContext);
 
-  // 模型定价页面固定使用美元，不受全局币种设置影响
-  const currency = 'USD';
+  // 默认跟随全局币种设置
+  const quotaDisplayType = statusState?.status?.quota_display_type || 'USD';
+  const defaultCurrency = quotaDisplayType === 'TOKENS' ? 'USD' : quotaDisplayType;
+  const [currency, setCurrency] = useState(defaultCurrency);
 
   const filteredModels = useMemo(() => {
     let result = models;
@@ -139,9 +141,22 @@ export const useModelPricingData = () => {
     [selectedRowKeys],
   );
 
-  // 模型定价页面固定使用美元显示，不受全局币种设置影响
+  // 根据 currency 状态显示对应货币格式的定价
   const displayPrice = (usdPrice) => {
-    return `$${usdPrice.toFixed(3)}`;
+    const status = statusState?.status || {};
+    const cnyRate = status.usd_exchange_rate || 7;
+    const customRate = status.custom_currency_exchange_rate || 1;
+    const customSymbol = status.custom_currency_symbol || '¤';
+
+    switch (currency) {
+      case 'CNY':
+        return `¥${(usdPrice * cnyRate).toFixed(3)}`;
+      case 'CUSTOM':
+        return `${customSymbol}${(usdPrice * customRate).toFixed(3)}`;
+      case 'USD':
+      default:
+        return `$${usdPrice.toFixed(3)}`;
+    }
   };
 
   const setModelsFormat = (models, groupRatio, vendorMap) => {
@@ -314,6 +329,7 @@ export const useModelPricingData = () => {
     currentPage,
     setCurrentPage,
     currency,
+    setCurrency,
     tokenUnit,
     setTokenUnit,
     models,

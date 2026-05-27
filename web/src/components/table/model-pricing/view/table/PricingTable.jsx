@@ -46,7 +46,7 @@ const PricingTable = ({
   openModelDetail,
   t,
 }) => {
-  // 模型定价页面固定使用美元，不受全局币种设置影响
+  // 直接使用 currency 选择的货币（默认跟随全局币种设置）
   const columns = useMemo(() => {
     return getPricingTableColumns({
       t,
@@ -55,8 +55,8 @@ const PricingTable = ({
       copyText,
       setModalImageUrl,
       setIsModalOpenurl,
-      currency: 'USD',
-      siteDisplayType: 'USD',
+      currency: currency,
+      siteDisplayType: siteDisplayType,
       tokenUnit,
       displayPrice,
       showRatio,
