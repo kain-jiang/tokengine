@@ -103,12 +103,11 @@ export default function GeneralSettings(props) {
       });
   }
 
-  // 计算展示在输入框中的“1 USD = X <currency>”中的 X
+  // 计算展示在输入框中的"1 USD = X <currency>"中的 X
   const combinedRate = useMemo(() => {
     const type = inputs['general_setting.quota_display_type'];
     if (type === 'USD') return '1';
     if (type === 'CNY') return String(inputs['USDExchangeRate'] || '');
-    if (type === 'TOKENS') return String(inputs['QuotaPerUnit'] || '');
     if (type === 'CUSTOM')
       return String(
         inputs['general_setting.custom_currency_exchange_rate'] || '',
@@ -120,8 +119,6 @@ export default function GeneralSettings(props) {
     const type = inputs['general_setting.quota_display_type'];
     if (type === 'CNY') {
       handleFieldChange('USDExchangeRate')(val);
-    } else if (type === 'TOKENS') {
-      handleFieldChange('QuotaPerUnit')(val);
     } else if (type === 'CUSTOM') {
       handleFieldChange('general_setting.custom_currency_exchange_rate')(val);
     }
@@ -155,14 +152,12 @@ export default function GeneralSettings(props) {
 
   const rateLabel = useMemo(() => {
     if (quotaDisplayType === 'CNY') return t('汇率');
-    if (quotaDisplayType === 'TOKENS') return t('每美元对应 Token 数');
     if (quotaDisplayType === 'CUSTOM') return t('汇率');
     return '';
   }, [quotaDisplayType, t]);
 
   const rateSuffix = useMemo(() => {
     if (quotaDisplayType === 'CNY') return 'CNY (¥)';
-    if (quotaDisplayType === 'TOKENS') return 'Tokens';
     if (quotaDisplayType === 'CUSTOM')
       return inputs['general_setting.custom_currency_symbol'] || '¤';
     return '';
@@ -172,10 +167,6 @@ export default function GeneralSettings(props) {
     if (quotaDisplayType === 'CNY')
       return t(
         '系统内部以美元 (USD) 为基准计价。用户余额、充值金额、模型定价、用量日志等所有金额显示均按此汇率换算为人民币，不影响内部计费',
-      );
-    if (quotaDisplayType === 'TOKENS')
-      return t(
-        '系统内部计费精度，默认 500000，修改可能导致计费异常，请谨慎操作',
       );
     if (quotaDisplayType === 'CUSTOM')
       return t(
@@ -189,8 +180,6 @@ export default function GeneralSettings(props) {
     const rate = parseFloat(combinedRate);
     if (!rate || isNaN(rate)) return t('请输入汇率');
     if (quotaDisplayType === 'CNY') return `$1.00 → ¥${rate.toFixed(2)}`;
-    if (quotaDisplayType === 'TOKENS')
-      return `$1.00 → ${Number(rate).toLocaleString()} Tokens`;
     if (quotaDisplayType === 'CUSTOM') {
       const symbol = inputs['general_setting.custom_currency_symbol'] || '¤';
       return `$1.00 → ${symbol}${rate.toFixed(2)}`;
@@ -298,7 +287,7 @@ export default function GeneralSettings(props) {
                   </Form.Select.Option>
                 </Form.Select>
               </Col>
-              {quotaDisplayType !== 'USD' && (
+              {(quotaDisplayType === 'CNY' || quotaDisplayType === 'CUSTOM') && (
                 <Col xs={24} sm={12} md={8} lg={8} xl={8}>
                   <Form.Slot label={rateLabel}>
                     <Input

@@ -240,14 +240,15 @@ const PricingCardView = ({
           const modelKey = getModelKey(model);
           const isSelected = selectedRowKeys.includes(modelKey);
 
+          // 模型定价页面固定使用美元，不受全局币种设置影响
           const priceData = calculateModelPrice({
             record: model,
             selectedGroup,
             groupRatio,
             tokenUnit,
             displayPrice,
-            currency,
-            quotaDisplayType: siteDisplayType,
+            currency: 'USD',
+            quotaDisplayType: 'USD',
           });
 
           return (
