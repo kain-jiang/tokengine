@@ -58,6 +58,15 @@ export const useModelPricingData = () => {
   const defaultCurrency = quotaDisplayType === 'TOKENS' ? 'USD' : quotaDisplayType;
   const [currency, setCurrency] = useState(defaultCurrency);
 
+  // 当 statusState 变化时，同步更新 currency
+  useEffect(() => {
+    const newQuotaDisplayType = statusState?.status?.quota_display_type || 'USD';
+    const newDefaultCurrency = newQuotaDisplayType === 'TOKENS' ? 'USD' : newQuotaDisplayType;
+    if (newDefaultCurrency !== currency) {
+      setCurrency(newDefaultCurrency);
+    }
+  }, [statusState?.status?.quota_display_type]);
+
   const filteredModels = useMemo(() => {
     let result = models;
 
