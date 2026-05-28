@@ -192,7 +192,7 @@ export const CHANNEL_OPTIONS = [
   {
     value: 58,
     color: 'purple',
-    label: '鲸纬渠道',
+    label: '众联',
   },
 ];
 

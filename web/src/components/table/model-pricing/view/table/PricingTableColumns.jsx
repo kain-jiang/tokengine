@@ -146,11 +146,15 @@ export const getPricingTableColumns = ({
     title: t('模型名称'),
     dataIndex: 'model_name',
     render: (text, record, index) => {
-      return renderModelTag(text, {
-        onClick: () => {
-          copyText(text);
-        },
-      });
+      return (
+        <h3
+          className='font-bold text-gray-900 truncate'
+          style={{ fontSize: '1.05rem' }}
+          onClick={() => copyText(text)}
+        >
+          {text}
+        </h3>
+      );
     },
     onFilter: (value, record) =>
       record.model_name.toLowerCase().includes(value.toLowerCase()),

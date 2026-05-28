@@ -39,6 +39,8 @@ const PaymentConfirmModal = ({
   // 新增：用于显示折扣明细
   amountNumber,
   discountRate,
+  // 新增：标记充值数量是否已是当前币元（不需要再转换）
+  isCustomCurrencyAmount,
 }) => {
   const hasDiscount =
     discountRate && discountRate > 0 && discountRate < 1 && amountNumber > 0;
@@ -85,7 +87,7 @@ const PaymentConfirmModal = ({
                 {t('充值数量')}：
               </Text>
               <Text className='text-slate-900 dark:text-slate-100'>
-                {renderQuotaWithAmount(topUpCount)}
+                {renderQuotaWithAmount(topUpCount, isCustomCurrencyAmount)}
               </Text>
             </div>
             <div className='flex justify-between items-center'>

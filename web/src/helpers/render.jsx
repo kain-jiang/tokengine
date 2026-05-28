@@ -998,24 +998,27 @@ export function renderQuotaNumberWithDigit(num, digits = 2) {
     return 0;
   }
   const quotaDisplayType = localStorage.getItem('quota_display_type') || 'USD';
-  num = num.toFixed(digits);
-  if (quotaDisplayType === 'CNY') {
-    return '¥' + num;
-  } else if (quotaDisplayType === 'USD') {
-    return '$' + num;
-  } else if (quotaDisplayType === 'CUSTOM') {
-    const statusStr = localStorage.getItem('status');
-    let symbol = '¤';
-    try {
-      if (statusStr) {
-        const s = JSON.parse(statusStr);
-        symbol = s?.custom_currency_symbol || symbol;
+  const statusStr = localStorage.getItem('status');
+  let rate = 1;
+  let symbol = '$';
+
+  try {
+    if (statusStr) {
+      const s = JSON.parse(statusStr);
+      if (quotaDisplayType === 'CNY') {
+        rate = s?.usd_exchange_rate || 1;
+        symbol = '¥';
+      } else if (quotaDisplayType === 'CUSTOM') {
+        rate = s?.custom_currency_exchange_rate || 1;
+        symbol = s?.custom_currency_symbol || '¤';
+      } else {
+        symbol = '$';
       }
-    } catch (e) {}
-    return symbol + num;
-  } else {
-    return num;
-  }
+    }
+  } catch (e) {}
+
+  num = (num * rate).toFixed(digits);
+  return symbol + num;
 }
 
 export function renderNumberWithPoint(num) {
@@ -1066,7 +1069,7 @@ export function getQuotaWithUnit(quota, digits = 6) {
   return (quota / quotaPerUnit).toFixed(digits);
 }
 
-export function renderQuotaWithAmount(amount) {
+export function renderQuotaWithAmount(amount, skipConversion = false) {
   const quotaDisplayType = localStorage.getItem('quota_display_type') || 'USD';
   if (quotaDisplayType === 'TOKENS') {
     return renderNumber(renderUnitWithQuota(amount));
@@ -1077,18 +1080,46 @@ export function renderQuotaWithAmount(amount) {
     ? numericAmount.toFixed(2)
     : amount;
 
+  // 如果 skipConversion 为 true，表示金额已经是当前币元，不需要再转换
+  if (skipConversion) {
+    if (quotaDisplayType === 'CNY') {
+      return '¥' + formattedAmount;
+    } else if (quotaDisplayType === 'CUSTOM') {
+      const statusStr = localStorage.getItem('status');
+      let symbol = '¤';
+      try {
+        if (statusStr) {
+          const s = JSON.parse(statusStr);
+          symbol = s?.custom_currency_symbol || symbol;
+        }
+      } catch (e) {}
+      return symbol + formattedAmount;
+    }
+    return '$' + formattedAmount;
+  }
+
   if (quotaDisplayType === 'CNY') {
-    return '¥' + formattedAmount;
+    const statusStr = localStorage.getItem('status');
+    let rate = 1;
+    try {
+      if (statusStr) {
+        const s = JSON.parse(statusStr);
+        rate = s?.usd_exchange_rate || 1;
+      }
+    } catch (e) {}
+    return '¥' + (numericAmount * rate).toFixed(2);
   } else if (quotaDisplayType === 'CUSTOM') {
     const statusStr = localStorage.getItem('status');
     let symbol = '¤';
+    let rate = 1;
     try {
       if (statusStr) {
         const s = JSON.parse(statusStr);
         symbol = s?.custom_currency_symbol || symbol;
+        rate = s?.custom_currency_exchange_rate || 1;
       }
     } catch (e) {}
-    return symbol + formattedAmount;
+    return symbol + (numericAmount * rate).toFixed(2);
   }
   return '$' + formattedAmount;
 }
@@ -1109,9 +1140,8 @@ export function getCurrencyConfig() {
     try {
       if (statusStr) {
         const s = JSON.parse(statusStr);
-        // 当定价类型已经是 CNY 时，不需要汇率转换，rate 应为 1
-        // 只有当定价是 USD 但需要显示为 CNY 时，才使用汇率
-        rate = 1;
+        // 使用美元汇率进行转换
+        rate = s?.usd_exchange_rate || 1;
       }
     } catch (e) {}
   } else if (quotaDisplayType === 'CUSTOM') {
@@ -1119,8 +1149,8 @@ export function getCurrencyConfig() {
       if (statusStr) {
         const s = JSON.parse(statusStr);
         symbol = s?.custom_currency_symbol || '¤';
-        // 当定价类型已经是 CUSTOM 时，不需要汇率转换，rate 应为 1
-        rate = 1;
+        // 使用自定义货币汇率进行转换
+        rate = s?.custom_currency_exchange_rate || 1;
       }
     } catch (e) {}
   }
@@ -1151,22 +1181,30 @@ export function renderQuota(quota, digits = 2) {
   let symbol = '$';
   let value = resultUSD;
   if (quotaDisplayType === 'CNY') {
-    // 当定价类型已经是 CNY 时，不需要汇率转换
-    // 内部额度已经是按人民币定价的
-    value = resultUSD;
+    // 使用美元汇率进行转换
+    const statusStr = localStorage.getItem('status');
+    let rate = 1;
+    try {
+      if (statusStr) {
+        const s = JSON.parse(statusStr);
+        rate = s?.usd_exchange_rate || 1;
+      }
+    } catch (e) {}
+    value = resultUSD * rate;
     symbol = '¥';
   } else if (quotaDisplayType === 'CUSTOM') {
-    // 当定价类型已经是 CUSTOM 时，不需要汇率转换
-    // 内部额度已经是按自定义货币定价的
+    // 使用自定义货币汇率进行转换
     const statusStr = localStorage.getItem('status');
     let symbolCustom = '¤';
+    let rate = 1;
     try {
       if (statusStr) {
         const s = JSON.parse(statusStr);
         symbolCustom = s?.custom_currency_symbol || symbolCustom;
+        rate = s?.custom_currency_exchange_rate || 1;
       }
     } catch (e) {}
-    value = resultUSD;
+    value = resultUSD * rate;
     symbol = symbolCustom;
   }
   const fixedResult = value.toFixed(digits);
