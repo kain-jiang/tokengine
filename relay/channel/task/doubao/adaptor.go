@@ -368,8 +368,10 @@ func (a *TaskAdaptor) convertToRequestPayload(req *relaycommon.TaskSubmitReq) (*
 		r.Watermark = &watermark
 	}
 
-	// Note: Doubao Seedance video models do not accept 'resolution' parameter.
-	// They use 'ratio' (aspect ratio) instead. Do not set Resolution from Size.
+	// 设置分辨率：如果 metadata 中没有指定 resolution，则从 size 参数解析
+	if r.Resolution == "" && req.Size != "" {
+		r.Resolution = SizeToDoubaoResolution(req.Size)
+	}
 
 	return &r, nil
 }
