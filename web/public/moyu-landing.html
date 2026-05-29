@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企业级大模型管理平台</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #14b8a6;
+            --accent: #f472b6;
+            --bg-light: #f8fafc;
+            --bg-white: #ffffff;
+            --bg-card: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --border: #e2e8f0;
+            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: var(--bg-light);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 80px 24px;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(180deg, #f8fafc 0%, #e0e7ff 100%);
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -200px;
+            right: -200px;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(20, 184, 166, 0.06) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 100px;
+            font-size: 14px;
+            color: var(--primary);
+            margin-bottom: 32px;
+        }
+
+        .hero-title {
+            font-size: clamp(36px, 6vw, 72px);
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, #0f172a 0%, #475569 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(16px, 2vw, 20px);
+            color: var(--text-secondary);
+            max-width: 700px;
+            margin-bottom: 48px;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 64px;
+        }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 32px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            font-weight: 600;
+            border-radius: 12px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.39);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 32px;
+            background: white;
+            color: var(--text-primary);
+            font-weight: 600;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+        }
+
+        .btn-secondary:hover {
+            background: #f1f5f9;
+            border-color: var(--text-muted);
+        }
+
+        .stats {
+            display: flex;
+            gap: 48px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 48px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Products Section */
+        .products {
+            padding: 100px 24px;
+            background: white;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 64px;
+        }
+
+        .section-tag {
+            display: inline-block;
+            padding: 6px 16px;
+            background: rgba(99, 102, 241, 0.08);
+            border-radius: 100px;
+            font-size: 14px;
+            color: var(--primary);
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: clamp(32px, 4vw, 48px);
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .section-subtitle {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .product-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 32px;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+        }
+
+        .product-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .product-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 16px;
+        }
+
+        .product-name {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .product-models {
+            font-size: 14px;
+            color: var(--primary);
+            margin-bottom: 16px;
+        }
+
+        .product-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 24px;
+        }
+
+        .product-meta {
+            display: flex;
+            gap: 24px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .product-meta-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .product-meta-label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .product-meta-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .product-price {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .product-price-current {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .product-price-original {
+            font-size: 18px;
+            color: var(--text-muted);
+            text-decoration: line-through;
+        }
+
+        .btn-product {
+            display: block;
+            width: 100%;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            font-weight: 600;
+            border-radius: 10px;
+            text-align: center;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-product:hover {
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        /* Features Section */
+        .features {
+            padding: 100px 24px;
+            background: #f8fafc;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 32px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .feature-card {
+            padding: 32px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .feature-icon {
+            width: 64px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 16px;
+            font-size: 28px;
+            margin-bottom: 24px;
+        }
+
+        .feature-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .feature-desc {
+            font-size: 15px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        .feature-list {
+            list-style: none;
+            margin-top: 16px;
+        }
+
+        .feature-list li {
+            position: relative;
+            padding-left: 24px;
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .feature-list li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--secondary);
+            font-weight: 700;
+        }
+
+        /* Advantages Section */
+        .advantages {
+            padding: 100px 24px;
+            background: white;
+        }
+
+        .advantages-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 24px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .advantage-item {
+            text-align: center;
+            padding: 40px 24px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+        }
+
+        .advantage-item:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .advantage-value {
+            font-size: 56px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .advantage-label {
+            font-size: 16px;
+            color: var(--text-secondary);
+        }
+
+        /* Testimonials Section */
+        .testimonials {
+            padding: 100px 24px;
+            background: #f8fafc;
+        }
+
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .testimonial-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: var(--shadow);
+        }
+
+        .testimonial-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .testimonial-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .testimonial-info h4 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+        }
+
+        .testimonial-info span {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .testimonial-stat {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(34, 197, 94, 0.1);
+            border-radius: 100px;
+            font-size: 14px;
+            color: #16a34a;
+            margin-bottom: 16px;
+        }
+
+        .testimonial-text {
+            font-size: 15px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        /* CTA Section */
+        .cta {
+            padding: 100px 24px;
+            text-align: center;
+            background: white;
+        }
+
+        .cta-box {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 64px 48px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(20, 184, 166, 0.05) 100%);
+            border: 1px solid rgba(99, 102, 241, 0.1);
+            border-radius: 24px;
+        }
+
+        .cta-title {
+            font-size: clamp(28px, 4vw, 40px);
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .cta-subtitle {
+            font-size: 18px;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+
+        /* Footer */
+        .footer {
+            padding: 32px 24px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            background: white;
+        }
+
+        .footer-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero {
+                padding: 60px 20px;
+            }
+
+            .stats {
+                gap: 32px;
+            }
+
+            .stat-value {
+                font-size: 36px;
+            }
+
+            .products-grid,
+            .features-grid,
+            .testimonials-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .cta-box {
+                padding: 40px 24px;
+            }
+
+            .advantages-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-badge">🎯 企业级解决方案</div>
+            <h1 class="hero-title">企业级大模型<br>管理与服务平台</h1>
+            <p class="hero-subtitle">多场景集成、成本与权限控制、稳定性、安全合规、灵活定价。为您的 AI 项目提供专业级大模型部署、管理和使用支持。</p>
+            <div class="hero-buttons">
+                <a href="/register" class="btn-primary">
+                    立即体验
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M4 10h12M12 6l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </a>
+                <a href="/pricing" class="btn-secondary">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M10 4v12M6 8l4-4 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    查看价格
+                </a>
+            </div>
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-value">100+</div>
+                    <div class="stat-label">大模型支持</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">99.9%</div>
+                    <div class="stat-label">服务可用性</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">40%</div>
+                    <div class="stat-label">成本节省</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Products Section -->
+    <section class="products">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">🔥 爆款热销</span>
+                <h2 class="section-title">精选热门模型套餐</h2>
+                <p class="section-subtitle">精选热门模型套餐，专享优惠折扣</p>
+            </div>
+            <div class="products-grid">
+                <div class="product-card">
+                    <span class="product-badge">🔥 爆款热销</span>
+                    <h3 class="product-name">豆包视频模型 2.0</h3>
+                    <p class="product-models">doubao-seedance-2-0-260128</p>
+                    <p class="product-desc">豆包新一代专业级多模态创作视频模型，深度适配商业广告、影视制作与社交媒体营销等各大核心场景</p>
+                    <div class="product-meta">
+                        <div class="product-meta-item">
+                            <span class="product-meta-label">形态</span>
+                            <span class="product-meta-value">节省计划递减</span>
+                        </div>
+                        <div class="product-meta-item">
+                            <span class="product-meta-label">有效期</span>
+                            <span class="product-meta-value">3个月</span>
+                        </div>
+                        <div class="product-meta-item">
+                            <span class="product-meta-label">规格</span>
+                            <span class="product-meta-value">500万 Tokens</span>
+                        </div>
+                    </div>
+                    <div class="product-price">
+                        <span class="product-price-current">¥138</span>
+                        <span class="product-price-original">¥230</span>
+                    </div>
+                    <a href="/console" class="btn-product">立即购买</a>
+                </div>
+                <div class="product-card">
+                    <span class="product-badge">🔥 爆款热销</span>
+                    <h3 class="product-name">MiniMax m2.7</h3>
+                    <p class="product-models">MiniMax-M2.7 </p>
+                    <p class="product-desc">MiniMax推出的高性能文本生成模型，支持长上下文理解，适用于智能对话、内容创作、代码生成等多种应用场景</p>
+                    <div class="product-meta">
+                        <div class="product-meta-item">
+                            <span class="product-meta-label">形态</span>
+                            <span class="product-meta-value">节省计划递减</span>
+                        </div>
+                        <div class="product-meta-item">
+                            <span class="product-meta-label">有效期</span>
+                            <span class="product-meta-value">3个月</span>
+                        </div>
+                        <div class="product-meta-item">
+                            <span class="product-meta-label">规格</span>
+                            <span class="product-meta-value">1000万 Tokens</span>
+                        </div>
+                    </div>
+                    <div class="product-price">
+                        <span class="product-price-current">¥192</span>
+                        <span class="product-price-original">¥240</span>
+                    </div>
+                    <a href="/console" class="btn-product">立即购买</a>
+                </div>
+                <div class="product-card">
+                    <span class="product-badge">🔥 爆款热销</span>
+                    <h3 class="product-name">Z-image</h3>
+                    <p class="product-models">Z-Image</p>
+                    <p class="product-desc">先进的图像生成与编辑模型，支持高质量文生图、图像风格转换、局部编辑等功能，在图像质量和细节表现上达到业界领先水平</p>
+                    <div class="product-meta">
+                        <div class="product-meta-item">
+                            <span class="product-meta-label">形态</span>
+                            <span class="product-meta-value">节省计划递减</span>
+                        </div>
+                        <div class="product-meta-item">
+                            <span class="product-meta-label">有效期</span>
+                            <span class="product-meta-value">3个月</span>
+                        </div>
+                        <div class="product-meta-item">
+                            <span class="product-meta-label">规格</span>
+                            <span class="product-meta-value">1,000 张</span>
+                        </div>
+                    </div>
+                    <div class="product-price">
+                        <span class="product-price-current">¥160</span>
+                        <span class="product-price-original">¥200</span>
+                    </div>
+                    <a href="/console" class="btn-product">立即购买</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">⚡ 核心能力</span>
+                <h2 class="section-title">端到端企业级大模型管理</h2>
+                <p class="section-subtitle">从集成到计费，从安全到合规 — 完整的大模型管理解决方案</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <h3 class="feature-title">快速集成</h3>
+                    <p class="feature-desc">快速适配各种业务场景，无需复杂配置即可完成大模型集成</p>
+                    <ul class="feature-list">
+                        <li>通过统一 API 访问 200+ 大模型，降低集成成本</li>
+                        <li>集成企业 IM 工具，实现用户/权限同步</li>
+                        <li>支持 OpenAPI、Enterprise SDK 等多种集成方式</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💴</div>
+                    <h3 class="feature-title">成本与权限控制</h3>
+                    <p class="feature-desc">细粒度权限管理，精准计费，全面掌控成本和访问</p>
+                    <ul class="feature-list">
+                        <li>详细的 Token 使用统计、成本核算和预算告警</li>
+                        <li>按部门、项目或用户进行成本分配</li>
+                        <li>Token 级别的管理：有效期、配额、模型使用</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3 class="feature-title">稳定可靠</h3>
+                    <p class="feature-desc">企业级服务连续性，避免业务中断风险</p>
+                    <ul class="feature-list">
+                        <li>多模型/多渠道自动负载均衡，自动切换到备用渠道</li>
+                        <li>金丝雀模型版本切换，不影响生产环境</li>
+                        <li>7x24 小时电话支持和现场协助</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔐</div>
+                    <h3 class="feature-title">安全合规</h3>
+                    <p class="feature-desc">数据脱敏和泄露防护，全方位数据保护和合规支持</p>
+                    <ul class="feature-list">
+                        <li>完整请求/响应审计日志，支持关键词过滤、数据脱敏</li>
+                        <li>端到端 HTTPS/TLS 加密、mTLS、白名单、限流</li>
+                        <li>通过 ISO 27001 及等效安全认证</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💰</div>
+                    <h3 class="feature-title">灵活定价</h3>
+                    <p class="feature-desc">按量付费配合节省计划，无需大额预付，灵活控制成本</p>
+                    <ul class="feature-list">
+                        <li>无需大额预付 — 根据业务节奏逐步扩展</li>
+                        <li>多种计划选择：按时长、流量或 API 调用计费</li>
+                        <li>模型使用最高可享 40% 折扣</li>
+                    </ul>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🛡️</div>
+                    <h3 class="feature-title">企业定制服务</h3>
+                    <p class="feature-desc">专业技术支持和尊享服务保障</p>
+                    <ul class="feature-list">
+                        <li>Prompt 工程：业务场景的专业提示词设计、调优和最佳实践咨询</li>
+                        <li>私有化部署：本地开源大模型部署的设计和实施指导</li>
+                        <li>RAG 知识库：检索增强生成解决方案</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Advantages Section -->
+    <section class="advantages">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">💪 竞争优势</span>
+                <h2 class="section-title">为什么选择我们</h2>
+                <p class="section-subtitle">更稳定、更经济、更安全的企业级管理方案</p>
+            </div>
+            <div class="advantages-grid">
+                <div class="advantage-item">
+                    <div class="advantage-value">-40%</div>
+                    <div class="advantage-label">最大节省</div>
+                </div>
+                <div class="advantage-item">
+                    <div class="advantage-value">10分钟</div>
+                    <div class="advantage-label">快速部署</div>
+                </div>
+                <div class="advantage-item">
+                    <div class="advantage-value">100%</div>
+                    <div class="advantage-label">透明计费</div>
+                </div>
+                <div class="advantage-item">
+                    <div class="advantage-value">0</div>
+                    <div class="advantage-label">数据风险</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="testimonials">
+        <div class="container">
+            <div class="section-header">
+                <span class="section-tag">👥 客户案例</span>
+                <h2 class="section-title">跨行业信赖之选</h2>
+                <p class="section-subtitle">为不同行业和场景提供灵活的解决方案</p>
+            </div>
+            <div class="testimonials-grid">
+                <div class="testimonial-card">
+                    <div class="testimonial-header">
+                        <div class="testimonial-avatar">🏠</div>
+                        <div class="testimonial-info">
+                            <h4>家居企业</h4>
+                            <span>智能制造</span>
+                        </div>
+                    </div>
+                    <div class="testimonial-stat">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M8 1v14M4 5l4-4 4 4M4 11l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        AI 成本降低 35%
+                    </div>
+                    <p class="testimonial-text">接入平台后，我们实现了 6 个研发部门的独立核算，Token 消费透明可控。自动脱敏功能让我们可以安全地将客服数据用于 AI 训练。</p>
+                </div>
+                <div class="testimonial-card">
+                    <div class="testimonial-header">
+                        <div class="testimonial-avatar">🛒</div>
+                        <div class="testimonial-info">
+                            <h4>头部电商平台</h4>
+                            <span>互联网零售</span>
+                        </div>
+                    </div>
+                    <div class="testimonial-stat">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M8 1v14M4 5l4-4 4 4M4 11l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        效率提升 50%
+                    </div>
+                    <p class="testimonial-text">通过飞书权限自动同步，IT 部门不再需要手动配置 API 访问权限。财务部门自动收到分账报表，对账时间从 3 天缩短到 10 分钟。</p>
+                </div>
+                <div class="testimonial-card">
+                    <div class="testimonial-header">
+                        <div class="testimonial-avatar">🏦</div>
+                        <div class="testimonial-info">
+                            <h4>金融机构</h4>
+                            <span>金融科技</span>
+                        </div>
+                    </div>
+                    <div class="testimonial-stat">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M1 8a7 7 0 1014 0A7 7 0 001 8z" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                        合规率 100%
+                    </div>
+                    <p class="testimonial-text">数据脱敏和安全认证是我们选择该平台的关键原因。客户隐私数据在传输过程中自动脱敏，完全满足金融监管要求。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <div class="container">
+            <div class="cta-box">
+                <h2 class="cta-title">立即开始使用企业级大模型管理</h2>
+                <p class="cta-subtitle">立即注册，体验企业级大模型管理的强大能力</p>
+                <a href="/register" class="btn-primary">
+                    立即体验
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M4 10h12M12 6l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+
+    <script>
+        window.addEventListener('message', function(event) {
+            if (event.data.lang) {
+                document.documentElement.lang = event.data.lang;
+            }
+        });
+    </script>
+</body>
+</html>
