@@ -82,6 +82,14 @@ const Home = () => {
   const isChinese = i18n.language.startsWith('zh');
 
   const displayHomePageContent = async () => {
+    // 先读取缓存
+    const cachedContent = localStorage.getItem('home_page_content') || '';
+    if (cachedContent) {
+      setHomePageContent(cachedContent);
+      setHomePageContentLoaded(true);
+    }
+
+    // 后台请求最新内容
     const res = await API.get('/api/home_page_content');
     const { success, message, data } = res.data;
     if (success) {
@@ -103,10 +111,14 @@ const Home = () => {
         }
       }
     } else {
-      showError(message);
-      setHomePageContent('加载首页内容失败...');
+      if (!cachedContent) {
+        showError(message);
+        setHomePageContent('加载首页内容失败...');
+      }
     }
-    setHomePageContentLoaded(true);
+    if (!cachedContent) {
+      setHomePageContentLoaded(true);
+    }
   };
 
   const handleCopyBaseURL = async () => {
