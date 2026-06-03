@@ -83,6 +83,7 @@ const SubscriptionPlansCard = ({
   allSubscriptions = [],
   reloadSubscriptionSelf,
   withCard = true,
+  userQuota = 0,
 }) => {
   const [open, setOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -200,6 +201,27 @@ const SubscriptionPlansCard = ({
             ? res.data.data
             : res.data?.message || t('支付失败');
         showError(errorMsg);
+      }
+    } catch (e) {
+      showError(t('支付请求失败'));
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  const payWallet = async () => {
+    setPaying(true);
+    try {
+      const res = await API.post('/api/subscription/wallet/pay', {
+        plan_id: selectedPlan.plan.id,
+      });
+      if (res.data?.success) {
+        showSuccess(res.data?.message || t('购买成功'));
+        closeBuy();
+        // 刷新订阅状态
+        reloadSubscriptionSelf?.();
+      } else {
+        showError(res.data?.message || t('支付失败'));
       }
     } catch (e) {
       showError(t('支付请求失败'));
@@ -566,7 +588,7 @@ const SubscriptionPlansCard = ({
                         )}
                       </div>
 
-                      {/* 价格区域 */}
+                      {/* 价格区域 - 根据全局币种换算显示 */}
                       <div className='py-2'>
                         <div className='flex items-baseline justify-start'>
                           <span className='text-xl font-bold text-purple-600'>
@@ -686,6 +708,8 @@ const SubscriptionPlansCard = ({
         onPayStripe={payStripe}
         onPayCreem={payCreem}
         onPayEpay={payEpay}
+        onPayWallet={payWallet}
+        userQuota={userQuota}
       />
     </>
   );

@@ -1170,6 +1170,17 @@ export function convertUSDToCurrency(usdAmount, digits = 2) {
   return symbol + convertedAmount.toFixed(digits);
 }
 
+/**
+ * 将美元金额固定显示为美元（不随全局币种改变）
+ * 用于 console/subscription 和 console/topup 页面的价格显示
+ * @param {number} usdAmount - 美元金额
+ * @param {number} digits - 小数位数
+ * @returns {string} - 格式化后的美元货币字符串
+ */
+export function convertUSDToCurrencyFixed(usdAmount, digits = 2) {
+  return '$' + Number(usdAmount || 0).toFixed(digits);
+}
+
 export function renderQuota(quota, digits = 2) {
   let quotaPerUnit = localStorage.getItem('quota_per_unit');
   const quotaDisplayType = localStorage.getItem('quota_display_type') || 'USD';

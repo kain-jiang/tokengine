@@ -56,6 +56,8 @@ const SubscriptionPurchaseModal = ({
   onPayStripe,
   onPayCreem,
   onPayEpay,
+  onPayWallet,
+  userQuota = 0,
 }) => {
   const plan = selectedPlan?.plan;
   const totalAmount = Number(plan?.total_amount || 0);
@@ -68,8 +70,11 @@ const SubscriptionPurchaseModal = ({
   // 只有当管理员开启支付网关 AND 套餐配置了对应的支付ID时才显示
   const hasStripe = enableStripeTopUp && !!plan?.stripe_price_id;
   const hasCreem = enableCreemTopUp && !!plan?.creem_product_id;
+  // 易支付
   const hasEpay = enableOnlineTopUp && epayMethods.length > 0;
-  const hasAnyPayment = hasStripe || hasCreem || hasEpay;
+  // 钱包支付始终可用（余额足够时）
+  const hasWallet = true;
+  const hasAnyPayment = hasStripe || hasCreem || hasEpay || hasWallet;
   const purchaseLimit = Number(purchaseLimitInfo?.limit || 0);
   const purchaseCount = Number(purchaseLimitInfo?.count || 0);
   const purchaseLimitReached =
@@ -240,6 +245,20 @@ const SubscriptionPurchaseModal = ({
                     {t('支付')}
                   </Button>
                 </div>
+              )}
+
+              {/* 钱包余额支付 */}
+              {hasWallet && (
+                <Button
+                  theme='solid'
+                  type='primary'
+                  className='w-full'
+                  onClick={onPayWallet}
+                  loading={paying}
+                  disabled={purchaseLimitReached}
+                >
+                  {t('钱包余额支付')} ({t('当前余额')}: {renderQuota(userQuota)})
+                </Button>
               )}
             </div>
           ) : (
