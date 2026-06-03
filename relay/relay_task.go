@@ -283,6 +283,7 @@ var fetchRespBuilders = map[int]func(c *gin.Context) (respBody []byte, taskResp 
 	relayconstant.RelayModeSunoFetchByID:  sunoFetchByIDRespBodyBuilder,
 	relayconstant.RelayModeSunoFetch:      sunoFetchRespBodyBuilder,
 	relayconstant.RelayModeVideoFetchByID: videoFetchByIDRespBodyBuilder,
+	relayconstant.RelayModeVideoCancel:    videoCancelRespBodyBuilder,
 }
 
 func RelayTaskFetch(c *gin.Context, relayMode int) (taskResp *dto.TaskError) {
@@ -565,4 +566,161 @@ func TaskModel2Dto(task *model.Task) *dto.TaskDto {
 		Username:   task.Username,
 		Data:       task.Data,
 	}
+}
+
+// videoCancelRespBodyBuilder handles task cancellation requests.
+func videoCancelRespBodyBuilder(c *gin.Context) (respBody []byte, taskResp *dto.TaskError) {
+	taskID := c.Param("task_id")
+	if taskID == "" {
+		taskID = c.GetString("task_id")
+	}
+	logger.LogInfo(c, fmt.Sprintf("[videoCancel] taskID=%s userId=%d", taskID, c.GetInt("id")))
+	if taskID == "" {
+		taskResp = service.TaskErrorWrapperLocal(errors.New("task_id is required"), "task_id_required", http.StatusBadRequest)
+		return
+	}
+
+	userId := c.GetInt("id")
+	if userId == 0 {
+		taskResp = service.TaskErrorWrapperLocal(errors.New("user_id required"), "user_id_required", http.StatusUnauthorized)
+		return
+	}
+	logger.LogInfo(c, fmt.Sprintf("[videoCancel] Looking up task for userId=%d, taskID=%s", userId, taskID))
+	originTask, exist, err := model.GetByTaskId(userId, taskID)
+	if err != nil {
+		taskResp = service.TaskErrorWrapper(err, "get_task_failed", http.StatusInternalServerError)
+		return
+	}
+	if !exist {
+		taskResp = service.TaskErrorWrapperLocal(errors.New("task_not_exist"), "task_not_exist", http.StatusBadRequest)
+		return
+	}
+
+	// Get adaptor and call CancelTask
+	adaptor := GetTaskAdaptor(originTask.Platform)
+	if adaptor == nil {
+		taskResp = service.TaskErrorWrapperLocal(fmt.Errorf("invalid platform: %s", originTask.Platform), "invalid_platform", http.StatusBadRequest)
+		return
+	}
+
+	channelModel, err := model.GetChannelById(originTask.ChannelId, true)
+	if err != nil {
+		taskResp = service.TaskErrorWrapper(err, "get_channel_failed", http.StatusInternalServerError)
+		return
+	}
+
+	baseURL := constant.ChannelBaseURLs[channelModel.Type]
+	if channelModel.GetBaseURL() != "" {
+		baseURL = channelModel.GetBaseURL()
+	}
+	proxy := channelModel.GetSetting().Proxy
+
+	// Get API key
+	apiKey, _, newAPIError := channelModel.GetNextEnabledKey()
+	if newAPIError != nil {
+		taskResp = service.TaskErrorWrapperLocal(errors.New("no_available_key"), "channel_no_available_key", http.StatusInternalServerError)
+		return
+	}
+
+	resp, err := adaptor.CancelTask(baseURL, apiKey, originTask.GetUpstreamTaskID(), proxy)
+	if err != nil {
+		taskResp = service.TaskErrorWrapper(err, "cancel_task_failed", http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	// Read response body
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		taskResp = service.TaskErrorWrapper(err, "read_cancel_response_failed", http.StatusInternalServerError)
+		return
+	}
+
+	// Update task status in database if cancellation was successful
+	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusAccepted {
+		oldStatus := originTask.Status
+		originTask.Status = model.TaskStatusCancelled
+		if _, err := originTask.UpdateWithStatus(oldStatus); err != nil {
+			logger.LogWarn(c, fmt.Sprintf("[videoCancel] Failed to update task status to cancelled: taskID=%s, oldStatus=%s, error=%v", taskID, oldStatus, err))
+		} else {
+			logger.LogInfo(c, fmt.Sprintf("[videoCancel] Task status updated to cancelled: taskID=%s, oldStatus=%s", taskID, oldStatus))
+		}
+	}
+
+	// Parse and return response based on platform
+	if channelModel.Type == constant.ChannelTypeZLHub {
+		// ZLHub response format: {"code": "success", "data": {"id": "...", "status": "cancelled"}}
+		var zlhubResp struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+			Data    struct {
+				ID     string `json:"id"`
+				Status string `json:"status"`
+			} `json:"data"`
+		}
+		if err := common.Unmarshal(responseBody, &zlhubResp); err != nil {
+			logger.LogWarn(c, fmt.Sprintf("[videoCancel] Failed to parse ZLHub response: taskID=%s, error=%s, rawBody=%s", taskID, err, string(responseBody)))
+		}
+
+		// Ensure code is "success" if parsing failed or code is empty
+		if zlhubResp.Code == "" {
+			zlhubResp.Code = "success"
+		}
+		if zlhubResp.Message == "" {
+			zlhubResp.Message = "task_cancelled"
+		}
+
+		respBody, _ = common.Marshal(map[string]any{
+			"code":    zlhubResp.Code,
+			"message": zlhubResp.Message,
+			"data": map[string]any{
+				"id":     zlhubResp.Data.ID,
+				"status": "cancelled",
+			},
+		})
+		logger.LogInfo(c, fmt.Sprintf("[videoCancel] ZLHub response: taskID=%s, code=%s, message=%s", taskID, zlhubResp.Code, zlhubResp.Message))
+		return
+	}
+
+	// For Doubao/Seedance: {"code": "success", "data": {"id": "...", "status": "cancelled"}}
+	var cancelResp struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+		Data    struct {
+			ID     string `json:"id"`
+			Status string `json:"status"`
+		} `json:"data"`
+	}
+	if err := common.Unmarshal(responseBody, &cancelResp); err == nil {
+		// Ensure code is "success" if parsing failed or code is empty
+		if cancelResp.Code == "" {
+			cancelResp.Code = "success"
+		}
+		if cancelResp.Message == "" {
+			cancelResp.Message = "task_cancelled"
+		}
+
+		respBody, _ = common.Marshal(map[string]any{
+			"code":    cancelResp.Code,
+			"message": cancelResp.Message,
+			"data": map[string]any{
+				"id":     cancelResp.Data.ID,
+				"status": "cancelled",
+			},
+		})
+		logger.LogInfo(c, fmt.Sprintf("[videoCancel] Doubao/Seedance response: taskID=%s, code=%s, message=%s", taskID, cancelResp.Code, cancelResp.Message))
+		return
+	}
+
+	// Fallback: return raw response with success code
+	logger.LogWarn(c, fmt.Sprintf("[videoCancel] Failed to parse response for taskID=%s, returning raw response: %s", taskID, string(responseBody)))
+	respBody, _ = common.Marshal(map[string]any{
+		"code":    "success",
+		"message": "task_cancelled",
+		"data": map[string]any{
+			"id":     taskID,
+			"status": "cancelled",
+		},
+	})
+	return
 }

@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React from 'react';
-import { Progress, Tag, Tooltip, Typography } from '@douyinfe/semi-ui';
+import { Progress, Tag, Tooltip, Typography, Button, Toast } from '@douyinfe/semi-ui';
 import {
   Music,
   FileText,
@@ -33,6 +33,7 @@ import {
   Hash,
   Video,
   Sparkles,
+  StopCircle,
 } from 'lucide-react';
 import {
   TASK_ACTION_FIRST_TAIL_GENERATE,
@@ -44,6 +45,8 @@ import {
 import { CHANNEL_OPTIONS } from '../../../constants/channel.constants';
 import { stringToColor } from '../../../helpers/render';
 import { Avatar, Space } from '@douyinfe/semi-ui';
+import { API, showSuccess, showError } from '../../../helpers';
+import { useTranslation } from 'react-i18next';
 
 const colors = [
   'amber',
@@ -62,6 +65,52 @@ const colors = [
   'violet',
   'yellow',
 ];
+
+// Cancel task function
+export const cancelTask = async (taskID, t, onSuccess) => {
+  console.log('[cancelTask] ====== START ====== taskID:', taskID);
+  console.log('[cancelTask] onSuccess callback type:', typeof onSuccess);
+  try {
+    // 使用 /v1/task/cancel/:task_id 路径以符合 ZLHub API 文档
+    const res = await API.post(`/v1/task/cancel/${taskID}`, {}, { skipErrorHandler: true });
+    console.log('[cancelTask] Response status:', res.status);
+    console.log('[cancelTask] Response data:', res.data);
+    
+    const { code, data, message, success } = res.data || {};
+    console.log('[cancelTask] Parsed - code:', code, 'success:', success, 'message:', message);
+    
+    // 成功响应格式：{code: "success", ...}
+    const isSuccess = code === 'success';
+    console.log('[cancelTask] Success check:', isSuccess);
+    
+    if (isSuccess) {
+      showSuccess(t('任务已取消'));
+      
+      if (typeof onSuccess === 'function') {
+        console.log('[cancelTask] Refreshing task list...');
+        await onSuccess();
+        console.log('[cancelTask] Task list refreshed successfully');
+      } else {
+        console.warn('[cancelTask] WARNING: onSuccess is not a function!', onSuccess);
+      }
+    } else {
+      const errorMsg = message || code || '取消任务失败';
+      Toast.error(t(errorMsg));
+    }
+  } catch (e) {
+    console.error('[cancelTask] Exception:', e);
+    
+    let errorMsg = '取消任务失败';
+    if (e?.response?.data?.message) {
+      errorMsg = e.response.data.message;
+    } else if (e?.response?.data?.code) {
+      errorMsg = e.response.data.code;
+    } else if (e?.message) {
+      errorMsg = e.message;
+    }
+    Toast.error(t(errorMsg));
+  }
+};
 
 // Render functions
 const renderTimestamp = (timestampInSeconds) => {
@@ -241,6 +290,7 @@ export const getTaskLogsColumns = ({
   isAdminUser,
   openVideoModal,
   openAudioModal,
+  refreshTasks,
 }) => {
   return [
     {
@@ -387,6 +437,57 @@ export const getTaskLogsColumns = ({
       dataIndex: 'fail_reason',
       fixed: 'right',
       render: (text, record, index) => {
+        // 调试日志：打印任务数据
+        const isTaskInProgressDebug =
+          record.status === 'QUEUED' ||
+          record.status === 'IN_PROGRESS';
+        const isVideoTaskDebug =
+          record.action === TASK_ACTION_GENERATE ||
+          record.action === TASK_ACTION_TEXT_GENERATE ||
+          record.action === TASK_ACTION_FIRST_TAIL_GENERATE ||
+          record.action === TASK_ACTION_REFERENCE_GENERATE ||
+          record.action === TASK_ACTION_REMIX_GENERATE;
+        
+        console.log('[CancelTask Debug] Record data:', {
+          task_id: record.task_id,
+          status: record.status,
+          action: record.action,
+          platform: record.platform,
+          result_url: record.result_url,
+          isTaskInProgress: isTaskInProgressDebug,
+          isVideoTask: isVideoTaskDebug,
+        });
+        
+        const isTaskInProgress =
+          record.status === 'QUEUED' ||
+          record.status === 'IN_PROGRESS';
+
+        // 视频预览：优先使用 result_url，兼容旧数据 fail_reason 中的 URL
+        const isVideoTask =
+          record.action === TASK_ACTION_GENERATE ||
+          record.action === TASK_ACTION_TEXT_GENERATE ||
+          record.action === TASK_ACTION_FIRST_TAIL_GENERATE ||
+          record.action === TASK_ACTION_REFERENCE_GENERATE ||
+          record.action === TASK_ACTION_REMIX_GENERATE;
+        const isSuccess = record.status === 'SUCCESS';
+        const resultUrl = record.result_url;
+        const hasResultUrl = typeof resultUrl === 'string' && /^https?:\/\//.test(resultUrl);
+        if (isSuccess && isVideoTask && hasResultUrl) {
+          return (
+            <Space>
+              <a
+                href='#'
+                onClick={(e) => {
+                  e.preventDefault();
+                  openVideoModal(resultUrl);
+                }}
+              >
+                {t('点击预览视频')}
+              </a>
+            </Space>
+          );
+        }
+
         // Suno audio preview
         const isSunoSuccess =
           record.platform === 'suno' &&
@@ -407,29 +508,26 @@ export const getTaskLogsColumns = ({
           );
         }
 
-        // 视频预览：优先使用 result_url，兼容旧数据 fail_reason 中的 URL
-        const isVideoTask =
-          record.action === TASK_ACTION_GENERATE ||
-          record.action === TASK_ACTION_TEXT_GENERATE ||
-          record.action === TASK_ACTION_FIRST_TAIL_GENERATE ||
-          record.action === TASK_ACTION_REFERENCE_GENERATE ||
-          record.action === TASK_ACTION_REMIX_GENERATE;
-        const isSuccess = record.status === 'SUCCESS';
-        const resultUrl = record.result_url;
-        const hasResultUrl = typeof resultUrl === 'string' && /^https?:\/\//.test(resultUrl);
-        if (isSuccess && isVideoTask && hasResultUrl) {
+        // 取消任务按钮：仅在进行中的视频任务显示
+        if (isTaskInProgress && isVideoTask) {
           return (
-            <a
-              href='#'
-              onClick={(e) => {
-                e.preventDefault();
-                openVideoModal(resultUrl);
-              }}
-            >
-              {t('点击预览视频')}
-            </a>
+            <Space>
+              <a
+                href='#'
+                onClick={(e) => {
+                  e.preventDefault();
+                  cancelTask(record.task_id, t, refreshTasks);
+                }}
+              >
+                <Space>
+                  <StopCircle size={14} />
+                  {t('取消任务')}
+                </Space>
+              </a>
+            </Space>
           );
         }
+
         if (!text) {
           return t('无');
         }

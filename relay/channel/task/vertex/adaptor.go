@@ -291,6 +291,41 @@ func (a *TaskAdaptor) FetchTask(baseUrl, key string, body map[string]any, proxy 
 	return client.Do(req)
 }
 
+// CancelTask cancels a Vertex AI video generation task.
+// Vertex AI API: POST {baseUrl}/v1/{name}=operations/{operationId}:cancel
+func (a *TaskAdaptor) CancelTask(baseUrl, key, taskID, proxy string) (*http.Response, error) {
+	url := fmt.Sprintf("%s/v1/operations/%s:cancel", baseUrl, taskID)
+
+	payload := map[string]any{}
+	data, _ := common.Marshal(payload)
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("create cancel request failed: %w", err)
+	}
+
+	adc := &vertexcore.Credentials{}
+	if err := common.Unmarshal([]byte(key), adc); err != nil {
+		return nil, fmt.Errorf("failed to decode credentials: %w", err)
+	}
+	token, err := vertexcore.AcquireAccessToken(*adc, proxy)
+	if err != nil {
+		return nil, fmt.Errorf("failed to acquire access token: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("x-goog-user-project", adc.ProjectID)
+
+	client, err := service.GetHttpClientWithProxy(proxy)
+	if err != nil {
+		return nil, fmt.Errorf("new proxy http client failed: %w", err)
+	}
+
+	return client.Do(req)
+}
+
 func (a *TaskAdaptor) ParseTaskResult(respBody []byte) (*relaycommon.TaskInfo, error) {
 	var op operationResponse
 	if err := common.Unmarshal(respBody, &op); err != nil {
