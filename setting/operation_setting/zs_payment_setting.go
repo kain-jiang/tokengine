@@ -6,7 +6,6 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/setting/config"
-	"github.com/QuantumNous/new-api/setting/system_setting"
 )
 
 // ZSPaymentSetting 招商银行聚合支付配置
@@ -43,10 +42,6 @@ func init() {
 // LoadZSPayFromEnv 从环境变量加载招行支付配置
 // 在 main() 中 godotenv.Load(".env") 之后调用
 func LoadZSPayFromEnv() {
-	// 是否启用
-	if enabled := os.Getenv("ZS_PAYMENT_ENABLED"); enabled == "true" {
-		zsPaymentSetting.Enabled = true
-	}
 	// 商户号
 	if merID := os.Getenv("ZS_PAYMENT_MER_ID"); merID != "" {
 		zsPaymentSetting.MerID = merID
@@ -66,18 +61,6 @@ func LoadZSPayFromEnv() {
 	// 公钥
 	if publicKey := os.Getenv("ZS_PAYMENT_PUBLIC_KEY"); publicKey != "" {
 		zsPaymentSetting.PublicKey = publicKey
-	}
-	// 回调路径
-	if notifyPath := os.Getenv("ZS_PAYMENT_NOTIFY_PATH"); notifyPath != "" {
-		zsPaymentSetting.NotifyPath = notifyPath
-	}
-	// 支付有效期（秒）
-	if payValidTime := os.Getenv("ZS_PAYMENT_PAY_VALID_TIME"); payValidTime != "" {
-		zsPaymentSetting.PayValidTime = payValidTime
-	}
-	// 服务器地址（用于构建回调URL）
-	if serverAddress := os.Getenv("SERVER_ADDRESS"); serverAddress != "" {
-		system_setting.ServerAddress = serverAddress
 	}
 }
 
@@ -115,6 +98,11 @@ func GetZSPayPrivateKey() string {
 func GetZSPayPublicKey() string {
 	return zsPaymentSetting.PublicKey
 }
+
+
+
+
+
 
 // GetZSPayBaseURL 获取API地址
 // 首先从数据库读取用户修改的值，不存在则使用内置默认值

@@ -259,29 +259,6 @@ func (a *TaskAdaptor) GetChannelName() string {
 	return "kling"
 }
 
-// CancelTask cancels a Kling task.
-// Kling API: POST /v1/images/text2video/cancel or /v1/images/image2video/cancel
-func (a *TaskAdaptor) CancelTask(baseUrl, key, taskID, proxy string) (*http.Response, error) {
-	url := fmt.Sprintf("%s/v1/tasks/%s/cancel", baseUrl, taskID)
-
-	req, err := http.NewRequest(http.MethodPost, url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("create cancel request failed: %w", err)
-	}
-
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+key)
-	req.Header.Set("User-Agent", "kling-sdk/1.0")
-
-	client, err := service.GetHttpClientWithProxy(proxy)
-	if err != nil {
-		return nil, fmt.Errorf("new proxy http client failed: %w", err)
-	}
-
-	return client.Do(req)
-}
-
 // ============================
 // helpers
 // ============================

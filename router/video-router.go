@@ -35,11 +35,7 @@ func SetVideoRouter(router *gin.Engine) {
 	}
 	// openai compatible API video routes
 	// docs: https://platform.openai.com/docs/api-reference/videos/create
-	// NOTE: Cancel routes use /cancel prefix to avoid wildcard conflict with /videos/:id
-	// ZLHub compatible API routes - /v1/task/* format (docs: https://api.zlhub.cn/v1/task/cancel/{id})
 	{
-		videoV1Router.POST("/videos/cancel/:task_id", controller.RelayTaskCancel)
-		videoV1Router.POST("/task/cancel/:task_id", controller.RelayTaskCancel)
 		videoV1Router.POST("/videos", controller.RelayTask)
 		videoV1Router.GET("/videos/:task_id", controller.RelayTaskFetch)
 	}

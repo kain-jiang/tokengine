@@ -125,47 +125,7 @@ func (s *ZSPayService) parseSM2PublicKey(keyStr string) (*sm2.PublicKey, error) 
 		}
 	}
 
-	// 尝试解析 DER 编码的 SPKI 格式
-	pubKey, err := x509.ParseSm2PublicKey(keyBytes)
-	if err == nil {
-		return pubKey, nil
-	}
-
-	// 如果解析失败，尝试将压缩格式的公钥转换为未压缩格式
-	// SM2 压缩公钥格式: 02/03 + 32字节X坐标
-	// SM2 未压缩公钥格式: 04 + 32字节X坐标 + 32字节Y坐标
-	if len(keyBytes) == 33 && (keyBytes[0] == 0x02 || keyBytes[0] == 0x03) {
-		curve := sm2.P256Sm2()
-		x := new(big.Int).SetBytes(keyBytes[1:33])
-
-		// 计算 Y 坐标: y^2 = x^3 + ax + b (mod p)
-		// 对于 SM2: a=0, b=1
-		y := new(big.Int).Exp(x, big.NewInt(3), curve.Params().P)
-		y.Add(y, big.NewInt(1)).Mod(y, curve.Params().P)
-
-		// 计算模平方根（简化处理，实际需要使用 Tonelli-Shanks 算法）
-		// 这里尝试直接从字节中恢复
-		yBytes := y.Bytes()
-
-		// 如果 Y 是奇数且压缩前缀是 02，或 Y 是偶数且压缩前缀是 03
-		isOdd := y.Bit(0) == 1
-		if (keyBytes[0] == 0x02 && !isOdd) || (keyBytes[0] == 0x03 && isOdd) {
-			// Y 应该是偶数，取负
-			y.Sub(curve.Params().P, y)
-		}
-
-		// 补齐到 32 字节
-		paddedY := make([]byte, 32)
-		copy(paddedY[32-len(yBytes):], yBytes)
-
-		// 构建未压缩公钥: 04 + X + Y
-		uncompressed := append([]byte{0x04}, keyBytes[1:]...)
-		uncompressed = append(uncompressed, paddedY...)
-
-		return x509.ParseSm2PublicKey(uncompressed)
-	}
-
-	return nil, fmt.Errorf("无法解析SM2公钥: %w", err)
+	return x509.ParseSm2PublicKey(keyBytes)
 }
 
 type ZSBaseRequest struct {

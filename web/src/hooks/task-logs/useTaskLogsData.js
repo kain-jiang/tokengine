@@ -367,7 +367,6 @@ export const useTaskLogsData = () => {
     openContentModal,
     openVideoModal,
     openAudioModal,
-    refreshTasks: loadLogs,
     enrichLogs,
     syncPageData,
 
