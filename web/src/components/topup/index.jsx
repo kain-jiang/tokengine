@@ -924,7 +924,6 @@ const TopUp = () => {
 
   // 选择预设充值额度
   const selectPresetAmount = (preset) => {
-    console.log('[TopUp] selectPresetAmount called with:', preset);
     setSelectedPreset(preset.value);
 
     // 计算实际支付金额，考虑折扣
@@ -934,8 +933,7 @@ const TopUp = () => {
     const discountedAmount = isCustomCurrencyAmount
       ? preset.value * discount
       : preset.value * priceRatio * discount;
-    console.log('[TopUp] discountedAmount:', discountedAmount, 'isCustomCurrencyAmount:', isCustomCurrencyAmount);
-    
+
     // 根据币种计算显示值，确保与预设套餐卡片显示一致
     const { symbol, rate, type } = getCurrencyConfig();
     const statusStr = localStorage.getItem('status');
@@ -957,7 +955,6 @@ const TopUp = () => {
         displayValue = preset.value * rate;
       }
     }
-    console.log('[TopUp] displayValue:', displayValue, 'type:', type);
     setTopUpCount(displayValue);
     setAmount(discountedAmount);
   };
@@ -1005,7 +1002,8 @@ const TopUp = () => {
         payMethods={payMethods}
         amountNumber={amount}
         discountRate={topupInfo?.discount?.[topUpCount] || 1.0}
-        isCustomCurrencyAmount={presetAmounts.find(p => p.value === topUpCount)?.isCustomCurrencyAmount || false}
+        // 充值数量文本框显示的就是全局币种（CNY），不需要再进行汇率转换
+        isCustomCurrencyAmount={true}
       />
 
       {/* 充值账单模态框 */}

@@ -106,6 +106,7 @@ const RechargeCard = ({
   const initialTabSetRef = useRef(false);
   const showAmountSkeleton = useMinimumLoadingTime(amountLoading);
   const [activeTab, setActiveTab] = useState('topup');
+  const [isTopUpInputFocused, setIsTopUpInputFocused] = useState(false);
   const shouldShowSubscription =
     !subscriptionLoading && subscriptionPlans.length > 0;
 
@@ -290,37 +291,31 @@ const RechargeCard = ({
               {(enableOnlineTopUp || enableStripeTopUp || enableWaffoTopUp || enableZsPayTopUp || enableHelipayTopUp) && (
                 <Row gutter={12}>
                   <Col xs={24} sm={24} md={24} lg={10} xl={10}>
-                    <Form.Input
-                      label={t('充值数量')}
-                      disabled={!enableOnlineTopUp && !enableStripeTopUp && !enableWaffoTopUp && !enableZsPayTopUp && !enableHelipayTopUp}
-                      placeholder={
-                        t('充值数量，最低 ') + renderQuotaWithAmount(minTopUp, true)
-                      }
-                      value={topUpCount?.toString() || ''}
-                      onChange={(value) => {
-                        const numValue = parseInt(value) || 0;
-                        if (numValue >= 1) {
-                          setTopUpCount(numValue);
-                          setSelectedPreset(null);
-                          // 只有易支付和 Stripe 才需要调用后端 API 获取金额
-                          // 招行支付、合利宝等使用本地计算
-                          if (enableOnlineTopUp || enableStripeTopUp) {
-                            getAmount(numValue);
-                          }
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ fontSize: '14px', color: 'var(--semi-color-text-2)', marginBottom: 8 }}>{t('充值数量')}</div>
+                      <Input
+                        disabled={!enableOnlineTopUp && !enableStripeTopUp && !enableWaffoTopUp && !enableZsPayTopUp && !enableHelipayTopUp}
+                        placeholder={
+                          t('充值数量，最低 ') + renderQuotaWithAmount(minTopUp, true)
                         }
-                      }}
-                      onBlur={(e) => {
-                        const value = parseInt(e.target.value);
-                        if (!value || value < 1) {
-                          setTopUpCount(1);
-                          // 只有易支付和 Stripe 才需要调用后端 API
-                          if (enableOnlineTopUp || enableStripeTopUp) {
-                            getAmount(1);
+                        value={topUpCount?.toString() || ''}
+                        onFocus={() => setIsTopUpInputFocused(true)}
+                        onBlur={() => setIsTopUpInputFocused(false)}
+                        onChange={(value) => {
+                          const numValue = parseInt(value) || 0;
+                          if (numValue >= 1) {
+                            setTopUpCount(numValue);
+                            setSelectedPreset(null);
+                            // 只有易支付和 Stripe 才需要调用后端 API 获取金额
+                            // 招行支付、合利宝等使用本地计算
+                            if (enableOnlineTopUp || enableStripeTopUp) {
+                              getAmount(numValue);
+                            }
                           }
-                        }
-                      }}
-                      style={{ width: '100%' }}
-                    />
+                        }}
+                        style={{ width: '100%' }}
+                      />
+                    </div>
                   </Col>
                   {/* 当只启用招行支付时，隐藏支付方式选择 */}
                   {!onlyZsPayEnabled && (enableOnlineTopUp || enableStripeTopUp) && payMethods && payMethods.filter(m => m.type !== 'waffo' && m.type !== 'zs_pay').length > 0 && (
@@ -468,6 +463,11 @@ const RechargeCard = ({
                           }}
                           bodyStyle={{ padding: '12px' }}
                           onClick={() => {
+                            // 如果充值数量文本框聚焦中，点击套餐应该取消选择而不是填充金额
+                            if (isTopUpInputFocused) {
+                              setSelectedPreset(null);
+                              return;
+                            }
                             // 如果点击已选中的套餐，则取消选择
                             if (selectedPreset === preset.value) {
                               setSelectedPreset(null);
