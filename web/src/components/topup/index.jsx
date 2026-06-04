@@ -36,11 +36,12 @@ import { UserContext } from '../../context/User';
 import { StatusContext } from '../../context/Status';
 
 import RechargeCard from './RechargeCard';
-import InvitationCard from './InvitationCard';
 import TransferModal from './modals/TransferModal';
 import PaymentConfirmModal from './modals/PaymentConfirmModal';
 import QRCodeModal from './QRCodeModal';
 import TopupHistoryModal from './modals/TopupHistoryModal';
+import EarIcon from './EarIcon';
+import InvitationPanel from './InvitationPanel';
 
 const TopUp = () => {
   const { t } = useTranslation();
@@ -107,6 +108,9 @@ const TopUp = () => {
   const [affLink, setAffLink] = useState('');
   const [openTransfer, setOpenTransfer] = useState(false);
   const [transferAmount, setTransferAmount] = useState(0);
+  
+  // 邀请面板显示状态
+  const [showInvitation, setShowInvitation] = useState(false);
 
   // 账单Modal状态
   const [openHistory, setOpenHistory] = useState(false);
@@ -974,124 +978,11 @@ const TopUp = () => {
 
   return (
     <div className='w-full max-w-7xl mx-auto relative min-h-screen lg:min-h-0 mt-[60px] px-2'>
-      {/* 划转模态框 */}
-      <TransferModal
-        t={t}
-        openTransfer={openTransfer}
-        transfer={transfer}
-        handleTransferCancel={handleTransferCancel}
-        userState={userState}
-        renderQuota={renderQuota}
-        getQuotaPerUnit={getQuotaPerUnit}
-        transferAmount={transferAmount}
-        setTransferAmount={setTransferAmount}
-      />
-
-      {/* 充值确认模态框 */}
-      <PaymentConfirmModal
-        t={t}
-        open={open}
-        onlineTopUp={onlineTopUp}
-        handleCancel={handleCancel}
-        confirmLoading={confirmLoading}
-        topUpCount={topUpCount}
-        renderQuotaWithAmount={renderQuotaWithAmount}
-        amountLoading={amountLoading}
-        renderAmount={renderAmount}
-        payWay={payWay}
-        payMethods={payMethods}
-        amountNumber={amount}
-        discountRate={topupInfo?.discount?.[topUpCount] || 1.0}
-        // 充值数量文本框显示的就是全局币种（CNY），不需要再进行汇率转换
-        isCustomCurrencyAmount={true}
-      />
-
-      {/* 充值账单模态框 */}
-      <TopupHistoryModal
-        visible={openHistory}
-        onCancel={handleHistoryCancel}
-        t={t}
-      />
-
-      {/* Creem 充值确认模态框 */}
-      <Modal
-        title={t('确定要充值 $')}
-        visible={creemOpen}
-        onOk={onlineCreemTopUp}
-        onCancel={handleCreemCancel}
-        maskClosable={false}
-        size='small'
-        centered
-        confirmLoading={confirmLoading}
-      >
-        {selectedCreemProduct && (
-          <>
-            <p>
-              {t('产品名称')}：{selectedCreemProduct.name}
-            </p>
-            <p>
-              {t('价格')}：{selectedCreemProduct.currency === 'EUR' ? '€' : '$'}
-              {selectedCreemProduct.price}
-            </p>
-            <p>
-              {t('充值额度')}：{selectedCreemProduct.quota}
-            </p>
-            <p>{t('是否确认充值？')}</p>
-          </>
-        )}
-      </Modal>
-
-      {/* 主布局区域 */}
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-        <RechargeCard
-          t={t}
-          enableOnlineTopUp={enableOnlineTopUp}
-          enableStripeTopUp={enableStripeTopUp}
-          enableCreemTopUp={enableCreemTopUp}
-          creemProducts={creemProducts}
-          creemPreTopUp={creemPreTopUp}
-          enableWaffoTopUp={enableWaffoTopUp}
-          waffoTopUp={waffoTopUp}
-          waffoPayMethods={waffoPayMethods}
-          enableZsPayTopUp={enableZsPayTopUp}
-          presetAmounts={presetAmounts}
-          selectedPreset={selectedPreset}
-          selectPresetAmount={selectPresetAmount}
-          formatLargeNumber={formatLargeNumber}
-          priceRatio={priceRatio}
-          topUpCount={topUpCount}
-          minTopUp={minTopUp}
-          renderQuotaWithAmount={renderQuotaWithAmount}
-          getAmount={getAmount}
-          setTopUpCount={setTopUpCount}
-          setSelectedPreset={setSelectedPreset}
-          renderAmount={renderAmount}
-          amountLoading={amountLoading}
-          payMethods={payMethods}
-          preTopUp={preTopUp}
-          paymentLoading={paymentLoading}
-          payWay={payWay}
-          redemptionCode={redemptionCode}
-          setRedemptionCode={setRedemptionCode}
-          topUp={topUp}
-          isSubmitting={isSubmitting}
-          topUpLink={topUpLink}
-          openTopUpLink={openTopUpLink}
-          userState={userState}
-          renderQuota={renderQuota}
-          statusLoading={statusLoading}
-          topupInfo={topupInfo}
-          onOpenHistory={handleOpenHistory}
-          subscriptionLoading={subscriptionLoading}
-          subscriptionPlans={subscriptionPlans}
-          billingPreference={billingPreference}
-          onChangeBillingPreference={updateBillingPreference}
-          activeSubscriptions={activeSubscriptions}
-          allSubscriptions={allSubscriptions}
-          reloadSubscriptionSelf={getSubscriptionSelf}
-          enableHelipayTopUp={enableHelipayTopUp}
-        />
-        <InvitationCard
+        {/* 邀请好友弹出面板 */}
+        <InvitationPanel
+          visible={showInvitation}
+          onClose={() => setShowInvitation(false)}
           t={t}
           userState={userState}
           renderQuota={renderQuota}
@@ -1099,6 +990,126 @@ const TopUp = () => {
           affLink={affLink}
           handleAffLinkClick={handleAffLinkClick}
         />
+
+        {/* 划转模态框 */}
+        <TransferModal
+          t={t}
+          openTransfer={openTransfer}
+          transfer={transfer}
+          handleTransferCancel={handleTransferCancel}
+          userState={userState}
+          renderQuota={renderQuota}
+          getQuotaPerUnit={getQuotaPerUnit}
+          transferAmount={transferAmount}
+          setTransferAmount={setTransferAmount}
+        />
+
+        {/* 充值确认模态框 */}
+        <PaymentConfirmModal
+          t={t}
+          open={open}
+          onlineTopUp={onlineTopUp}
+          handleCancel={handleCancel}
+          confirmLoading={confirmLoading}
+          topUpCount={topUpCount}
+          renderQuotaWithAmount={renderQuotaWithAmount}
+          amountLoading={amountLoading}
+          renderAmount={renderAmount}
+          payWay={payWay}
+          payMethods={payMethods}
+          amountNumber={amount}
+          discountRate={topupInfo?.discount?.[topUpCount] || 1.0}
+          // 充值数量文本框显示的就是全局币种（CNY），不需要再进行汇率转换
+          isCustomCurrencyAmount={true}
+        />
+
+        {/* 充值账单模态框 */}
+        <TopupHistoryModal
+          visible={openHistory}
+          onCancel={handleHistoryCancel}
+          t={t}
+        />
+
+        {/* Creem 充值确认模态框 */}
+        <Modal
+          title={t('确定要充值 $')}
+          visible={creemOpen}
+          onOk={onlineCreemTopUp}
+          onCancel={handleCreemCancel}
+          maskClosable={false}
+          size='small'
+          centered
+          confirmLoading={confirmLoading}
+        >
+          {selectedCreemProduct && (
+            <>
+              <p>
+                {t('产品名称')}：{selectedCreemProduct.name}
+              </p>
+              <p>
+                {t('价格')}：{selectedCreemProduct.currency === 'EUR' ? '€' : '$'}
+                {selectedCreemProduct.price}
+              </p>
+              <p>
+                {t('充值额度')}：{selectedCreemProduct.quota}
+              </p>
+              <p>{t('是否确认充值？')}</p>
+            </>
+          )}
+        </Modal>
+
+        {/* 账户充值 - 跨两列占据全部宽度 */}
+        <div className='lg:col-span-2'>
+          <RechargeCard
+            t={t}
+            enableOnlineTopUp={enableOnlineTopUp}
+            enableStripeTopUp={enableStripeTopUp}
+            enableCreemTopUp={enableCreemTopUp}
+            creemProducts={creemProducts}
+            creemPreTopUp={creemPreTopUp}
+            enableWaffoTopUp={enableWaffoTopUp}
+            waffoTopUp={waffoTopUp}
+            waffoPayMethods={waffoPayMethods}
+            enableZsPayTopUp={enableZsPayTopUp}
+            presetAmounts={presetAmounts}
+            selectedPreset={selectedPreset}
+            selectPresetAmount={selectPresetAmount}
+            formatLargeNumber={formatLargeNumber}
+            priceRatio={priceRatio}
+            topUpCount={topUpCount}
+            minTopUp={minTopUp}
+            renderQuotaWithAmount={renderQuotaWithAmount}
+            getAmount={getAmount}
+            setTopUpCount={setTopUpCount}
+            setSelectedPreset={setSelectedPreset}
+            renderAmount={renderAmount}
+            amountLoading={amountLoading}
+            payMethods={payMethods}
+            preTopUp={preTopUp}
+            paymentLoading={paymentLoading}
+            payWay={payWay}
+            redemptionCode={redemptionCode}
+            setRedemptionCode={setRedemptionCode}
+            topUp={topUp}
+            isSubmitting={isSubmitting}
+            topUpLink={topUpLink}
+            openTopUpLink={openTopUpLink}
+            userState={userState}
+            renderQuota={renderQuota}
+            statusLoading={statusLoading}
+            topupInfo={topupInfo}
+            onOpenHistory={handleOpenHistory}
+            onOpenInvitation={() => setShowInvitation(true)}
+            subscriptionLoading={subscriptionLoading}
+            subscriptionPlans={subscriptionPlans}
+            billingPreference={billingPreference}
+            onChangeBillingPreference={updateBillingPreference}
+            activeSubscriptions={activeSubscriptions}
+            allSubscriptions={allSubscriptions}
+            reloadSubscriptionSelf={getSubscriptionSelf}
+            enableHelipayTopUp={enableHelipayTopUp}
+          />
+        </div>
       </div>
 
       {/* 招商银行聚合支付二维码弹窗 */}

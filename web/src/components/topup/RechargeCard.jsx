@@ -45,6 +45,7 @@ import {
   TrendingUp,
   Receipt,
   Sparkles,
+  Gift,
 } from 'lucide-react';
 import { IconGift } from '@douyinfe/semi-icons';
 import { useMinimumLoadingTime } from '../../hooks/common/useMinimumLoadingTime';
@@ -88,6 +89,7 @@ const RechargeCard = ({
   statusLoading,
   topupInfo,
   onOpenHistory,
+  onOpenInvitation,
   enableWaffoTopUp,
   waffoTopUp,
   waffoPayMethods,
@@ -707,13 +709,25 @@ const RechargeCard = ({
             <div className='text-xs'>{t('多种充值方式，安全便捷')}</div>
           </div>
         </div>
-        <Button
-          icon={<Receipt size={16} />}
-          theme='solid'
-          onClick={onOpenHistory}
-        >
-          {t('账单')}
-        </Button>
+        <div className='flex items-center gap-2'>
+          {onOpenInvitation && (
+            <Tooltip content={t('邀请奖励')}>
+              <button
+                onClick={onOpenInvitation}
+                className='p-2 rounded-full hover:bg-green-50 transition-colors'
+              >
+                <Gift className='w-5 h-5 text-green-500' />
+              </button>
+            </Tooltip>
+          )}
+          <Button
+            icon={<Receipt size={16} />}
+            theme='solid'
+            onClick={onOpenHistory}
+          >
+            {t('账单')}
+          </Button>
+        </div>
       </div>
 
       {shouldShowSubscription ? (
