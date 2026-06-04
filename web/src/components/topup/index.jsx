@@ -29,6 +29,7 @@ import {
   copy,
   getQuotaPerUnit,
 } from '../../helpers';
+import { getCurrencyConfig } from '../../helpers/render';
 import { Modal, Toast } from '@douyinfe/semi-ui';
 import { useTranslation } from 'react-i18next';
 import { UserContext } from '../../context/User';
@@ -923,6 +924,7 @@ const TopUp = () => {
 
   // 选择预设充值额度
   const selectPresetAmount = (preset) => {
+    console.log('[TopUp] selectPresetAmount called with:', preset);
     setSelectedPreset(preset.value);
 
     // 计算实际支付金额，考虑折扣
@@ -932,8 +934,8 @@ const TopUp = () => {
     const discountedAmount = isCustomCurrencyAmount
       ? preset.value * discount
       : preset.value * priceRatio * discount;
-    setAmount(discountedAmount);
-
+    console.log('[TopUp] discountedAmount:', discountedAmount, 'isCustomCurrencyAmount:', isCustomCurrencyAmount);
+    
     // 根据币种计算显示值，确保与预设套餐卡片显示一致
     const { symbol, rate, type } = getCurrencyConfig();
     const statusStr = localStorage.getItem('status');
@@ -955,7 +957,9 @@ const TopUp = () => {
         displayValue = preset.value * rate;
       }
     }
+    console.log('[TopUp] displayValue:', displayValue, 'type:', type);
     setTopUpCount(displayValue);
+    setAmount(discountedAmount);
   };
 
   // 格式化大数字显示
