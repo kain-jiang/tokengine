@@ -220,6 +220,31 @@ func (a *TaskAdaptor) GetChannelName() string {
 	return "vidu"
 }
 
+// CancelTask cancels a Vidu task.
+// Vidu API: POST /v1/videos/cancellations
+func (a *TaskAdaptor) CancelTask(baseUrl, key, taskID, proxy string) (*http.Response, error) {
+	url := fmt.Sprintf("%s/v1/videos/cancellations", baseUrl)
+
+	payload := map[string]any{"id": taskID}
+	data, _ := common.Marshal(payload)
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("create cancel request failed: %w", err)
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+key)
+
+	client, err := service.GetHttpClientWithProxy(proxy)
+	if err != nil {
+		return nil, fmt.Errorf("new proxy http client failed: %w", err)
+	}
+
+	return client.Do(req)
+}
+
 // ============================
 // helpers
 // ============================

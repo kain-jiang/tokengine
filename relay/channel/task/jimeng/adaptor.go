@@ -268,6 +268,26 @@ func (a *TaskAdaptor) GetChannelName() string {
 	return "jimeng"
 }
 
+// CancelTask cancels a Jimeng task.
+// Jimeng API: POST /?Action=CVSync2AsyncCancelTask&Version=2022-08-31
+func (a *TaskAdaptor) CancelTask(baseUrl, key, taskID, proxy string) (*http.Response, error) {
+	url := fmt.Sprintf("%s/?Action=CVSync2AsyncCancelTask&Version=2022-08-31&TaskId=%s", baseUrl, taskID)
+
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create cancel request failed: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client, err := service.GetHttpClientWithProxy(proxy)
+	if err != nil {
+		return nil, fmt.Errorf("new proxy http client failed: %w", err)
+	}
+
+	return client.Do(req)
+}
+
 func (a *TaskAdaptor) signRequest(req *http.Request, accessKey, secretKey string) error {
 	var bodyBytes []byte
 	var err error

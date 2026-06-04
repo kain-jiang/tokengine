@@ -400,6 +400,8 @@ func TokenAuth() func(c *gin.Context) {
 
 		err = SetupContextForToken(c, token, parts...)
 		if err != nil {
+			abortWithOpenAiMessage(c, http.StatusInternalServerError,
+				err.Error())
 			return
 		}
 		c.Next()
