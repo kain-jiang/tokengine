@@ -27,6 +27,7 @@ import {
   Banner,
   Skeleton,
   Form,
+  Input,
   Space,
   Row,
   Col,
@@ -285,62 +286,39 @@ const RechargeCard = ({
             initValues={{ topUpCount: topUpCount }}
           >
             <div className='space-y-6'>
-              {/* 当只启用招行支付时，隐藏充值数量输入和支付方式选择 */}
-              {!onlyZsPayEnabled && (enableOnlineTopUp || enableStripeTopUp || enableWaffoTopUp) && (
+              {/* 充值数量输入框 - 在启用任何充值方式时显示 */}
+              {(enableOnlineTopUp || enableStripeTopUp || enableWaffoTopUp || enableZsPayTopUp || enableHelipayTopUp) && (
                 <Row gutter={12}>
                   <Col xs={24} sm={24} md={24} lg={10} xl={10}>
-                    <Form.InputNumber
-                      field='topUpCount'
+                    <Form.Input
                       label={t('充值数量')}
-                      disabled={!enableOnlineTopUp && !enableStripeTopUp && !enableWaffoTopUp}
+                      disabled={!enableOnlineTopUp && !enableStripeTopUp && !enableWaffoTopUp && !enableZsPayTopUp && !enableHelipayTopUp}
                       placeholder={
-                        t('充值数量，最低 ') + renderQuotaWithAmount(minTopUp)
+                        t('充值数量，最低 ') + renderQuotaWithAmount(minTopUp, true)
                       }
-                      value={topUpCount}
-                      min={minTopUp}
-                      max={999999999}
-                      step={1}
-                      precision={0}
-                      onChange={async (value) => {
-                        if (value && value >= 1) {
-                          setTopUpCount(value);
+                      value={topUpCount?.toString() || ''}
+                      onChange={(value) => {
+                        const numValue = parseInt(value) || 0;
+                        if (numValue >= 1) {
+                          setTopUpCount(numValue);
                           setSelectedPreset(null);
-                          await getAmount(value);
+                          // 只有易支付和 Stripe 才需要调用后端 API 获取金额
+                          // 招行支付、合利宝等使用本地计算
+                          if (enableOnlineTopUp || enableStripeTopUp) {
+                            getAmount(numValue);
+                          }
                         }
                       }}
                       onBlur={(e) => {
                         const value = parseInt(e.target.value);
                         if (!value || value < 1) {
                           setTopUpCount(1);
-                          getAmount(1);
+                          // 只有易支付和 Stripe 才需要调用后端 API
+                          if (enableOnlineTopUp || enableStripeTopUp) {
+                            getAmount(1);
+                          }
                         }
                       }}
-                      formatter={(value) => (value ? `${value}` : '')}
-                      parser={(value) =>
-                        value ? parseInt(value.replace(/[^\d]/g, '')) : 0
-                      }
-                      extraText={
-                        <Skeleton
-                          loading={showAmountSkeleton}
-                          active
-                          placeholder={
-                            <Skeleton.Title
-                              style={{
-                                width: 120,
-                                height: 20,
-                                borderRadius: 6,
-                              }}
-                            />
-                          }
-                        >
-                          <Text type='secondary' className='text-red-600'>
-                            {t('实付金额：')}
-                            <span style={{ color: 'red' }}>
-                              {renderAmount()}
-                            </span>
-                          </Text>
-                        </Skeleton>
-                      }
                       style={{ width: '100%' }}
                     />
                   </Col>
@@ -493,13 +471,10 @@ const RechargeCard = ({
                             // 如果点击已选中的套餐，则取消选择
                             if (selectedPreset === preset.value) {
                               setSelectedPreset(null);
-                              onlineFormApiRef.current?.setValue('topUpCount', '');
+                              setTopUpCount(0);
                             } else {
+                              // selectPresetAmount 内部已经处理了 setTopUpCount，无需重复调用
                               selectPresetAmount(preset);
-                              onlineFormApiRef.current?.setValue(
-                                'topUpCount',
-                                preset.value,
-                              );
                             }
                           }}
                         >

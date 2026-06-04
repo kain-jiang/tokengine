@@ -198,7 +198,7 @@ const TopUp = () => {
     setPayWay(payment);
     setPaymentLoading(true);
     try {
-      // 当只启用招行支付时，使用选中的充值套餐金额
+      // 当只启用招行支付时，使用选中的充值套餐金额或自定义输入金额
       // 因为自定义充值数量选项的值已经是当前币元，不需要后端计算
       if (payment === 'zs_pay' && onlyZsPayEnabled && selectedPreset) {
         // 使用选中的充值套餐金额，直接设置 topUpCount
@@ -208,25 +208,35 @@ const TopUp = () => {
       // 计算支付金额
       if (payment === 'stripe') {
         await getStripeAmount();
-      } else if (payment === 'zs_pay' && selectedPreset) {
-        // 招商银行聚合支付金额计算 - 直接计算折扣后的金额
-        const preset = presetAmounts.find(p => p.value === selectedPreset);
-        if (preset) {
-          const discount = preset.discount || topupInfo.discount[selectedPreset] || 1.0;
-          const discountedAmount = selectedPreset * discount;
-          setAmount(discountedAmount);
+      } else if (payment === 'zs_pay') {
+        // 招商银行聚合支付金额计算 - 支持预设套餐和自定义金额
+        if (selectedPreset) {
+          const preset = presetAmounts.find(p => p.value === selectedPreset);
+          if (preset) {
+            const discount = preset.discount || topupInfo.discount[selectedPreset] || 1.0;
+            const discountedAmount = selectedPreset * discount;
+            setAmount(discountedAmount);
+          } else {
+            setAmount(selectedPreset);
+          }
         } else {
-          setAmount(selectedPreset);
+          // 自定义金额，直接使用 topUpCount
+          setAmount(topUpCount);
         }
-      } else if (payment === 'helipay' && selectedPreset) {
-        // 合利宝支付金额计算 - 直接计算折扣后的金额（与招商银行聚合支付相同）
-        const preset = presetAmounts.find(p => p.value === selectedPreset);
-        if (preset) {
-          const discount = preset.discount || topupInfo.discount[selectedPreset] || 1.0;
-          const discountedAmount = selectedPreset * discount;
-          setAmount(discountedAmount);
+      } else if (payment === 'helipay') {
+        // 合利宝支付金额计算 - 支持预设套餐和自定义金额
+        if (selectedPreset) {
+          const preset = presetAmounts.find(p => p.value === selectedPreset);
+          if (preset) {
+            const discount = preset.discount || topupInfo.discount[selectedPreset] || 1.0;
+            const discountedAmount = selectedPreset * discount;
+            setAmount(discountedAmount);
+          } else {
+            setAmount(selectedPreset);
+          }
         } else {
-          setAmount(selectedPreset);
+          // 自定义金额，直接使用 topUpCount
+          setAmount(topUpCount);
         }
       } else if (payment !== 'zs_pay' && payment !== 'helipay' && enableOnlineTopUp) {
         // 如果选择了自定义币元金额的预设选项，直接计算金额，不调用后端 API
@@ -259,11 +269,17 @@ const TopUp = () => {
         await getStripeAmount();
       }
     } else if (payWay === 'zs_pay') {
-      // 招商银行聚合支付处理 - 不调用 getAmount，因为易支付接口不适用于招商银行
-      // 招商银行金额在前端根据币种和折扣直接计算
+      // 招商银行聚合支付处理 - 支持自定义金额和预设套餐
+      if (!selectedPreset && topUpCount > 0) {
+        // 自定义金额，直接计算
+        setAmount(topUpCount);
+      }
     } else if (payWay === 'helipay') {
-      // 合利宝支付处理 - 不调用 getAmount，因为易支付接口不适用于合利宝
-      // 合利宝金额在前端根据币种和折扣直接计算
+      // 合利宝支付处理 - 支持自定义金额和预设套餐
+      if (!selectedPreset && topUpCount > 0) {
+        // 自定义金额，直接计算
+        setAmount(topUpCount);
+      }
     } else {
       // 易支付等普通支付处理
       if (amount === 0) {
@@ -272,7 +288,7 @@ const TopUp = () => {
     }
 
     if (topUpCount < minTopUp) {
-      showError('充值数量不能小于' + minTopUp);
+      showError(t('充值数量不能小于') + minTopUp);
       return;
     }
     setConfirmLoading(true);
@@ -907,7 +923,6 @@ const TopUp = () => {
 
   // 选择预设充值额度
   const selectPresetAmount = (preset) => {
-    setTopUpCount(preset.value);
     setSelectedPreset(preset.value);
 
     // 计算实际支付金额，考虑折扣
@@ -918,6 +933,29 @@ const TopUp = () => {
       ? preset.value * discount
       : preset.value * priceRatio * discount;
     setAmount(discountedAmount);
+
+    // 根据币种计算显示值，确保与预设套餐卡片显示一致
+    const { symbol, rate, type } = getCurrencyConfig();
+    const statusStr = localStorage.getItem('status');
+    let usdRate = 7;
+    try {
+      if (statusStr) {
+        const s = JSON.parse(statusStr);
+        usdRate = s?.usd_exchange_rate || 7;
+      }
+    } catch (e) {}
+
+    let displayValue = preset.value;
+    if (!isCustomCurrencyAmount) {
+      if (type === 'USD') {
+        displayValue = preset.value;
+      } else if (type === 'CNY') {
+        displayValue = preset.value * usdRate;
+      } else if (type === 'CUSTOM') {
+        displayValue = preset.value * rate;
+      }
+    }
+    setTopUpCount(displayValue);
   };
 
   // 格式化大数字显示
