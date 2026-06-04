@@ -295,23 +295,27 @@ const TextToVideo = () => {
   const promptExamples = [
     {
       title: '城市穿梭',
-      prompt: '镜头穿过未来城市街道，霓虹灯反射在湿润地面上，电影感强，动态流畅。',
+      prompt: '赛博朋克世界，霓虹灯下，飞行汽车，高速列车快速通过。',
       image: '/example/city-sunset.png',
+      video: '/example/world.mp4',
     },
     {
       title: '海边日落',
-      prompt: '海边日落下，海浪缓缓拍岸，逆光剪影，画面温暖宁静。',
+      prompt: '夕阳西下，海浪裹挟着夕阳的余晖涌向美好的岸边。',
       image: '/example/cat.png',
+      video: '/example/sun.mp4',
     },
     {
-      title: '森林漫步',
-      prompt: '穿过晨雾森林的小路，阳光透过树叶洒落，轻柔运镜，氛围自然。',
+      title: '红苹果',
+      prompt: '丰收的季节，红彤彤的苹果被一只手摘取了。',
       image: '/example/forest.png',
+      video: '/example/apple.mp4',
     },
     {
-      title: '赛博舞台',
-      prompt: '赛博朋克舞台上，灯光随音乐闪烁，镜头围绕主角缓慢推进，视觉冲击强。',
+      title: '坚毅的爷爷',
+      prompt: '带着帽子的爷爷坚毅地走向了小木屋。',
       image: '/example/garden.png',
+      video: '/example/grandpa.mp4',
     },
   ];
 
@@ -502,7 +506,7 @@ const TextToVideo = () => {
                               <div
                                 style={{
                                   display: 'grid',
-                                  gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))',
+                                  gridTemplateColumns: 'repeat(2, 1fr)',
                                   gap: 20,
                                 }}
                               >
@@ -536,9 +540,11 @@ const TextToVideo = () => {
                                         background: '#f1f5f9',
                                       }}
                                     >
-                                      <img
-                                        src={item.image}
-                                        alt={item.title}
+                                      <video
+                                        src={item.video}
+                                        muted
+                                        loop
+                                        playsInline
                                         style={{
                                           width: '100%',
                                           height: '100%',
@@ -550,6 +556,11 @@ const TextToVideo = () => {
                                           e.stopPropagation();
                                           handleExamplePromptClick(item);
                                           setPreviewVideo(item);
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.play()}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.pause();
+                                          e.currentTarget.currentTime = 0;
                                         }}
                                       />
                                     </div>

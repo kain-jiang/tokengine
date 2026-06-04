@@ -31,8 +31,6 @@ const SearchActions = memo(
     isMobile = false,
     searchValue = '',
     setShowFilterModal,
-    showWithRecharge,
-    setShowWithRecharge,
     currency,
     setCurrency,
     siteDisplayType,
@@ -93,19 +91,8 @@ const SearchActions = memo(
           <>
             <Divider layout='vertical' margin='8px' />
 
-            {/* 充值价格显示开关 */}
+            {/* 货币单位选择 - 默认跟随全局币种设置，用户可自行切换 */}
             {supportsCurrencyDisplay && (
-              <div className='flex items-center gap-2'>
-                <span className='text-sm text-gray-600'>{t('充值价格显示')}</span>
-                <Switch
-                  checked={showWithRecharge}
-                  onChange={setShowWithRecharge}
-                />
-              </div>
-            )}
-
-            {/* 货币单位选择 */}
-            {supportsCurrencyDisplay && showWithRecharge && (
               <Select
                 value={currency}
                 onChange={setCurrency}

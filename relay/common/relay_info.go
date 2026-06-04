@@ -465,10 +465,9 @@ func genBaseRelayInfo(c *gin.Context, request dto.Request) *RelayInfo {
 
 		isFirstResponse: true,
 		RelayMode:       relayconstant.Path2RelayMode(c.Request.URL.Path),
-		// Note: RelayMode will be overridden by c.Get("relay_mode") if set by middleware
-		RequestURLPath: c.Request.URL.String(),
-		RequestHeaders: cloneRequestHeaders(c),
-		IsStream:       isStream,
+		RequestURLPath:  c.Request.URL.String(),
+		RequestHeaders:  cloneRequestHeaders(c),
+		IsStream:        isStream,
 
 		StartTime:         startTime,
 		FirstResponseTime: startTime.Add(-time.Second),
@@ -482,11 +481,8 @@ func genBaseRelayInfo(c *gin.Context, request dto.Request) *RelayInfo {
 		},
 	}
 
-	// 优先使用 middleware 中设置的 relay_mode（已区分 GET/POST）
-	if relayMode, exists := c.Get("relay_mode"); exists {
-		if rm, ok := relayMode.(int); ok {
-			info.RelayMode = rm
-		}
+	if info.RelayMode == relayconstant.RelayModeUnknown {
+		info.RelayMode = c.GetInt("relay_mode")
 	}
 
 	if strings.HasPrefix(c.Request.URL.Path, "/pg") {

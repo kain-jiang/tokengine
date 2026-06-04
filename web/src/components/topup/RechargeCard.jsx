@@ -457,16 +457,21 @@ const RechargeCard = ({
                       let displaySave = save;
 
                       if (!isCustomCurrencyAmount) {
-                        // 默认预设选项：需要进行汇率换算（原逻辑）
+                        // 默认预设选项：需要进行汇率换算
+                        // 充值套餐金额保持美元计价，显示时根据全局币种换算
                         if (type === 'USD') {
-                          displayActualPay = actualPay / usdRate;
-                          displaySave = save / usdRate;
+                          // 美元：直接显示原值
+                          displayValue = preset.value;
                         } else if (type === 'CNY') {
+                          // 人民币：乘以汇率换算
                           displayValue = preset.value * usdRate;
+                          displayActualPay = actualPay * usdRate;
+                          displaySave = save * usdRate;
                         } else if (type === 'CUSTOM') {
+                          // 自定义货币：乘以汇率换算
                           displayValue = preset.value * rate;
-                          displayActualPay = (actualPay / usdRate) * rate;
-                          displaySave = (save / usdRate) * rate;
+                          displayActualPay = actualPay * rate;
+                          displaySave = save * rate;
                         }
                       }
                       // isCustomCurrencyAmount 为 true 时，displayValue/displayActualPay/displaySave 保持原值不变
@@ -762,6 +767,7 @@ const RechargeCard = ({
                 allSubscriptions={allSubscriptions}
                 reloadSubscriptionSelf={reloadSubscriptionSelf}
                 withCard={false}
+                userQuota={userState?.user?.quota || 0}
               />
             </div>
           </TabPane>

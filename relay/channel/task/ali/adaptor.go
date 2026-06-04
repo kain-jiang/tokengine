@@ -449,28 +449,6 @@ func (a *TaskAdaptor) GetChannelName() string {
 	return ChannelName
 }
 
-// CancelTask cancels an Ali video generation task.
-// Ali API: POST {baseUrl}/v1/tasks/{taskID}/cancel
-func (a *TaskAdaptor) CancelTask(baseUrl, key, taskID, proxy string) (*http.Response, error) {
-	url := fmt.Sprintf("%s/v1/tasks/%s/cancel", baseUrl, taskID)
-
-	req, err := http.NewRequest(http.MethodPost, url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("create cancel request failed: %w", err)
-	}
-
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+key)
-
-	client, err := service.GetHttpClientWithProxy(proxy)
-	if err != nil {
-		return nil, fmt.Errorf("new proxy http client failed: %w", err)
-	}
-
-	return client.Do(req)
-}
-
 // ParseTaskResult 解析任务结果
 func (a *TaskAdaptor) ParseTaskResult(respBody []byte) (*relaycommon.TaskInfo, error) {
 	var aliResp AliVideoResponse

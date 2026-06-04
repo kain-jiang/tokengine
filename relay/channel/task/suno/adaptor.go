@@ -149,12 +149,6 @@ func (a *TaskAdaptor) FetchTask(baseUrl, key string, body map[string]any, proxy 
 	return client.Do(req)
 }
 
-// CancelTask cancels a Suno task.
-// Suno API does not have a dedicated cancel endpoint, so we return a not implemented error.
-func (a *TaskAdaptor) CancelTask(baseUrl, key, taskID, proxy string) (*http.Response, error) {
-	return nil, fmt.Errorf("suno task cancel is not supported")
-}
-
 func actionValidate(c *gin.Context, sunoRequest *dto.SunoSubmitReq, action string) (err error) {
 	switch action {
 	case constant.SunoActionMusic:

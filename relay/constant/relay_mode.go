@@ -42,7 +42,6 @@ const (
 
 	RelayModeVideoFetchByID
 	RelayModeVideoSubmit
-	RelayModeVideoCancel
 
 	RelayModeRerank
 
@@ -91,12 +90,6 @@ func Path2RelayMode(path string) int {
 		relayMode = RelayModeGemini
 	} else if strings.HasPrefix(path, "/mj") {
 		relayMode = Path2RelayModeMidjourney(path)
-	} else if strings.HasPrefix(path, "/v1/videos/cancel") {
-		relayMode = RelayModeVideoCancel
-	} else if strings.HasPrefix(path, "/v1/videos") || strings.HasPrefix(path, "/pg/video/generations") {
-		relayMode = RelayModeVideoSubmit
-	} else if strings.HasPrefix(path, "/v1/video/generations") || strings.HasPrefix(path, "/kling") || strings.HasPrefix(path, "/jimeng") {
-		relayMode = RelayModeVideoSubmit
 	}
 	return relayMode
 }

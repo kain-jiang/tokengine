@@ -28,8 +28,6 @@ import { usePricingFilterCounts } from '../../../../../hooks/model-pricing/usePr
 
 const FilterModalContent = ({ sidebarProps, t }) => {
   const {
-    showWithRecharge,
-    setShowWithRecharge,
     currency,
     setCurrency,
     siteDisplayType,
@@ -74,8 +72,6 @@ const FilterModalContent = ({ sidebarProps, t }) => {
   return (
     <>
       <PricingDisplaySettings
-        showWithRecharge={showWithRecharge}
-        setShowWithRecharge={setShowWithRecharge}
         currency={currency}
         setCurrency={setCurrency}
         siteDisplayType={siteDisplayType}

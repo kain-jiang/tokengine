@@ -147,18 +147,34 @@ func formatBearerToken(apiKey string) string {
 	return "Bearer " + apiKey
 }
 
-// EstimateBilling 检测请求 metadata 中是否包含视频输入，返回视频折扣 OtherRatio。
+// EstimateBilling 根据分辨率和视频输入计算 OtherRatios。
+// 豆包计费 = 分辨率倍率 × 视频输入折扣
 func (a *TaskAdaptor) EstimateBilling(c *gin.Context, info *relaycommon.RelayInfo) map[string]float64 {
 	req, err := relaycommon.GetTaskRequest(c)
 	if err != nil {
 		return nil
 	}
-	if hasVideoInMetadata(req.Metadata) {
-		if ratio, ok := GetVideoInputRatio(info.OriginModelName); ok {
-			return map[string]float64{"video_input": ratio}
+
+	// 解析分辨率
+	resolution := ResolveDoubaoResolution(req.Metadata, req.Size)
+	resRatio := GetResolutionRatio(resolution)
+
+	// 检查是否有视频输入
+	hasVideo := hasVideoInMetadata(req.Metadata)
+
+	otherRatios := make(map[string]float64)
+
+	// 添加分辨率倍率
+	otherRatios["resolution"] = resRatio
+
+	// 如果有视频输入，添加视频输入折扣
+	if hasVideo {
+		if videoRatio, ok := GetVideoInputRatio(info.OriginModelName, resolution); ok {
+			otherRatios["video_input"] = videoRatio
 		}
 	}
-	return nil
+
+	return otherRatios
 }
 
 // hasVideoInMetadata 直接检查 metadata 的 content 数组是否包含 video_url 条目，
@@ -352,8 +368,10 @@ func (a *TaskAdaptor) convertToRequestPayload(req *relaycommon.TaskSubmitReq) (*
 		r.Watermark = &watermark
 	}
 
-	// Note: Doubao Seedance video models do not accept 'resolution' parameter.
-	// They use 'ratio' (aspect ratio) instead. Do not set Resolution from Size.
+	// 设置分辨率：如果 metadata 中没有指定 resolution，则从 size 参数解析
+	if r.Resolution == "" && req.Size != "" {
+		r.Resolution = SizeToDoubaoResolution(req.Size)
+	}
 
 	return &r, nil
 }
@@ -453,33 +471,4 @@ func generateTraceID() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
 	return fmt.Sprintf("%x", b)
-}
-
-// CancelTask cancels a video generation task.
-// For ZLHub: POST {baseUrl}/v1/task/cancel/{taskID}
-// For Doubao/Seedance: POST {baseUrl}/api/v3/contents/generations/tasks/{taskID}/cancel
-func (a *TaskAdaptor) CancelTask(baseUrl, key, taskID, proxy string) (*http.Response, error) {
-	var url string
-	if a.ChannelType == constant.ChannelTypeZLHub {
-		url = fmt.Sprintf("%s/v1/task/cancel/%s", baseUrl, taskID)
-	} else {
-		url = fmt.Sprintf("%s/api/v3/contents/generations/tasks/%s/cancel", baseUrl, taskID)
-	}
-
-	req, err := http.NewRequest(http.MethodPost, url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("create cancel request failed: %w", err)
-	}
-
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", formatBearerToken(key))
-	req.Header.Set("X-Trace-ID", generateTraceID())
-
-	client, err := service.GetHttpClientWithProxy(proxy)
-	if err != nil {
-		return nil, fmt.Errorf("new proxy http client failed: %w", err)
-	}
-
-	return client.Do(req)
 }

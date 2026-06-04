@@ -76,6 +76,7 @@ const PricingCardView = ({
   setSelectedRowKeys,
   openModelDetail,
 }) => {
+  // 直接使用 currency 选择的货币（默认跟随全局币种设置）
   const showSkeleton = useMinimumLoadingTime(loading);
   const startIndex = (currentPage - 1) * pageSize;
   const paginatedModels = filteredModels.slice(
@@ -240,13 +241,14 @@ const PricingCardView = ({
           const modelKey = getModelKey(model);
           const isSelected = selectedRowKeys.includes(modelKey);
 
+          // 模型定价页面固定使用美元，不受全局币种设置影响
           const priceData = calculateModelPrice({
             record: model,
             selectedGroup,
             groupRatio,
             tokenUnit,
             displayPrice,
-            currency,
+            currency: currency,
             quotaDisplayType: siteDisplayType,
           });
 
@@ -263,7 +265,7 @@ const PricingCardView = ({
                   <div className='flex items-start space-x-3 flex-1 min-w-0'>
                     {getModelIcon(model)}
                     <div className='flex-1 min-w-0'>
-                      <h3 className='text-lg font-bold text-gray-900 truncate'>
+                      <h3 className='font-bold text-gray-900 truncate' style={{ fontSize: '1.05rem' }}>
                         {model.model_name}
                       </h3>
                       <div className='flex flex-col gap-1 text-xs mt-1'>

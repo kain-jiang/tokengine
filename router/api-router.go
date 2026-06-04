@@ -153,6 +153,9 @@ func SetApiRouter(router *gin.Engine) {
 			subscriptionRoute.POST("/epay/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestEpay)
 			subscriptionRoute.POST("/stripe/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestStripePay)
 			subscriptionRoute.POST("/creem/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestCreemPay)
+			subscriptionRoute.POST("/zs_pay/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestZSPay)
+			subscriptionRoute.POST("/helipay/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestHelipay)
+			subscriptionRoute.POST("/wallet/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestWalletPay)
 		}
 		subscriptionAdminRoute := apiRouter.Group("/subscription/admin")
 		subscriptionAdminRoute.Use(middleware.AdminAuth())
@@ -175,6 +178,10 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/subscription/epay/notify", controller.SubscriptionEpayNotify)
 		apiRouter.GET("/subscription/epay/return", controller.SubscriptionEpayReturn)
 		apiRouter.POST("/subscription/epay/return", controller.SubscriptionEpayReturn)
+		apiRouter.POST("/subscription/helipay/notify", controller.SubscriptionHelipayNotify)
+		apiRouter.GET("/subscription/helipay/notify", controller.SubscriptionHelipayNotify)
+		apiRouter.GET("/subscription/helipay/return", controller.SubscriptionHelipayReturn)
+		apiRouter.POST("/subscription/helipay/return", controller.SubscriptionHelipayReturn)
 		optionRoute := apiRouter.Group("/option")
 		optionRoute.Use(middleware.RootAuth())
 		{

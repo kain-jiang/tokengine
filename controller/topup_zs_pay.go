@@ -240,9 +240,7 @@ func ZSPayNotify(c *gin.Context) {
 			return
 		}
 
-		// 使用回调中的实际金额（txnAmt是分单位），转换为元后计算额度
-		txnAmtFen, _ := strconv.ParseInt(notifyData.TxnAmt, 10, 64)
-		dAmount := decimal.NewFromInt(txnAmtFen).Div(decimal.NewFromInt(100)) // 分转元
+		dAmount := decimal.NewFromInt(int64(topUp.Amount))
 		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
 		quotaToAdd := int(dAmount.Mul(dQuotaPerUnit).IntPart())
 
@@ -292,7 +290,7 @@ func QueryZSPayStatus(c *gin.Context) {
 			if err := topUp.Update(); err != nil {
 				log.Printf("招商银行聚合支付查询更新订单失败: %s, 错误: %v", tradeNo, err)
 			} else {
-				dAmount := decimal.NewFromFloat(topUp.Money)
+				dAmount := decimal.NewFromInt(topUp.Amount)
 				dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
 				quotaToAdd := int(dAmount.Mul(dQuotaPerUnit).IntPart())
 

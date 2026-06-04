@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState, useRef, useContext } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Avatar,
   Button,
@@ -45,7 +45,6 @@ import {
   displayAmountToQuota,
 } from '../../../../helpers/quota';
 import { useIsMobile } from '../../../../hooks/common/useIsMobile';
-import { StatusContext } from '../../../../context/Status';
 
 const { Text, Title } = Typography;
 
@@ -78,9 +77,8 @@ const AddEditSubscriptionModal = ({
   const [groupLoading, setGroupLoading] = useState(false);
   const isMobile = useIsMobile();
   const formApiRef = useRef(null);
-  const [statusState] = useContext(StatusContext);
-  const quotaDisplayType = statusState?.status?.quota_display_type || 'USD';
-  const currency = quotaDisplayType === 'TOKENS' ? 'USD' : quotaDisplayType;
+  // 订阅套餐价格固定使用美元计价，列表显示时根据全局币种换算
+  const currency = 'USD';
   const isEdit = editingPlan?.plan?.id !== undefined;
   const formKey = isEdit ? `edit-${editingPlan?.plan?.id}` : 'create';
 

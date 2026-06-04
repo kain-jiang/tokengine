@@ -25,7 +25,6 @@ import (
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	_ "github.com/QuantumNous/new-api/setting/performance_setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
-	"github.com/QuantumNous/new-api/setting/system_setting"
 
 	"github.com/bytedance/gopkg/util/gopool"
 	"github.com/gin-contrib/sessions"
@@ -260,10 +259,6 @@ func InitResources() error {
 		}
 	}
 
-	// 加载服务器地址（用于构建回调URL等）
-	if serverAddress := os.Getenv("SERVER_ADDRESS"); serverAddress != "" {
-		system_setting.ServerAddress = serverAddress
-	}
 	// 加载招行支付配置（init() 函数执行时 .env 还未加载，现在 .env 已加载，可以读取了）
 	operation_setting.LoadZSPayFromEnv()
 	// 加载合利宝支付配置

@@ -100,23 +100,9 @@ export default function ModelPricingEditor({
   const isMobile = useIsMobile();
   const [statusState] = useContext(StatusContext);
 
-  const quotaDisplayType = statusState?.status?.quota_display_type || 'USD';
-  const priceSuffix = useMemo(() => {
-    switch (quotaDisplayType) {
-      case 'CNY':
-        return '¥/1M tokens';
-      case 'CUSTOM':
-        const customSymbol = statusState?.status?.custom_currency_symbol || '¤';
-        return `${customSymbol}/1M tokens`;
-      default:
-        return '$/1M tokens';
-    }
-  }, [quotaDisplayType, statusState?.status?.custom_currency_symbol]);
-  const currencySymbol = useMemo(() => {
-    if (quotaDisplayType === 'CNY') return '¥';
-    if (quotaDisplayType === 'CUSTOM') return statusState?.status?.custom_currency_symbol || '¤';
-    return '$';
-  }, [quotaDisplayType, statusState?.status?.custom_currency_symbol]);
+  // 模型定价页面固定使用美元，不受全局币种设置影响
+  const priceSuffix = '$/1M tokens';
+  const currencySymbol = '$';
   const pricePlaceholder = useMemo(() => {
     return t('输入 {{symbol}}/1M tokens', { symbol: currencySymbol });
   }, [currencySymbol, t]);

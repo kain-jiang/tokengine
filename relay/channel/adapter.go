@@ -76,12 +76,6 @@ type TaskAdaptor interface {
 
 	FetchTask(baseUrl, key string, body map[string]any, proxy string) (*http.Response, error)
 	ParseTaskResult(respBody []byte) (*relaycommon.TaskInfo, error)
-
-	// ── Cancel ───────────────────────────────────────────────────────
-
-	// CancelTask cancels a video generation task by task ID.
-	// Returns the upstream HTTP response or an error.
-	CancelTask(baseUrl, key, taskID, proxy string) (*http.Response, error)
 }
 
 type OpenAIVideoConverter interface {
