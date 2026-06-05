@@ -304,8 +304,15 @@ const RechargeCard = ({
                         onFocus={() => setIsTopUpInputFocused(true)}
                         onBlur={() => setIsTopUpInputFocused(false)}
                         onChange={(value) => {
-                          const numValue = parseInt(value) || 0;
-                          if (numValue >= 1) {
+                          // 允许空字符串（用户删除所有字符）
+                          if (value === '' || value === '-' || value === '.') {
+                            setTopUpCount(0);
+                            setSelectedPreset(null);
+                            return;
+                          }
+                          const numValue = parseInt(value);
+                          // 允许有效数字或 0
+                          if (!isNaN(numValue) && numValue >= 0) {
                             setTopUpCount(numValue);
                             setSelectedPreset(null);
                             // 只有易支付和 Stripe 才需要调用后端 API 获取金额
