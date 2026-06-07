@@ -429,20 +429,20 @@ func GetUserTopUps(c *gin.Context) {
 	common.ApiSuccess(c, pageInfo)
 }
 
-// GetAllTopUps 管理员获取全平台充值记录
+// GetAllTopUps 管理员获取全平台充值记录（包含用户名）
 func GetAllTopUps(c *gin.Context) {
 	pageInfo := common.GetPageQuery(c)
 	keyword := c.Query("keyword")
 
 	var (
-		topups []*model.TopUp
+		topups []*model.TopUpWithUsername
 		total  int64
 		err    error
 	)
 	if keyword != "" {
-		topups, total, err = model.SearchAllTopUps(keyword, pageInfo)
+		topups, total, err = model.SearchAllTopUpsWithUsername(keyword, pageInfo)
 	} else {
-		topups, total, err = model.GetAllTopUps(pageInfo)
+		topups, total, err = model.GetAllTopUpsWithUsername(pageInfo)
 	}
 	if err != nil {
 		common.ApiError(c, err)

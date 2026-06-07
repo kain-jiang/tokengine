@@ -210,6 +210,16 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
       },
     ];
 
+    // 管理员才显示用户名列（放在最前面）
+    if (userIsAdmin) {
+      baseColumns.unshift({
+        title: t('用户'),
+        dataIndex: 'username',
+        key: 'username',
+        render: (username) => <Text>{username || '-'}</Text>,
+      });
+    }
+
     // 管理员才显示操作列
     if (userIsAdmin) {
       baseColumns.push({
@@ -251,7 +261,7 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
       visible={visible}
       onCancel={onCancel}
       footer={null}
-      size={isMobile ? 'full-width' : 'large'}
+      size={isMobile ? 'full-width' : 'xlarge'}
     >
       <div className='mb-3'>
         <Input
