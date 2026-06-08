@@ -104,7 +104,7 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
   }, [visible, page, pageSize, keyword, statusFilter]);
 
   const handleStatusChange = (value) => {
-    setStatusFilter(value || '');
+    setStatusFilter(value);
     setPage(1);
   };
 
@@ -284,26 +284,18 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
           style={{ flex: 1 }}
         />
         <Select
-          placeholder={t('支付状态')}
+          placeholder={t('全部状态')}
           value={statusFilter}
           onChange={handleStatusChange}
-          allowClear
           style={{ width: 140 }}
         >
+          <Select.Option value=''>{t('全部状态')}</Select.Option>
           <Select.Option value='pending'>{t('待支付')}</Select.Option>
           <Select.Option value='success'>{t('成功')}</Select.Option>
           <Select.Option value='failed'>{t('失败')}</Select.Option>
           <Select.Option value='expired'>{t('已过期')}</Select.Option>
           <Select.Option value='cancelled'>{t('已取消')}</Select.Option>
         </Select>
-        {statusFilter && (
-          <Button
-            size='small'
-            onClick={() => handleStatusChange(null)}
-          >
-            {t('重置')}
-          </Button>
-        )}
       </div>
       <Table
         columns={columns}
