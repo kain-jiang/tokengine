@@ -27,6 +27,7 @@ import {
   Button,
   Input,
   Tag,
+  Select,
 } from '@douyinfe/semi-ui';
 import {
   IllustrationNoResult,
@@ -66,15 +67,20 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [keyword, setKeyword] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const isMobile = useIsMobile();
 
   const loadTopups = async (currentPage, currentPageSize) => {
     setLoading(true);
     try {
       const base = isAdmin() ? '/api/user/topup' : '/api/user/topup/self';
-      const qs =
-        `p=${currentPage}&page_size=${currentPageSize}` +
-        (keyword ? `&keyword=${encodeURIComponent(keyword)}` : '');
+      let qs = `p=${currentPage}&page_size=${currentPageSize}`;
+      if (keyword) {
+        qs += `&keyword=${encodeURIComponent(keyword)}`;
+      }
+      if (statusFilter) {
+        qs += `&status=${encodeURIComponent(statusFilter)}`;
+      }
       const endpoint = `${base}?${qs}`;
       const res = await API.get(endpoint);
       const { success, message, data } = res.data;
@@ -95,7 +101,12 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
     if (visible) {
       loadTopups(page, pageSize);
     }
-  }, [visible, page, pageSize, keyword]);
+  }, [visible, page, pageSize, keyword, statusFilter]);
+
+  const handleStatusChange = (value) => {
+    setStatusFilter(value || '');
+    setPage(1);
+  };
 
   const handlePageChange = (currentPage) => {
     setPage(currentPage);
@@ -261,16 +272,30 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
       visible={visible}
       onCancel={onCancel}
       footer={null}
-      size={isMobile ? 'full-width' : 'xlarge'}
+      size={isMobile ? 'full-width' : 'large'}
     >
-      <div className='mb-3'>
+      <div className='flex gap-3 mb-3'>
         <Input
           prefix={<IconSearch />}
           placeholder={t('订单号')}
           value={keyword}
           onChange={handleKeywordChange}
           showClear
+          style={{ flex: 1 }}
         />
+        <Select
+          placeholder={t('支付状态')}
+          value={statusFilter}
+          onChange={handleStatusChange}
+          allowClear
+          style={{ width: 140 }}
+        >
+          <Select.Option value='pending'>{t('待支付')}</Select.Option>
+          <Select.Option value='success'>{t('成功')}</Select.Option>
+          <Select.Option value='failed'>{t('失败')}</Select.Option>
+          <Select.Option value='expired'>{t('已过期')}</Select.Option>
+          <Select.Option value='cancelled'>{t('已取消')}</Select.Option>
+        </Select>
       </div>
       <Table
         columns={columns}

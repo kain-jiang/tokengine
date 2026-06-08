@@ -210,8 +210,8 @@ func GetAllTopUpsWithUsername(pageInfo *common.PageInfo) (topups []*TopUpWithUse
 	return topups, total, nil
 }
 
-// SearchAllTopUpsWithUsername 按订单号搜索全平台充值记录（管理员使用，包含用户名）
-func SearchAllTopUpsWithUsername(keyword string, pageInfo *common.PageInfo) (topups []*TopUpWithUsername, total int64, err error) {
+// SearchAllTopUpsWithUsername 按订单号和状态搜索全平台充值记录（管理员使用，包含用户名）
+func SearchAllTopUpsWithUsername(keyword string, status string, pageInfo *common.PageInfo) (topups []*TopUpWithUsername, total int64, err error) {
 	tx := DB.Begin()
 	if tx.Error != nil {
 		return nil, 0, tx.Error
@@ -222,7 +222,13 @@ func SearchAllTopUpsWithUsername(keyword string, pageInfo *common.PageInfo) (top
 		}
 	}()
 
-	query := tx.Model(&TopUp{}).Where("trade_no LIKE ?", "%%"+keyword+"%%")
+	query := tx.Model(&TopUp{})
+	if keyword != "" {
+		query = query.Where("trade_no LIKE ?", "%%"+keyword+"%%")
+	}
+	if status != "" {
+		query = query.Where("top_ups.status = ?", status)
+	}
 
 	if err = query.Count(&total).Error; err != nil {
 		tx.Rollback()
@@ -246,8 +252,8 @@ func SearchAllTopUpsWithUsername(keyword string, pageInfo *common.PageInfo) (top
 	return topups, total, nil
 }
 
-// SearchUserTopUps 按订单号搜索某用户的充值记录
-func SearchUserTopUps(userId int, keyword string, pageInfo *common.PageInfo) (topups []*TopUp, total int64, err error) {
+// SearchUserTopUps 按订单号和状态搜索某用户的充值记录
+func SearchUserTopUps(userId int, keyword string, status string, pageInfo *common.PageInfo) (topups []*TopUp, total int64, err error) {
 	tx := DB.Begin()
 	if tx.Error != nil {
 		return nil, 0, tx.Error
@@ -262,6 +268,9 @@ func SearchUserTopUps(userId int, keyword string, pageInfo *common.PageInfo) (to
 	if keyword != "" {
 		like := "%%" + keyword + "%%"
 		query = query.Where("trade_no LIKE ?", like)
+	}
+	if status != "" {
+		query = query.Where("status = ?", status)
 	}
 
 	if err = query.Count(&total).Error; err != nil {

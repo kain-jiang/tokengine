@@ -293,8 +293,9 @@ const RechargeCard = ({
               {(enableOnlineTopUp || enableStripeTopUp || enableWaffoTopUp || enableZsPayTopUp || enableHelipayTopUp) && (
                 <Row gutter={12}>
                   <Col xs={24} sm={24} md={24} lg={10} xl={10}>
-                    <div style={{ marginBottom: 16 }}>
-                      <div style={{ fontSize: '14px', color: 'var(--semi-color-text-2)', marginBottom: 8 }}>{t('充值数量')}</div>
+                    <Form.Slot
+                      label={t('充值数量')}
+                    >
                       <Input
                         disabled={!enableOnlineTopUp && !enableStripeTopUp && !enableWaffoTopUp && !enableZsPayTopUp && !enableHelipayTopUp}
                         placeholder={
@@ -324,7 +325,7 @@ const RechargeCard = ({
                         }}
                         style={{ width: '100%' }}
                       />
-                    </div>
+                    </Form.Slot>
                   </Col>
                   {/* 当只启用招行支付时，隐藏支付方式选择 */}
                   {!onlyZsPayEnabled && (enableOnlineTopUp || enableStripeTopUp) && payMethods && payMethods.filter(m => m.type !== 'waffo' && m.type !== 'zs_pay').length > 0 && (
