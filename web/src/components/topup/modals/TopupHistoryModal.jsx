@@ -296,6 +296,14 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
           <Select.Option value='expired'>{t('已过期')}</Select.Option>
           <Select.Option value='cancelled'>{t('已取消')}</Select.Option>
         </Select>
+        {statusFilter && (
+          <Button
+            size='small'
+            onClick={() => handleStatusChange(null)}
+          >
+            {t('重置')}
+          </Button>
+        )}
       </div>
       <Table
         columns={columns}
