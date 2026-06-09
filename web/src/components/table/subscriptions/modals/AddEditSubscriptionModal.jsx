@@ -85,6 +85,7 @@ const AddEditSubscriptionModal = ({
   const getInitValues = () => ({
     title: '',
     subtitle: '',
+    description: '',
     price_amount: 0,
     currency: currency,
     duration_unit: 'month',
@@ -109,6 +110,7 @@ const AddEditSubscriptionModal = ({
       ...base,
       title: p.title || '',
       subtitle: p.subtitle || '',
+      description: p.description || '',
       price_amount: Number(p.price_amount || 0),
       currency: currency,
       duration_unit: p.duration_unit || 'month',
@@ -293,6 +295,16 @@ const AddEditSubscriptionModal = ({
                         field='subtitle'
                         label={t('套餐副标题')}
                         placeholder={t('例如：适合轻度使用')}
+                        showClear
+                      />
+                    </Col>
+
+                    <Col span={24}>
+                      <Form.TextArea
+                        field='description'
+                        label={t('描述')}
+                        placeholder={t('请输入套餐详细描述内容')}
+                        rows={4}
                         showClear
                       />
                     </Col>
