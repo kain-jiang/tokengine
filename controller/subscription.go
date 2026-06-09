@@ -225,6 +225,7 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 		updateMap := map[string]interface{}{
 			"title":                      req.Plan.Title,
 			"subtitle":                   req.Plan.Subtitle,
+			"description":                req.Plan.Description,
 			"price_amount":               req.Plan.PriceAmount,
 			"currency":                   req.Plan.Currency,
 			"duration_unit":              req.Plan.DurationUnit,

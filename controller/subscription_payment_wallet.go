@@ -69,8 +69,8 @@ func SubscriptionRequestWalletPay(c *gin.Context) {
 
 	// 检查钱包余额是否足够
 	if currentQuota < requiredQuota {
-		// 余额不足，返回提示信息
-		common.ApiErrorMsg(c, fmt.Sprintf("余额不足，需要 %d 配额，当前余额 %d 配额，请先充值", requiredQuota, currentQuota))
+		// 余额不足，返回简洁的提示信息
+		common.ApiErrorMsg(c, "余额不足，请先充值")
 		return
 	}
 
