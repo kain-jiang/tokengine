@@ -85,6 +85,7 @@ const AddEditSubscriptionModal = ({
   const getInitValues = () => ({
     title: '',
     subtitle: '',
+    description: '',
     price_amount: 0,
     currency: currency,
     duration_unit: 'month',
@@ -109,6 +110,7 @@ const AddEditSubscriptionModal = ({
       ...base,
       title: p.title || '',
       subtitle: p.subtitle || '',
+      description: p.description || '',
       price_amount: Number(p.price_amount || 0),
       currency: currency,
       duration_unit: p.duration_unit || 'month',
@@ -297,10 +299,20 @@ const AddEditSubscriptionModal = ({
                       />
                     </Col>
 
+                    <Col span={24}>
+                      <Form.TextArea
+                        field='description'
+                        label={t('描述')}
+                        placeholder={t('请输入套餐详细描述内容')}
+                        rows={4}
+                        showClear
+                      />
+                    </Col>
+
                     <Col span={12}>
                       <Form.InputNumber
                         field='price_amount'
-                        label={t('实付金额')}
+                        label={t('实付金额(美元计价)')}
                         required
                         min={0}
                         precision={2}
@@ -344,14 +356,14 @@ const AddEditSubscriptionModal = ({
                       </Form.Select>
                     </Col>
 
-                    <Col span={12}>
+                    {/* <Col span={12}>
                       <Form.Input
                         field='currency'
                         label={t('币种')}
                         disabled
                         extraText={t('由全站货币展示设置统一控制')}
                       />
-                    </Col>
+                    </Col> */}
 
                     <Col span={12}>
                       <Form.InputNumber
