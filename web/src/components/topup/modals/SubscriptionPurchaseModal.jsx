@@ -37,8 +37,58 @@ import {
   formatSubscriptionDuration,
   formatSubscriptionResetPeriod,
 } from '../../../helpers/subscriptionFormat';
+import i18next from 'i18next';
 
 const { Text } = Typography;
+
+// 格式化额度值为带单位的显示格式
+function formatQuotaAmount(quota) {
+  if (quota <= 0) return '0 Tokens';
+  
+  const locale = localStorage.getItem('locale') || i18next?.language || 'zh-CN';
+  const isChinese = locale.includes('zh') || locale.includes('ZH');
+  
+  let value = Math.abs(quota);
+  let suffix = '';
+  
+  if (isChinese) {
+    // 中文格式：使用万、亿等单位
+    if (value >= 100000000) {
+      // 亿
+      value = value / 100000000;
+      suffix = '亿 Tokens';
+    } else if (value >= 10000) {
+      // 万
+      value = value / 10000;
+      suffix = '万 Tokens';
+    } else {
+      suffix = ' Tokens';
+    }
+  } else {
+    // 英文格式：使用 K、M、B 等单位
+    const units = ['', 'K', 'M', 'B', 'T'];
+    let unitIndex = 0;
+    
+    while (value >= 1000 && unitIndex < units.length - 1) {
+      value /= 1000;
+      unitIndex++;
+    }
+    
+    suffix = units[unitIndex] + ' Tokens';
+  }
+  
+  // 根据数值大小决定小数位数
+  let formattedValue;
+  if (value >= 100) {
+    formattedValue = value.toFixed(0);
+  } else if (value >= 10) {
+    formattedValue = value.toFixed(1);
+  } else {
+    formattedValue = value.toFixed(2);
+  }
+  
+  return formattedValue + suffix;
+}
 
 const SubscriptionPurchaseModal = ({
   t,
@@ -141,7 +191,7 @@ const SubscriptionPurchaseModal = ({
                   {totalAmount > 0 ? (
                     <Tooltip content={`${t('原生额度')}：${totalAmount}`}>
                       <Text className='text-slate-900 dark:text-slate-100'>
-                        {renderQuota(totalAmount)}
+                        {formatQuotaAmount(totalAmount)}
                       </Text>
                     </Tooltip>
                   ) : (

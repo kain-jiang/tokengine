@@ -30,7 +30,9 @@ import {
   Tooltip,
   Typography,
 } from '@douyinfe/semi-ui';
-import { API, showError, showSuccess, renderQuota } from '../../helpers';
+import i18next from 'i18next';
+import { API, showError, showSuccess, renderQuota, getQuotaPerUnit } from '../../helpers';
+import { Modal } from '@douyinfe/semi-ui';
 import { getCurrencyConfig } from '../../helpers/render';
 import { RefreshCw, Sparkles } from 'lucide-react';
 import SubscriptionPurchaseModal from './modals/SubscriptionPurchaseModal';
@@ -40,6 +42,55 @@ import {
 } from '../../helpers/subscriptionFormat';
 
 const { Text } = Typography;
+
+// 格式化额度值为带单位的显示格式
+function formatQuotaAmount(quota) {
+  if (quota <= 0) return '0 Tokens';
+  
+  const locale = localStorage.getItem('locale') || i18next?.language || 'zh-CN';
+  const isChinese = locale.includes('zh') || locale.includes('ZH');
+  
+  let value = Math.abs(quota);
+  let suffix = '';
+  
+  if (isChinese) {
+    // 中文格式：使用万、亿等单位
+    if (value >= 100000000) {
+      // 亿
+      value = value / 100000000;
+      suffix = '亿 Tokens';
+    } else if (value >= 10000) {
+      // 万
+      value = value / 10000;
+      suffix = '万 Tokens';
+    } else {
+      suffix = ' Tokens';
+    }
+  } else {
+    // 英文格式：使用 K、M、B 等单位
+    const units = ['', 'K', 'M', 'B', 'T'];
+    let unitIndex = 0;
+    
+    while (value >= 1000 && unitIndex < units.length - 1) {
+      value /= 1000;
+      unitIndex++;
+    }
+    
+    suffix = units[unitIndex] + ' Tokens';
+  }
+  
+  // 根据数值大小决定小数位数
+  let formattedValue;
+  if (value >= 100) {
+    formattedValue = value.toFixed(0);
+  } else if (value >= 10) {
+    formattedValue = value.toFixed(1);
+  } else {
+    formattedValue = value.toFixed(2);
+  }
+  
+  return formattedValue + suffix;
+}
 
 // 过滤易支付方式
 function getEpayMethods(payMethods = []) {
@@ -210,6 +261,34 @@ const SubscriptionPlansCard = ({
   };
 
   const payWallet = async () => {
+    // 前端预检查余额是否足够
+    const plan = selectedPlan?.plan;
+    if (!plan) return;
+    
+    const priceAmount = Number(plan.price_amount || 0);
+    const quotaPerUnit = getQuotaPerUnit();
+    const requiredQuota = priceAmount * quotaPerUnit;
+    const currentQuota = userQuota || 0;
+    
+    if (currentQuota < requiredQuota) {
+      // 余额不足，显示简洁提示并引导充值
+      Modal.warning({
+        title: t('余额不足'),
+        content: (
+          <div>
+            <p>{t('钱包余额不足，请先充值后再试。')}</p>
+          </div>
+        ),
+        centered: true,
+        maskClosable: true,
+        okText: t('去充值'),
+        onOk: () => {
+          window.location.href = '/console/topup';
+        },
+      });
+      return;
+    }
+    
     setPaying(true);
     try {
       const res = await API.post('/api/subscription/wallet/pay', {
@@ -410,10 +489,22 @@ const SubscriptionPlansCard = ({
               <>
                 <Divider margin={8} />
                 <div className='max-h-64 overflow-y-auto pr-1 semi-table-body'>
-                  {allSubscriptions.map((sub, subIndex) => {
-                    const isLast = subIndex === allSubscriptions.length - 1;
-                    const subscription = sub.subscription;
-                    const totalAmount = Number(subscription?.amount_total || 0);
+                  {(() => {
+                    // 创建 planMap 用于通过 plan_id 获取正确的 total_amount
+                    const planMap = new Map();
+                    (plans || []).forEach((p) => {
+                      const plan = p?.plan;
+                      if (plan?.id) {
+                        planMap.set(plan.id, plan);
+                      }
+                    });
+                    
+                    return allSubscriptions.map((sub, subIndex) => {
+                      const isLast = subIndex === allSubscriptions.length - 1;
+                      const subscription = sub.subscription;
+                      // 优先从 plans 中获取正确的 total_amount，否则使用 subscription 中的值
+                      const planFromMap = planMap.get(subscription?.plan_id);
+                      const totalAmount = Number(planFromMap?.total_amount || subscription?.amount_total || 0);
                     const usedAmount = Number(subscription?.amount_used || 0);
                     const remainAmount =
                       totalAmount > 0
@@ -498,7 +589,8 @@ const SubscriptionPlansCard = ({
                         {!isLast && <Divider margin={12} />}
                       </div>
                     );
-                  })}
+                  });
+                })()}
                 </div>
               </>
             ) : (
@@ -525,7 +617,7 @@ const SubscriptionPlansCard = ({
                 const limitLabel = limit > 0 ? `${t('限购')} ${limit}` : null;
                 const totalLabel =
                   totalAmount > 0
-                    ? `${t('总额度')}: ${renderQuota(totalAmount)}`
+                    ? `${t('总额度')}: ${formatQuotaAmount(totalAmount)}`
                     : `${t('总额度')}: ${t('不限')}`;
                 const upgradeLabel = plan?.upgrade_group
                   ? `${t('升级分组')}: ${plan.upgrade_group}`
@@ -557,10 +649,10 @@ const SubscriptionPlansCard = ({
                     }`}
                     bodyStyle={{ padding: 0 }}
                   >
-                    <div className='p-4 h-full flex flex-col'>
-                      {/* 推荐标签 */}
+                    <div className='p-4 h-full flex flex-col relative'>
+                      {/* 推荐标签 - 移动到右上角 */}
                       {isPopular && (
-                        <div className='mb-2'>
+                        <div className='absolute top-4 right-4 z-10'>
                           <Tag color='purple' shape='circle' size='small'>
                             <Sparkles size={10} className='mr-1' />
                             {t('推荐')}
