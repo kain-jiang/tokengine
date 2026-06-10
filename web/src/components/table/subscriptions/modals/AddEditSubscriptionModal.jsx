@@ -44,6 +44,7 @@ import {
   quotaToDisplayAmount,
   displayAmountToQuota,
 } from '../../../../helpers/quota';
+import { getCurrencyConfig } from '../../../../helpers/render';
 import { useIsMobile } from '../../../../hooks/common/useIsMobile';
 
 const { Text, Title } = Typography;
@@ -322,18 +323,24 @@ const AddEditSubscriptionModal = ({
                     </Col>
 
                     <Col span={12}>
-                      <Form.InputNumber
-                        field='total_amount'
-                        label={t('总额度')}
-                        required
-                        min={0}
-                        precision={2}
-                        rules={[{ required: true, message: t('请输入总额度') }]}
-                        extraText={`${t('0 表示不限')} · ${t('原生额度')}：${displayAmountToQuota(
-                          values.total_amount,
-                        )}`}
-                        style={{ width: '100%' }}
-                      />
+                      {(() => {
+                        const { symbol } = getCurrencyConfig();
+                        return (
+                          <Form.InputNumber
+                            field='total_amount'
+                            label={t('总额度')}
+                            prefix={symbol}
+                            required
+                            min={0}
+                            precision={2}
+                            rules={[{ required: true, message: t('请输入总额度') }]}
+                            extraText={`${t('0 表示不限')} · ${t('原生额度')}：${displayAmountToQuota(
+                              values.total_amount,
+                            )}`}
+                            style={{ width: '100%' }}
+                          />
+                        );
+                      })()}
                     </Col>
 
                     <Col span={12}>
