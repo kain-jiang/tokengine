@@ -30,12 +30,13 @@ import {
   Tooltip,
   Typography,
   Table,
+  Avatar,
 } from '@douyinfe/semi-ui';
 import i18next from 'i18next';
 import { API, showError, showSuccess, renderQuota, getQuotaPerUnit } from '../../helpers';
 import { Modal } from '@douyinfe/semi-ui';
 import { getCurrencyConfig } from '../../helpers/render';
-import { RefreshCw, Sparkles } from 'lucide-react';
+import { RefreshCw, Sparkles, Package } from 'lucide-react';
 import SubscriptionPurchaseModal from './modals/SubscriptionPurchaseModal';
 import {
   formatSubscriptionDuration,
@@ -136,6 +137,7 @@ const SubscriptionPlansCard = ({
   reloadSubscriptionSelf,
   withCard = true,
   userQuota = 0,
+  subtitle,
 }) => {
   const [open, setOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -416,7 +418,17 @@ const SubscriptionPlansCard = ({
           {/* 可购买套餐 - 标准定价卡片 - 移到上方 */}
           {plans.length > 0 ? (
             <div>
-              <Text strong style={{ fontSize: 16, marginBottom: 12, display: 'block' }}>{t('热门套餐')}</Text>
+              <div className='flex items-center mb-4'>
+                <Avatar size='small' color='purple' className='mr-3 shadow-md'>
+                  <Package size={16} />
+                </Avatar>
+                <div>
+                  <Typography.Text className='text-lg font-medium'>
+                    {t('热门套餐')}
+                  </Typography.Text>
+                  {subtitle && <div className='text-xs'>{subtitle}</div>}
+                </div>
+              </div>
               <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5 w-full px-1'>
                 {plans.map((p, index) => {
                   const plan = p?.plan;
@@ -589,200 +601,6 @@ const SubscriptionPlansCard = ({
               {t('暂无可购买套餐')}
             </div>
           )}
-
-          {/* 当前订阅状态 - 使用表格显示 */}
-          <Card className='!rounded-xl w-full' bodyStyle={{ padding: '12px' }}>
-            <div className='flex items-center justify-between mb-2 gap-3'>
-              <div className='flex items-center gap-2 flex-1 min-w-0'>
-                <Text strong>{t('我的订阅')}</Text>
-                {hasActiveSubscription ? (
-                  <Tag
-                    color='white'
-                    size='small'
-                    shape='circle'
-                    prefixIcon={<Badge dot type='success' />}
-                  >
-                    {activeSubscriptions.length} {t('个生效中')}
-                  </Tag>
-                ) : (
-                  <Tag color='white' size='small' shape='circle'>
-                    {t('无生效')}
-                  </Tag>
-                )}
-                {allSubscriptions.length > activeSubscriptions.length && (
-                  <Tag color='white' size='small' shape='circle'>
-                    {allSubscriptions.length - activeSubscriptions.length}{' '}
-                    {t('个已过期')}
-                  </Tag>
-                )}
-              </div>
-              <div className='flex items-center gap-2'>
-                <Select
-                  value={displayBillingPreference}
-                  onChange={onChangeBillingPreference}
-                  size='small'
-                  optionList={[
-                    {
-                      value: 'subscription_first',
-                      label: disableSubscriptionPreference
-                        ? `${t('优先订阅')} (${t('无生效')})`
-                        : t('优先订阅'),
-                      disabled: disableSubscriptionPreference,
-                    },
-                    { value: 'wallet_first', label: t('优先钱包') },
-                    {
-                      value: 'subscription_only',
-                      label: disableSubscriptionPreference
-                        ? `${t('仅用订阅')} (${t('无生效')})`
-                        : t('仅用订阅'),
-                      disabled: disableSubscriptionPreference,
-                    },
-                    { value: 'wallet_only', label: t('仅用钱包') },
-                  ]}
-                />
-                <Button
-                  size='small'
-                  theme='light'
-                  type='tertiary'
-                  icon={
-                    <RefreshCw
-                      size={12}
-                      className={refreshing ? 'animate-spin' : ''}
-                    />
-                  }
-                  onClick={handleRefresh}
-                  loading={refreshing}
-                />
-              </div>
-            </div>
-            {disableSubscriptionPreference && isSubscriptionPreference && (
-              <Text type='tertiary' size='small'>
-                {t('已保存偏好为')}
-                {subscriptionPreferenceLabel}
-                {t('，当前无生效订阅，将自动使用钱包')}
-              </Text>
-            )}
-
-            {hasAnySubscription ? (
-              <>
-                <Divider margin={8} />
-                {/* 使用表格显示订阅信息 */}
-                {(() => {
-                  // 创建 planMap 用于通过 plan_id 获取正确的 total_amount
-                  const planMap = new Map();
-                  (plans || []).forEach((p) => {
-                    const plan = p?.plan;
-                    if (plan?.id) {
-                      planMap.set(plan.id, plan);
-                    }
-                  });
-                  
-                  // 构建表格数据
-                  const tableData = allSubscriptions.map((sub) => {
-                    const subscription = sub.subscription;
-                    const planFromMap = planMap.get(subscription?.plan_id);
-                    const totalAmount = Number(planFromMap?.total_amount || subscription?.amount_total || 0);
-                    const usedAmount = Number(subscription?.amount_used || 0);
-                    const remainAmount = totalAmount > 0 ? Math.max(0, totalAmount - usedAmount) : 0;
-                    const planTitle = planTitleMap.get(subscription?.plan_id) || '';
-                    const remainDays = getRemainingDays(sub);
-                    const usagePercent = getUsagePercent(sub);
-                    const now = Date.now() / 1000;
-                    const isExpired = (subscription?.end_time || 0) < now;
-                    const isCancelled = subscription?.status === 'cancelled';
-                    const isActive = subscription?.status === 'active' && !isExpired;
-                    
-                    return {
-                      key: subscription?.id,
-                      planName: planTitle ? `${planTitle} · ${t('订阅')} #${subscription?.id}` : `${t('订阅')} #${subscription?.id}`,
-                      status: isActive ? (
-                        <Tag color='white' size='small' shape='circle' prefixIcon={<Badge dot type='success' />}>
-                          {t('生效')}
-                        </Tag>
-                      ) : isCancelled ? (
-                        <Tag color='white' size='small' shape='circle'>{t('已作废')}</Tag>
-                      ) : (
-                        <Tag color='white' size='small' shape='circle'>{t('已过期')}</Tag>
-                      ),
-                      createTime: new Date((subscription?.start_time || 0) * 1000).toLocaleString(),
-                      endTime: new Date((subscription?.end_time || 0) * 1000).toLocaleString(),
-                      group: subscription?.upgrade_group || '-',
-                      totalQuota: totalAmount > 0 ? (
-                        <Tooltip content={`${t('原生额度')}：${usedAmount}/${totalAmount} · ${t('剩余')} ${remainAmount}`}>
-                          <span>{formatQuotaAmount(totalAmount)}</span>
-                        </Tooltip>
-                      ) : t('不限'),
-                      usedQuota: totalAmount > 0 ? `${formatQuotaAmount(usedAmount)} (${usagePercent}%)` : '-',
-                      remainQuota: totalAmount > 0 ? formatQuotaAmount(remainAmount) : '-',
-                      remainDays: isActive ? `${remainDays} ${t('天')}` : '-',
-                    };
-                  });
-                  
-                  const columns = [
-                    {
-                      title: t('套餐名称'),
-                      dataIndex: 'planName',
-                      ellipsis: true,
-                    },
-                    {
-                      title: t('状态'),
-                      dataIndex: 'status',
-                      width: 100,
-                    },
-                    {
-                      title: t('订阅时间'),
-                      dataIndex: 'createTime',
-                      width: 180,
-                    },
-                    {
-                      title: t('到期时间'),
-                      dataIndex: 'endTime',
-                      width: 180,
-                    },
-                    {
-                      title: t('分组'),
-                      dataIndex: 'group',
-                      width: 120,
-                    },
-                    {
-                      title: t('总额度'),
-                      dataIndex: 'totalQuota',
-                      ellipsis: true,
-                    },
-                    {
-                      title: t('已用额度'),
-                      dataIndex: 'usedQuota',
-                      width: 150,
-                    },
-                    {
-                      title: t('剩余额度'),
-                      dataIndex: 'remainQuota',
-                      width: 150,
-                    },
-                    {
-                      title: t('剩余天数'),
-                      dataIndex: 'remainDays',
-                      width: 100,
-                    },
-                  ];
-
-                  return (
-                    <Table
-                      columns={columns}
-                      dataSource={tableData}
-                      size='small'
-                      pagination={false}
-                      bordered
-                    />
-                  );
-                })()}
-              </>
-            ) : (
-              <div className='text-xs text-gray-500'>
-                {t('购买套餐后即可享受模型权益')}
-              </div>
-            )}
-          </Card>
         </Space>
       )}
     </>
