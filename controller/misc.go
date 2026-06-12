@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
@@ -42,38 +41,44 @@ func TestStatus(c *gin.Context) {
 
 func GetStatus(c *gin.Context) {
 
-	// 获取用户统计数据
-	var totalUsers int64
-	model.DB.Model(&model.User{}).Count(&totalUsers)
+	// ============================================
+	// 已注释：注册人数滚动轮播数据获取（已禁用）
+	// 禁用日期：2026-06-12
+	// ============================================
+	/*
+		// 获取用户统计数据
+		var totalUsers int64
+		model.DB.Model(&model.User{}).Count(&totalUsers)
 
-	// 获取今日新增用户数
-	now := time.Now()
-	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	var todayUsers int64
-	model.DB.Model(&model.User{}).Where("created_at >= ?", todayStart.Unix()).Count(&todayUsers)
+		// 获取今日新增用户数
+		now := time.Now()
+		todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		var todayUsers int64
+		model.DB.Model(&model.User{}).Where("created_at >= ?", todayStart.Unix()).Count(&todayUsers)
 
-	// 获取本周新增用户数
-	weekStart := time.Date(now.Year(), now.Month(), now.Day()-int(now.Weekday()), 0, 0, 0, 0, now.Location())
-	var weekUsers int64
-	model.DB.Model(&model.User{}).Where("created_at >= ?", weekStart.Unix()).Count(&weekUsers)
+		// 获取本周新增用户数
+		weekStart := time.Date(now.Year(), now.Month(), now.Day()-int(now.Weekday()), 0, 0, 0, 0, now.Location())
+		var weekUsers int64
+		model.DB.Model(&model.User{}).Where("created_at >= ?", weekStart.Unix()).Count(&weekUsers)
 
-	// 获取最近注册用户（最多返回10个）
-	var recentUsers []model.User
-	model.DB.Omit("password").Order("id desc").Limit(10).Find(&recentUsers)
+		// 获取最近注册用户（最多返回10个）
+		var recentUsers []model.User
+		model.DB.Omit("password").Order("id desc").Limit(10).Find(&recentUsers)
 
-	type RecentUser struct {
-		Id          int    `json:"id"`
-		Username    string `json:"username"`
-		DisplayName string `json:"display_name"`
-	}
-	recentUserList := make([]RecentUser, 0, len(recentUsers))
-	for _, u := range recentUsers {
-		recentUserList = append(recentUserList, RecentUser{
-			Id:          u.Id,
-			Username:    u.Username,
-			DisplayName: u.DisplayName,
-		})
-	}
+		type RecentUser struct {
+			Id          int    `json:"id"`
+			Username    string `json:"username"`
+			DisplayName string `json:"display_name"`
+		}
+		recentUserList := make([]RecentUser, 0, len(recentUsers))
+		for _, u := range recentUsers {
+			recentUserList = append(recentUserList, RecentUser{
+				Id:          u.Id,
+				Username:    u.Username,
+				DisplayName: u.DisplayName,
+			})
+		}
+	*/
 
 	cs := console_setting.GetConsoleSetting()
 	common.OptionMapRWMutex.RLock()
@@ -152,13 +157,16 @@ func GetStatus(c *gin.Context) {
 		"privacy_policy_enabled":      legalSetting.PrivacyPolicy != "",
 		"checkin_enabled":             operation_setting.GetCheckinSetting().Enabled,
 
-		// 注册人数滚动轮播数据
-		"user_stats": gin.H{
-			"total_users":  totalUsers,
-			"today_users":  todayUsers,
-			"week_users":   weekUsers,
-			"recent_users": recentUserList,
-		},
+		// ============================================
+		// 已注释：注册人数滚动轮播数据（已禁用）
+		// 禁用日期：2026-06-12
+		// ============================================
+		// "user_stats": gin.H{
+		// 	"total_users":  totalUsers,
+		// 	"today_users":  todayUsers,
+		// 	"week_users":   weekUsers,
+		// 	"recent_users": recentUserList,
+		// },
 	}
 
 	// 根据启用状态注入可选内容

@@ -197,7 +197,7 @@ export const CHANNEL_OPTIONS = [
   {
     value: 59,
     color: 'cyan',
-    label: '词链',
+    label: '字节seedance代理',
   },
   {
     value: 60,

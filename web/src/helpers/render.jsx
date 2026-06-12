@@ -417,7 +417,7 @@ export function getChannelIcon(channelType) {
       return <Replicate size={iconSize} />;
     case 58: // 众联 ZLHub（使用通用图标）
       return <OpenAI size={iconSize} />;
-    case 59: // 词链 CiChain（使用通用图标）
+    case 59: // 字节seedance代理（使用通用图标）
       return <OpenAI size={iconSize} />;
     case 60: // Agnes AI（使用通用图标）
       return <OpenAI size={iconSize} />;
