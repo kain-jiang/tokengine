@@ -45,6 +45,7 @@ export const DEFAULT_ADMIN_CONFIG = {
     enabled: true,
     topup: true,
     myPlan: true,
+    billing: true,
     personal: true,
   },
   admin: {

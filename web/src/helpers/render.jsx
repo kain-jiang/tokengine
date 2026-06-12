@@ -76,6 +76,8 @@ import {
   Server,
   CalendarClock,
   ImagePlus,
+  Video,
+  Receipt,
 } from 'lucide-react';
 import {
   SiAtlassian,
@@ -152,6 +154,10 @@ export function getLucideIcon(key, selected = false) {
       return <CalendarClock {...commonProps} color={iconColor} />;
     case 'setting':
       return <Settings {...commonProps} color={iconColor} />;
+    case 'textToVideo':
+      return <Video {...commonProps} color={iconColor} />;
+    case 'billing':
+      return <Receipt {...commonProps} color={iconColor} />;
     default:
       return <CircleUser {...commonProps} color={iconColor} />;
   }
