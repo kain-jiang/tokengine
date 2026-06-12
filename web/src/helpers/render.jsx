@@ -407,10 +407,22 @@ export function getChannelIcon(channelType) {
       return <Kling.Color size={iconSize} />;
     case 51: // 即梦 Jimeng
       return <Jimeng.Color size={iconSize} />;
+    case 52: // Vidu（使用通用图标）
+      return <OpenAI size={iconSize} />;
     case 54: // 豆包视频 Doubao Video
       return <Doubao.Color size={iconSize} />;
+    case 55: // Sora
+      return <OpenAI size={iconSize} />;
     case 56: // Replicate
       return <Replicate size={iconSize} />;
+    case 58: // 众联 ZLHub（使用通用图标）
+      return <OpenAI size={iconSize} />;
+    case 59: // 词链 CiChain（使用通用图标）
+      return <OpenAI size={iconSize} />;
+    case 60: // Agnes AI（使用通用图标）
+      return <OpenAI size={iconSize} />;
+    case 53: // SubModel
+      return <OpenAI size={iconSize} />;
     case 8: // 自定义渠道
     case 22: // 知识库：FastGPT
       return <FastGPT.Color size={iconSize} />;

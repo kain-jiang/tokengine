@@ -214,6 +214,11 @@ func (channel *Channel) UpdateAbilities(tx *gorm.DB) error {
 		}()
 	}
 
+	// Debug: log channel #10 UpdateAbilities call
+	if channel.Id == 10 {
+		common.SysLog(fmt.Sprintf("[CHANNEL_DEBUG] UpdateAbilities for channel #10: Models=%s, Group=%s", channel.Models, channel.Group))
+	}
+
 	// First delete all abilities of this channel
 	err := tx.Where("channel_id = ?", channel.Id).Delete(&Ability{}).Error
 	if err != nil {
@@ -253,6 +258,13 @@ func (channel *Channel) UpdateAbilities(tx *gorm.DB) error {
 				Tag:       channel.Tag,
 			}
 			abilities = append(abilities, ability)
+		}
+	}
+
+	// Debug: log created abilities for channel #10
+	if channel.Id == 10 && len(abilities) > 0 {
+		for _, ab := range abilities {
+			common.SysLog(fmt.Sprintf("[CHANNEL_DEBUG] Creating ability -> channel=#10, group=%s, model=%s", ab.Group, ab.Model))
 		}
 	}
 

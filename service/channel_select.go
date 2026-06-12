@@ -155,8 +155,11 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 	} else {
 		channel, err = model.GetRandomSatisfiedChannel(param.TokenGroup, param.ModelName, param.GetRetry())
 		if err != nil {
+			logger.LogDebug(param.Ctx, "GetRandomSatisfiedChannel error for group=%s, model=%s: %v", param.TokenGroup, param.ModelName, err)
 			return nil, param.TokenGroup, err
 		}
+		logger.LogDebug(param.Ctx, "GetRandomSatisfiedChannel returned for group=%s, model=%s: channel=%v, err=%v", param.TokenGroup, param.ModelName, channel, err)
 	}
+	logger.LogDebug(param.Ctx, "CacheGetRandomSatisfiedChannel final return: channel=%v, selectGroup=%s, err=%v", channel, selectGroup, err)
 	return channel, selectGroup, nil
 }
