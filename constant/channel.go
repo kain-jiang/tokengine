@@ -122,7 +122,7 @@ var ChannelBaseURLs = []string{
 	"https://api.replicate.com",                 //56
 	"https://chatgpt.com",                       //57
 	"https://api.zlhub.cn",                      //58
-	"",                                          //59 - CiChain 词链渠道
+	"",                                          //59 - 字节seedance代理
 	"https://apihub.agnes-ai.com/v1",            //60 - Agnes AI
 }
 
