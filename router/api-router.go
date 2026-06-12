@@ -313,6 +313,14 @@ func SetApiRouter(router *gin.Engine) {
 		dataRoute.GET("/users", middleware.AdminAuth(), controller.GetQuotaDatesByUser)
 		dataRoute.GET("/self", middleware.UserAuth(), controller.GetUserQuotaDates)
 
+		// Billing summary routes (user账单)
+		billingRoute := apiRouter.Group("/billing")
+		billingRoute.Use(middleware.UserAuth())
+		{
+			billingRoute.GET("/self/model-summary", controller.GetModelSummary)
+			billingRoute.GET("/self/token-summary", controller.GetTokenSummary)
+		}
+
 		logRoute.Use(middleware.CORS(), middleware.CriticalRateLimit())
 		{
 			logRoute.GET("/token", middleware.TokenAuthReadOnly(), controller.GetLogByKey)

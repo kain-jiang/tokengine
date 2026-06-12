@@ -23,6 +23,29 @@ type BillingPreferenceRequest struct {
 
 // ---- User APIs ----
 
+// GetSubscription is a wrapper for GetSubscriptionSelf for dashboard router
+func GetSubscription(c *gin.Context) {
+	GetSubscriptionSelf(c)
+}
+
+// GetUsage returns user usage data for dashboard router
+func GetUsage(c *gin.Context) {
+	userId := c.GetInt("id")
+	settingMap, _ := model.GetUserSetting(userId, false)
+	pref := common.NormalizeBillingPreference(settingMap.BillingPreference)
+
+	// Get active subscriptions
+	activeSubscriptions, err := model.GetAllActiveUserSubscriptions(userId)
+	if err != nil {
+		activeSubscriptions = []model.SubscriptionSummary{}
+	}
+
+	common.ApiSuccess(c, gin.H{
+		"billing_preference": pref,
+		"subscriptions":      activeSubscriptions,
+	})
+}
+
 func GetSubscriptionPlans(c *gin.Context) {
 	var plans []model.SubscriptionPlan
 	if err := model.DB.Where("enabled = ?", true).Order("sort_order desc, id desc").Find(&plans).Error; err != nil {
