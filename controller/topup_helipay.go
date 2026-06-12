@@ -220,7 +220,13 @@ func HelipayNotify(c *gin.Context) {
 				return
 			}
 
-			quotaToAdd := int(decimal.NewFromFloat(topUp.Money).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
+			// 合利宝支付金额为人民币（CNY），需要先转换为美元再计算配额
+			// 公式：配额 = (人民币金额 / 汇率) * 每美元配额
+			usdExchangeRate := operation_setting.USDExchangeRate
+			if usdExchangeRate <= 0 {
+				usdExchangeRate = 7.3 // 默认汇率
+			}
+			quotaToAdd := int(decimal.NewFromFloat(topUp.Money).Div(decimal.NewFromFloat(usdExchangeRate)).Mul(decimal.NewFromFloat(common.QuotaPerUnit)).IntPart())
 
 			if err := model.IncreaseUserQuota(topUp.UserId, quotaToAdd, true); err != nil {
 				log.Printf("合利宝回调更新用户额度失败: %v", err)
@@ -228,7 +234,7 @@ func HelipayNotify(c *gin.Context) {
 				return
 			}
 
-			log.Printf("合利宝支付成功: %s, 用户: %d, 充值: %.2f元, 配额: %d", orderId, topUp.UserId, topUp.Money, quotaToAdd)
+			log.Printf("合利宝支付成功: %s, 用户: %d, 充值: %.2f元, 汇率: %.4f, 美元金额: %.4f, 配额: %d", orderId, topUp.UserId, topUp.Money, usdExchangeRate, topUp.Money/usdExchangeRate, quotaToAdd)
 			model.RecordLog(topUp.UserId, model.LogTypeTopup, fmt.Sprintf("使用合利宝支付成功，充值金额: %.2f元，获得配额: %d", topUp.Money, quotaToAdd))
 		} else if tradeState == "FAILED" {
 			topUp.Status = "failed"
