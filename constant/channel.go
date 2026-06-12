@@ -56,7 +56,7 @@ const (
 	ChannelTypeReplicate      = 56
 	ChannelTypeCodex          = 57
 	ChannelTypeZLHub          = 58
-	ChannelTypeCiChain        = 59 // 词链渠道
+	ChannelTypeZL             = 59 // ZL 渠道
 	ChannelTypeAgnesAI        = 60 // Agnes AI 渠道
 	ChannelTypeDummy               // this one is only for count, do not add any channel after this
 
@@ -182,7 +182,7 @@ var ChannelTypeNames = map[int]string{
 	ChannelTypeReplicate:      "Replicate",
 	ChannelTypeCodex:          "Codex",
 	ChannelTypeZLHub:          "ZLHub",
-	ChannelTypeCiChain:        "CiChain",
+	ChannelTypeZL:             "ZL",
 	ChannelTypeAgnesAI:        "AgnesAI",
 }
 
