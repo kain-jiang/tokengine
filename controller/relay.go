@@ -284,7 +284,12 @@ func fastTokenCountMetaForPricing(request dto.Request) *types.TokenCountMeta {
 }
 
 func getChannel(c *gin.Context, info *relaycommon.RelayInfo, retryParam *service.RetryParam) (*model.Channel, *types.NewAPIError) {
+	retry := retryParam.GetRetry()
+	common.SysLog(fmt.Sprintf("[GETCHANNEL_DEBUG] Entry: retry=%d, ChannelMeta=%v, OriginModelName=%s, TokenGroup=%s",
+		retry, info.ChannelMeta != nil, info.OriginModelName, info.TokenGroup))
 	if info.ChannelMeta == nil {
+		common.SysLog(fmt.Sprintf("[GETCHANNEL_DEBUG] ChannelMeta is nil, returning channel from context: id=%d, type=%d, name=%s",
+			c.GetInt("channel_id"), c.GetInt("channel_type"), c.GetString("channel_name")))
 		autoBan := c.GetBool("auto_ban")
 		autoBanInt := 1
 		if !autoBan {
@@ -298,6 +303,8 @@ func getChannel(c *gin.Context, info *relaycommon.RelayInfo, retryParam *service
 		}, nil
 	}
 	channel, selectGroup, err := service.CacheGetRandomSatisfiedChannel(retryParam)
+	common.SysLog(fmt.Sprintf("[GETCHANNEL_DEBUG] CacheGetRandomSatisfiedChannel returned: channel=%v, selectGroup=%s, err=%v, retry=%d",
+		channel, selectGroup, err, retry))
 
 	info.PriceData.GroupRatioInfo = helper.HandleGroupRatio(c, info)
 

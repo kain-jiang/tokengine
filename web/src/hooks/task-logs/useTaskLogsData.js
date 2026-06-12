@@ -23,6 +23,7 @@ import { Modal } from '@douyinfe/semi-ui';
 import {
   API,
   copy,
+  getUserIdFromLocalStorage,
   isAdmin,
   showError,
   showSuccess,
@@ -277,6 +278,12 @@ export const useTaskLogsData = () => {
 
   // 新增：打开视频预览弹窗
   const openVideoModal = (url) => {
+    // Append user_id to the URL for authentication
+    const userId = getUserIdFromLocalStorage();
+    if (userId && url.includes('/v1/videos/')) {
+      const separator = url.includes('?') ? '&' : '?';
+      url = url + separator + 'user_id=' + userId;
+    }
     setVideoUrl(url);
     setIsVideoModalOpen(true);
   };

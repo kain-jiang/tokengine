@@ -42,6 +42,11 @@ func InitChannelCache() {
 		if channel.Status != common.ChannelStatusEnabled {
 			continue // skip disabled channels
 		}
+		// Debug: log channel configuration for channel #10
+		if channel.Id == 10 {
+			common.SysLog(fmt.Sprintf("[CHANNEL_DEBUG] Processing channel #10: name=%s, status=%d, group=%s, models=%s",
+				channel.Name, channel.Status, channel.Group, channel.Models))
+		}
 		groups := strings.Split(channel.Group, ",")
 		for _, group := range groups {
 			group = strings.TrimSpace(group)
@@ -58,6 +63,10 @@ func InitChannelCache() {
 					newGroup2model2channels[group][model] = make([]int, 0)
 				}
 				newGroup2model2channels[group][model] = append(newGroup2model2channels[group][model], channel.Id)
+				// Debug: log each model added for channel #10
+				if channel.Id == 10 {
+					common.SysLog(fmt.Sprintf("[CHANNEL_DEBUG] Channel #10 -> group=%s, model=%s", group, model))
+				}
 			}
 		}
 	}
@@ -88,6 +97,12 @@ func InitChannelCache() {
 			}
 		}
 	}
+	// Debug: log channel #10 before assignment
+	if ch, ok := newChannelId2channel[10]; ok {
+		common.SysLog(fmt.Sprintf("[CHANNEL_DEBUG] newChannelId2channel[10] exists: id=%d, name=%s", ch.Id, ch.Name))
+	} else {
+		common.SysLog("[CHANNEL_DEBUG] newChannelId2channel[10] DOES NOT EXIST!")
+	}
 	channelsIDM = newChannelId2channel
 	channelSyncLock.Unlock()
 	common.SysLog("channels synced from database")
@@ -110,12 +125,35 @@ func GetRandomSatisfiedChannel(group string, model string, retry int) (*Channel,
 	channelSyncLock.RLock()
 	defer channelSyncLock.RUnlock()
 
+	// Debug: log the lookup request
+	_, modelExists := group2model2channels[group][model]
+	modelExistsAfterNormalize := false
+	normalizedModel := ratio_setting.FormatMatchingModelName(model)
+	if normalizedModel != model {
+		_, modelExistsAfterNormalize = group2model2channels[group][normalizedModel]
+	}
+
+	// List all models in this group for debugging
+	groupModels := make([]string, 0)
+	if models, ok := group2model2channels[group]; ok {
+		for m := range models {
+			groupModels = append(groupModels, m)
+		}
+	}
+
+	common.SysLog(fmt.Sprintf("[CHANNEL_DEBUG] Lookup: group=%s, model=%s, normalizedModel=%s, modelExists=%v, normalizedExists=%v, groupModelsCount=%d, groupModels=%v",
+		group, model, normalizedModel, modelExists, modelExistsAfterNormalize, len(groupModels), groupModels))
+
 	// First, try to find channels with the exact model name.
 	channels := group2model2channels[group][model]
+	// Debug: log channels value for Agnes-1.5-Flash
+	if model == "Agnes-1.5-Flash" || group == "default" {
+		common.SysLog(fmt.Sprintf("[CHANNEL_DEBUG] channels slice for group=%s, model=%s: %v (len=%d, cap=%d, isNil=%v)",
+			group, model, channels, len(channels), cap(channels), channels == nil))
+	}
 
 	// If no channels found, try to find the normalized model name.
 	if len(channels) == 0 {
-		normalizedModel := ratio_setting.FormatMatchingModelName(model)
 		channels = group2model2channels[group][normalizedModel]
 	}
 
@@ -133,15 +171,36 @@ func GetRandomSatisfiedChannel(group string, model string, retry int) (*Channel,
 		}
 	}
 
+	// Debug: log channels value before returning
+	if model == "Agnes-1.5-Flash" {
+		common.SysLog(fmt.Sprintf("[CHANNEL_DEBUG] Before return check: len(channels)=%d, channels=%v", len(channels), channels))
+	}
+
 	if len(channels) == 0 {
 		return nil, nil
 	}
 
 	if len(channels) == 1 {
-		if channel, ok := channelsIDM[channels[0]]; ok {
+		channelId := channels[0]
+		// Debug: log channelsIDM check for single channel
+		if model == "Agnes-1.5-Flash" {
+			channel, ok := channelsIDM[channelId]
+			common.SysLog(fmt.Sprintf("[CHANNEL_DEBUG] Single channel lookup: channelId=%d, ok=%v, channel=%v", channelId, ok, channel))
+			if !ok {
+				// List all keys in channelsIDM for debugging
+				ids := make([]int, 0, len(channelsIDM))
+				for id := range channelsIDM {
+					ids = append(ids, id)
+				}
+				common.SysLog(fmt.Sprintf("[CHANNEL_DEBUG] channelsIDM contains IDs: %v", ids))
+			}
+		}
+		if channel, ok := channelsIDM[channelId]; ok {
+			common.SysLog(fmt.Sprintf("[CHANNEL_DEBUG] Returning single channel: id=%d, name=%s, type=%d", channel.Id, channel.Name, channel.Type))
 			return channel, nil
 		}
-		return nil, fmt.Errorf("数据库一致性错误，渠道# %d 不存在，请联系管理员修复", channels[0])
+		common.SysLog(fmt.Sprintf("[CHANNEL_DEBUG] Single channel not found in channelsIDM: channelId=%d", channelId))
+		return nil, fmt.Errorf("数据库一致性错误，渠道# %d 不存在，请联系管理员修复", channelId)
 	}
 
 	uniquePriorities := make(map[int]bool)

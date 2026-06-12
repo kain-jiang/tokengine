@@ -202,6 +202,18 @@ func TokenOrUserAuth() func(c *gin.Context) {
 				return
 			}
 		}
+		// Special handling for video proxy endpoint: support user_id from URL parameter
+		if c.Request.URL.Path == "/v1/videos/task_id/content" || strings.Contains(c.Request.URL.Path, "/v1/videos/") {
+			if uidParam := c.Query("user_id"); uidParam != "" {
+				var userID int
+				fmt.Sscanf(uidParam, "%d", &userID)
+				if userID > 0 {
+					c.Set("id", userID)
+					c.Next()
+					return
+				}
+			}
+		}
 		// Fall back to token auth (API clients)
 		TokenAuth()(c)
 	}

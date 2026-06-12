@@ -534,6 +534,9 @@ func DoTaskApiRequest(a TaskAdaptor, c *gin.Context, info *common.RelayInfo, req
 	if err != nil {
 		return nil, err
 	}
+	// Debug: log the request URL
+	logger.LogInfo(c, fmt.Sprintf("[AGNESAI_DEBUG] DoTaskApiRequest: URL=%s, method=%s", fullRequestURL, c.Request.Method))
+
 	req, err := http.NewRequest(c.Request.Method, fullRequestURL, requestBody)
 	if err != nil {
 		return nil, fmt.Errorf("new request failed: %w", err)
