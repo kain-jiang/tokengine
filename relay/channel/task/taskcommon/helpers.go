@@ -7,7 +7,6 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
-	"github.com/QuantumNous/new-api/setting/system_setting"
 	"github.com/gin-gonic/gin"
 )
 
@@ -61,9 +60,11 @@ func DecodeLocalTaskID(id string) (string, error) {
 }
 
 // BuildProxyURL constructs the video proxy URL using the public task ID.
-// e.g., "https://your-server.com/v1/videos/task_xxxx/content"
+// Uses relative path to ensure the proxy request always goes to the current server
+// instead of the configured ServerAddress (which may belong to a different instance).
+// e.g., "/v1/videos/task_xxxx/content"
 func BuildProxyURL(taskID string) string {
-	return fmt.Sprintf("%s/v1/videos/%s/content", system_setting.ServerAddress, taskID)
+	return fmt.Sprintf("/v1/videos/%s/content", taskID)
 }
 
 // Status-to-progress mapping constants for polling updates.
