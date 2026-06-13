@@ -52,7 +52,6 @@ type responseTask struct {
 	ExpiresAt          int64  `json:"expires_at,omitempty"`
 	Seconds            string `json:"seconds,omitempty"`
 	Size               string `json:"size,omitempty"`
-	VideoID            string `json:"video_id,omitempty"` // Agnes AI returns video_id for task queries
 	RemixedFromVideoID string `json:"remixed_from_video_id,omitempty"`
 	Error              *struct {
 		Message string `json:"message"`
@@ -286,31 +285,17 @@ func (a *TaskAdaptor) DoResponse(c *gin.Context, resp *http.Response, info *rela
 }
 
 // FetchTask fetch task status
+// Agnes AI Video V2.0 官方文档：使用 GET /v1/videos/{task_id} 查询任务状态
+// 参考：https://agnes-ai.com/doc/agnes-video-v20
 func (a *TaskAdaptor) FetchTask(baseUrl, key string, body map[string]any, proxy string) (*http.Response, error) {
 	taskID, ok := body["task_id"].(string)
 	if !ok {
 		return nil, fmt.Errorf("invalid task_id")
 	}
 
-	// Check if video_id is provided (for Agnes AI which uses video_id instead of task_id)
-	videoID, _ := body["video_id"].(string)
-
-	// Detect Agnes AI by checking if baseUrl contains "agnes"
-	isAgnesAI := strings.Contains(strings.ToLower(baseUrl), "agnes")
-
-	var uri string
-	if isAgnesAI && videoID != "" {
-		// Agnes AI uses /agnesapi?video_id=xxx for task queries
-		// POST /v1/videos -> returns {id: "task_xxx", video_id: "video_yyy"}
-		// GET /agnesapi?video_id=video_yyy -> query task status
-		uri = fmt.Sprintf("%s/agnesapi?video_id=%s", baseUrl, videoID)
-	} else if isAgnesAI {
-		// Fallback: try with task_id (may not work for Agnes AI)
-		uri = fmt.Sprintf("%s/agnesapi?video_id=%s", baseUrl, taskID)
-	} else {
-		// Standard OpenAI-compatible API
-		uri = fmt.Sprintf("%s/v1/videos/%s", baseUrl, taskID)
-	}
+	// Agnes AI 使用标准的 OpenAI-compatible API 端点 GET /v1/videos/{task_id}
+	// 官方文档：POST /v1/videos 返回 task_id，GET /v1/videos/{task_id} 查询状态
+	uri := fmt.Sprintf("%s/v1/videos/%s", baseUrl, taskID)
 
 	req, err := http.NewRequest(http.MethodGet, uri, nil)
 	if err != nil {
@@ -369,12 +354,6 @@ func (a *TaskAdaptor) ParseTaskResult(respBody []byte) (*relaycommon.TaskInfo, e
 	}
 	if resTask.Progress > 0 && resTask.Progress < 100 {
 		taskResult.Progress = fmt.Sprintf("%d%%", resTask.Progress)
-	}
-
-	// Handle URL from response (AgnesAI may return video_id or URL fields)
-	if resTask.VideoID != "" {
-		// Store video_id for future polling
-		taskResult.Url = resTask.VideoID
 	}
 
 	return &taskResult, nil

@@ -389,49 +389,13 @@ func updateVideoSingleTask(ctx context.Context, adaptor TaskPollingAdaptor, ch *
 	logger.LogDebug(ctx, fmt.Sprintf("updateVideoSingleTask: channel #%d, baseURL=%s, upstreamTaskID=%s, channelType=%d",
 		ch.Id, baseURL, task.GetUpstreamTaskID(), ch.Type))
 
-	// Extract video_id from task.Data for Agnes AI (which uses video_id instead of task_id for queries)
-	// Note: AgnesAI query response has "id" = "video_xxx" but no "video_id" field.
-	// Submit response has both "id" = "task_xxx" and "video_id" = "video_xxx".
-	var videoID string
-	if ch.Type == constant.ChannelTypeAgnesAI {
-		taskData := task.Data
-		logger.LogInfo(ctx, fmt.Sprintf("updateVideoSingleTask: Agnes AI task %s, raw task.Data=%s", taskId, string(taskData)))
-		if len(taskData) > 0 {
-			var dataMap map[string]interface{}
-			if err := common.Unmarshal(taskData, &dataMap); err == nil {
-				// Log all keys in task.Data for debugging
-				logger.LogInfo(ctx, fmt.Sprintf("updateVideoSingleTask: Agnes AI task %s, task.Data keys=%v", taskId, lo.Keys(dataMap)))
-				// First try to get video_id field (from submit response)
-				if vid, ok := dataMap["video_id"].(string); ok && vid != "" {
-					videoID = vid
-					logger.LogInfo(ctx, fmt.Sprintf("updateVideoSingleTask: extracted video_id=%s for Agnes AI task %s", videoID, taskId))
-				} else if vid, ok := dataMap["id"].(string); ok && strings.HasPrefix(vid, "video_") {
-					// Fallback: if id starts with "video_", use it as video_id (from query response)
-					videoID = vid
-					logger.LogInfo(ctx, fmt.Sprintf("updateVideoSingleTask: extracted video_id from id field=%s for Agnes AI task %s", videoID, taskId))
-				} else if idVal, ok := dataMap["id"].(string); ok && idVal != "" {
-					// Additional fallback: if id starts with "task_", convert it to video_id format
-					// AgnesAI uses task_xxx for submit response id, but video_xxx for query
-					if strings.HasPrefix(idVal, "task_") {
-						videoID = "video_" + strings.TrimPrefix(idVal, "task_")
-						logger.LogInfo(ctx, fmt.Sprintf("updateVideoSingleTask: derived video_id from task_id=%s -> %s for Agnes AI task %s", idVal, videoID, taskId))
-					}
-				}
-				if videoID == "" {
-					logger.LogError(ctx, fmt.Sprintf("updateVideoSingleTask: video_id not found in task.Data for Agnes AI task %s, dataMap=%v", taskId, dataMap))
-				}
-			} else {
-				logger.LogError(ctx, fmt.Sprintf("updateVideoSingleTask: failed to unmarshal task.Data for Agnes AI task %s: %v", taskId, err))
-			}
-		} else {
-			logger.LogError(ctx, fmt.Sprintf("updateVideoSingleTask: task.Data is empty for Agnes AI task %s", taskId))
-		}
-	}
+	// Agnes AI 使用标准的 OpenAI-compatible API 端点 GET /v1/videos/{task_id}
+	// 官方文档：https://agnes-ai.com/doc/agnes-video-v20
+	// 不需要特殊的 video_id 提取逻辑
 
 	resp, err := adaptor.FetchTask(baseURL, key, map[string]any{
-		"task_id":  task.GetUpstreamTaskID(),
-		"video_id": videoID,
-		"action":   task.Action,
+		"task_id": task.GetUpstreamTaskID(),
+		"action":  task.Action,
 	}, proxy)
 	if err != nil {
 		return fmt.Errorf("fetchTask failed for task %s: %w", taskId, err)
@@ -503,30 +467,6 @@ func updateVideoSingleTask(ctx context.Context, adaptor TaskPollingAdaptor, ch *
 	}
 
 	task.Data = redactVideoResponseBody(responseBody)
-
-	// For Agnes AI, preserve the video_id field in task.Data (it's needed for subsequent polls)
-	// The query response may not contain video_id, but we need it for FetchTask
-	// Use 'snap' saved BEFORE task.Data was modified (line 487), NOT task.Snapshot() which would
-	// return the already-modified task.Data after line 505 overwrites it.
-	if ch.Type == constant.ChannelTypeAgnesAI {
-		if originalData := snap.Data; len(originalData) > 0 {
-			var originalMap map[string]interface{}
-			if err := common.Unmarshal(originalData, &originalMap); err == nil {
-				if vid, ok := originalMap["video_id"].(string); ok && vid != "" {
-					// Preserve video_id in the updated task.Data
-					var updatedMap map[string]interface{}
-					if err := common.Unmarshal(task.Data, &updatedMap); err == nil {
-						if _, hasVideoId := updatedMap["video_id"]; !hasVideoId {
-							updatedMap["video_id"] = vid
-							updatedData, _ := common.Marshal(updatedMap)
-							task.Data = updatedData
-							logger.LogInfo(ctx, fmt.Sprintf("updateVideoSingleTask: preserved video_id=%s in task.Data for Agnes AI task %s", vid, taskId))
-						}
-					}
-				}
-			}
-		}
-	}
 
 	logger.LogDebug(ctx, fmt.Sprintf("updateVideoSingleTask taskResult: %+v", taskResult))
 
