@@ -365,5 +365,20 @@ func (a *TaskAdaptor) ConvertToOpenAIVideo(task *model.Task) ([]byte, error) {
 	if data, err = sjson.SetBytes(data, "id", task.TaskID); err != nil {
 		return nil, errors.Wrap(err, "set id failed")
 	}
+
+	// Agnes AI: remixed_from_video_id contains the actual video URL
+	// video_id is just a short identifier like "video_xxx"
+	var taskData map[string]any
+	if err := common.Unmarshal(data, &taskData); err == nil {
+		// Check remixed_from_video_id first (contains full URL for Agnes AI)
+		if remixedURL, ok := taskData["remixed_from_video_id"].(string); ok && strings.HasPrefix(remixedURL, "http") {
+			if data, err = sjson.SetBytes(data, "output", remixedURL); err != nil {
+				logger.LogDebug(context.Background(), fmt.Sprintf("[SORA/AGNESAI] ConvertToOpenAIVideo: failed to set output URL from remixed_from_video_id: %v", err))
+			} else {
+				logger.LogDebug(context.Background(), fmt.Sprintf("[SORA/AGNESAI] ConvertToOpenAIVideo: using remixed_from_video_id as output: %s", remixedURL))
+			}
+		}
+	}
+
 	return data, nil
 }
