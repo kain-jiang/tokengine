@@ -79,7 +79,6 @@ const resolveVideoUrl = (payload) => {
     payload?.result?.url,
     payload?.result?.video_url,
     payload?.result_url,
-    payload?.output, // Agnes AI video output URL
   ];
   return candidates.find((item) => typeof item === 'string' && item.trim()) || '';
 };
