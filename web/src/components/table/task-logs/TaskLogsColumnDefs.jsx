@@ -419,7 +419,7 @@ export const getTaskLogsColumns = ({
         
         // For AgnesAI channel (channel_id=10), try to get direct CDN URL from task data
         let videoUrlToUse = resultUrl;
-        if (isSuccess && isVideoTask && record.channel_id === 10 && record.data) {
+        if (isSuccess && isVideoTask && record.platform === 59 && record.data) {
           try {
             const taskData = typeof record.data === 'string' ? JSON.parse(record.data) : record.data;
             if (taskData?.remixed_from_video_id && /^https?:\/\//.test(taskData.remixed_from_video_id)) {
