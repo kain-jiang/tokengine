@@ -2,6 +2,7 @@ package relay
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -425,9 +426,19 @@ func videoFetchByIDRespBodyBuilder(c *gin.Context) (respBody []byte, taskResp *d
 func tryRealtimeFetch(task *model.Task, isOpenAIVideoAPI bool) []byte {
 	channelModel, err := model.GetChannelById(task.ChannelId, true)
 	if err != nil {
+		logger.LogDebug(context.Background(), fmt.Sprintf("[videoFetch] tryRealtimeFetch: GetChannelById failed for channelId=%d, err=%v", task.ChannelId, err))
 		return nil
 	}
+
+	// [DEBUG] 记录渠道类型，用于诊断 Agnes AI 等视频渠道为何状态不更新
+	logger.LogDebug(context.Background(), fmt.Sprintf("[videoFetch] tryRealtimeFetch: channelId=%d channelType=%d isVertexAi=%v isGemini=%v isOpenAIVideoAPI=%v",
+		task.ChannelId, channelModel.Type,
+		channelModel.Type == constant.ChannelTypeVertexAi,
+		channelModel.Type == constant.ChannelTypeGemini,
+		isOpenAIVideoAPI))
+
 	if channelModel.Type != constant.ChannelTypeVertexAi && channelModel.Type != constant.ChannelTypeGemini {
+		logger.LogDebug(context.Background(), fmt.Sprintf("[videoFetch] tryRealtimeFetch: skipped for channelType=%d (only VertexAI/Gemini supported)", channelModel.Type))
 		return nil
 	}
 
