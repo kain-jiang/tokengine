@@ -196,11 +196,6 @@ export const CHANNEL_OPTIONS = [
   },
   {
     value: 59,
-    color: 'cyan',
-    label: '字节seedance代理',
-  },
-  {
-    value: 60,
     color: 'pink',
     label: 'Agnes 官方渠道',
   },

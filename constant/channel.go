@@ -56,9 +56,8 @@ const (
 	ChannelTypeReplicate      = 56
 	ChannelTypeCodex          = 57
 	ChannelTypeZLHub          = 58
-	ChannelTypeZL             = 59 // ZL 渠道
-	ChannelTypeAgnesAI        = 60 // Agnes AI 渠道
-	ChannelTypeDummy               // this one is only for count, do not add any channel after this
+	ChannelTypeAgnesAI        = 59 // Agnes AI 渠道
+	ChannelTypeDummy          = 60 // this one is only for count, do not add any channel after this
 
 )
 
@@ -122,8 +121,7 @@ var ChannelBaseURLs = []string{
 	"https://api.replicate.com",                 //56
 	"https://chatgpt.com",                       //57
 	"https://api.zlhub.cn",                      //58
-	"",                                          //59 - 字节seedance代理
-	"https://apihub.agnes-ai.com/v1",            //60 - Agnes AI
+	"https://apihub.agnes-ai.com/v1",            //59 - Agnes AI
 }
 
 var ChannelTypeNames = map[int]string{
@@ -182,7 +180,6 @@ var ChannelTypeNames = map[int]string{
 	ChannelTypeReplicate:      "Replicate",
 	ChannelTypeCodex:          "Codex",
 	ChannelTypeZLHub:          "ZLHub",
-	ChannelTypeZL:             "ZL",
 	ChannelTypeAgnesAI:        "AgnesAI",
 }
 
