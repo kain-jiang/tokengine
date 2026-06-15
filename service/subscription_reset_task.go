@@ -18,6 +18,7 @@ const (
 	subscriptionResetTickInterval = 1 * time.Minute
 	subscriptionResetBatchSize    = 300
 	subscriptionCleanupInterval   = 30 * time.Minute
+	TopUpTimeoutMinutes           = 30
 )
 
 var (
@@ -89,5 +90,19 @@ func runSubscriptionQuotaResetOnce() {
 	}
 	if common.DebugEnabled && (totalReset > 0 || totalExpired > 0) {
 		logger.LogDebug(ctx, "subscription maintenance: reset_count=%d, expired_count=%d", totalReset, totalExpired)
+	}
+	// 处理充值订单超时
+	expireTopUpOrders()
+}
+
+func expireTopUpOrders() {
+	cutoff := time.Now().Unix() - int64(TopUpTimeoutMinutes)*60
+	expired, err := model.ExpirePendingTopUps(cutoff)
+	if err != nil {
+		logger.LogWarn(context.Background(), fmt.Sprintf("expire topup orders failed: %v", err))
+		return
+	}
+	if expired > 0 {
+		logger.LogInfo(context.Background(), fmt.Sprintf("expired %d topup orders", expired))
 	}
 }
