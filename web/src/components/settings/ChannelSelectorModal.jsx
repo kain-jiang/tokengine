@@ -232,23 +232,27 @@ const ChannelSelectorModal = forwardRef(
         title: t('名称'),
         dataIndex: 'label',
         render: renderNameCell,
+        width: 150,
       },
       {
         title: t('源地址'),
         dataIndex: '_originalData.base_url',
         render: (_, record) =>
           renderBaseUrlCell(record._originalData?.base_url || ''),
+        width: 200,
       },
       {
         title: t('状态'),
         dataIndex: '_originalData.status',
         render: (_, record) => renderStatusCell(record),
+        width: 100,
       },
       {
         title: t('同步接口'),
         dataIndex: 'endpoint',
         fixed: 'right',
         render: renderEndpointCell,
+        width: 320,
       },
     ];
 
@@ -300,6 +304,7 @@ const ChannelSelectorModal = forwardRef(
               },
             }}
             size='small'
+            scroll={{ x: 770 }}
           />
         </Space>
       </Modal>

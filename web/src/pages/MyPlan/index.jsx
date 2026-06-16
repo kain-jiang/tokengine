@@ -490,8 +490,8 @@ const MySubscriptionSection = ({
             <span>{formatQuotaAmount(totalAmount)}</span>
           </Tooltip>
         ) : t('不限'),
-        usedQuota: totalAmount > 0 ? `${formatQuotaAmount(usedAmount)} (${usagePercent}%)` : '-',
-        remainQuota: totalAmount > 0 ? formatQuotaAmount(remainAmount) : '-',
+        usedQuota: totalAmount > 0 ? `${renderQuota(usedAmount)} (${usagePercent}%)` : '-',
+        remainQuota: totalAmount > 0 ? renderQuota(remainAmount) : '-',
         remainDays: isActive ? `${remainDays} ${t('天')}` : '-',
       };
     });
