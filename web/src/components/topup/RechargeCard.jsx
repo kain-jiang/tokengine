@@ -705,7 +705,7 @@ const RechargeCard = ({
             theme='solid'
             onClick={onOpenHistory}
           >
-            {t('账单')}
+            {t('充值账单')}
           </Button>
         </div>
       </div>

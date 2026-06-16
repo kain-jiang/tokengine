@@ -442,10 +442,24 @@ const SubscriptionPlansCard = ({
                   const isPopular = index === 0 && plans.length > 1;
                   const limit = Number(plan?.max_purchase_per_user || 0);
                   const limitLabel = limit > 0 ? `${t('限购')} ${limit}` : null;
+                  
+                  // 计算实得价值（将额度转换为美元价值）
+                  const quotaPerUnit = getQuotaPerUnit();
+                  const actualValueUSD = quotaPerUnit > 0 ? totalAmount / quotaPerUnit : 0;
+                  const actualValueDisplay = actualValueUSD > 0
+                    ? `${symbol}${(actualValueUSD * rate).toFixed(2)}`
+                    : t('不限');
+                  
+                  // 计算折扣比例：实付/实得价值，折扣应该小于1
+                  const discount = price > 0 && actualValueUSD > 0
+                    ? (price / actualValueUSD).toFixed(1)
+                    : null;
+                  const isDiscounted = discount && parseFloat(discount) < 1;
+                  
                   const totalLabel =
                     totalAmount > 0
-                      ? `${t('总额度')}: ${formatQuotaAmount(totalAmount)}`
-                      : `${t('总额度')}: ${t('不限')}`;
+                      ? `${t('实得价值')}: ${actualValueDisplay}`
+                      : `${t('实得价值')}: ${t('不限')}`;
                   const upgradeLabel = plan?.upgrade_group
                     ? `${t('升级分组')}: ${plan.upgrade_group}`
                     : null;
@@ -477,15 +491,22 @@ const SubscriptionPlansCard = ({
                       bodyStyle={{ padding: 0 }}
                     >
                       <div className='p-4 h-full flex flex-col relative'>
-                        {/* 推荐标签 - 移动到右上角 */}
-                        {isPopular && (
-                          <div className='absolute top-4 right-4 z-10'>
+                        {/* 右上角标签区域 - 横向排列 */}
+                        <div className='absolute top-4 right-4 z-10 flex flex-row gap-1'>
+                          {/* 折扣标签 */}
+                          {isDiscounted && (
+                            <Tag color='red' shape='circle' size='small'>
+                              {t('折扣')} {discount}
+                            </Tag>
+                          )}
+                          {/* 推荐标签 */}
+                          {isPopular && (
                             <Tag color='purple' shape='circle' size='small'>
                               <Sparkles size={10} className='mr-1' />
                               {t('推荐')}
                             </Tag>
-                          </div>
-                        )}
+                          )}
+                        </div>
                         {/* 套餐名称 */}
                         <div className='mb-3'>
                           <Typography.Title

@@ -572,3 +572,15 @@ func CancelTopUpByTradeNo(tradeNo string, userId int) error {
 
 	return nil
 }
+
+// ExpirePendingTopUps 将超过指定时间戳的待支付订单标记为过期
+// cutoff: Unix时间戳，超过此时间的待支付订单将被标记为过期
+// 返回: 被标记过期的订单数量
+func ExpirePendingTopUps(cutoff int64) (int64, error) {
+	result := DB.Model(&TopUp{}).
+		Where("status = ? AND create_time < ?", common.TopUpStatusPending, cutoff).
+		Updates(map[string]interface{}{
+			"status": common.TopUpStatusExpired,
+		})
+	return result.RowsAffected, result.Error
+}
