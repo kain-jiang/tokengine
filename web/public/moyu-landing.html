@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>企业级大模型管理平台</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -15,734 +12,154 @@
         }
 
         :root {
-            /* 方案一・青蓝科技风 */
-            --bg-primary: #0C101A;
-            --brand-primary: #26C6DA;
-            --brand-secondary: #5C6BC0;
-            --brand-accent: #81D4FA;
-            --text-primary: #FFFFFF;
-            --text-secondary: #B0BEC5;
-            --text-muted: #78909C;
-            --success: #4CAF50;
-            --warning: #FF9800;
-            --card-bg: rgba(255, 255, 255, 0.03);
-            --card-border: rgba(92, 107, 192, 0.2);
-            --card-hover-border: rgba(38, 198, 218, 0.5);
-            --shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
-            --shadow-hover: 0 8px 32px rgba(38, 198, 218, 0.2);
-        }
-
-        html {
-            scroll-behavior: smooth;
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #14b8a6;
+            --accent: #f472b6;
+            --bg-light: #f8fafc;
+            --bg-white: #ffffff;
+            --bg-card: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --border: #e2e8f0;
+            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
         }
 
         body {
-            font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--bg-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: var(--bg-light);
             color: var(--text-primary);
             line-height: 1.6;
-            overflow-x: hidden;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
         }
 
-        /* 导航栏 */
-        .navbar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            padding: 20px 0;
-            transition: all 0.3s ease;
-            background: transparent;
-        }
-
-        .navbar.scrolled {
-            background: linear-gradient(180deg, rgba(12, 16, 26, 0.95) 0%, rgba(12, 16, 26, 0.85) 100%);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            padding: 14px 0;
-            border-bottom: 1px solid var(--card-border);
-        }
-
-        .nav-container {
-            max-width: 1280px;
+        .container {
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 0 48px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            padding: 0 24px;
         }
 
-        .nav-logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            text-decoration: none;
-            color: var(--text-primary);
-        }
-
-        .nav-logo-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-accent) 100%);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 800;
-            font-size: 18px;
-            color: var(--bg-primary);
-        }
-
-        .nav-logo-text {
-            font-size: 20px;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-        }
-
-        .nav-links {
-            display: flex;
-            align-items: center;
-            gap: 40px;
-            list-style: none;
-        }
-
-        .nav-links a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 15px;
-            font-weight: 500;
-            transition: color 0.3s ease;
-            position: relative;
-            padding-bottom: 4px;
-        }
-
-        .nav-links a:hover {
-            color: var(--brand-primary);
-        }
-
-        .nav-links a::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 0;
-            height: 2px;
-            background: var(--brand-primary);
-            transition: width 0.3s ease;
-        }
-
-        .nav-links a:hover::after {
-            width: 100%;
-        }
-
-        .nav-buttons {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .btn-nav {
-            padding: 10px 22px;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .btn-nav-ghost {
-            color: var(--text-secondary);
-            border: 1px solid transparent;
-        }
-
-        .btn-nav-ghost:hover {
-            color: var(--text-primary);
-            border-color: var(--card-border);
-            background: var(--card-bg);
-        }
-
-        .btn-nav-primary {
-            background: var(--brand-primary);
-            color: var(--bg-primary);
-            border: none;
-        }
-
-        .btn-nav-primary:hover {
-            background: #00B8D4;
-            transform: scale(1.02);
-        }
-
-        .btn-nav-primary:active {
-            transform: scale(0.98);
-        }
-
-        /* 数据流动画 Canvas */
-        #data-flow-canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            pointer-events: none;
-        }
-
-        /* ============================================
-           Hero区域布局 - 文字左侧，3D平台右侧
-           ============================================ */
+        /* Hero Section */
         .hero {
             min-height: 100vh;
             display: flex;
+            flex-direction: column;
+            justify-content: center;
             align-items: center;
-            padding: 120px 60px 80px;
+            text-align: center;
+            padding: 80px 24px;
             position: relative;
             overflow: hidden;
+            background: linear-gradient(180deg, #f8fafc 0%, #e0e7ff 100%);
         }
 
-        .hero-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 60px;
-            align-items: center;
-            width: 100%;
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+            pointer-events: none;
         }
 
-        .hero-content {
-            position: relative;
-            z-index: 10;
-            text-align: left;
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -200px;
+            right: -200px;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(20, 184, 166, 0.06) 0%, transparent 70%);
+            pointer-events: none;
         }
 
         .hero-badge {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
-            padding: 8px 20px;
-            background: rgba(38, 198, 218, 0.1);
-            border: 1px solid rgba(38, 198, 218, 0.25);
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px solid rgba(99, 102, 241, 0.2);
             border-radius: 100px;
             font-size: 14px;
-            font-weight: 500;
-            color: var(--brand-primary);
-            margin-bottom: 24px;
-            opacity: 0;
-            animation: fadeInUp 0.5s ease forwards;
-        }
-
-        .hero-badge-dot {
-            width: 8px;
-            height: 8px;
-            background: var(--brand-primary);
-            border-radius: 50%;
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.6; transform: scale(1.2); }
+            color: var(--primary);
+            margin-bottom: 32px;
         }
 
         .hero-title {
-            font-size: clamp(32px, 4vw, 48px);
+            font-size: clamp(36px, 6vw, 72px);
             font-weight: 800;
             line-height: 1.2;
-            margin-bottom: 20px;
-            letter-spacing: -0.02em;
-            opacity: 0;
-            animation: fadeInUp 0.5s ease 0.1s forwards;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, #0f172a 0%, #475569 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .hero-subtitle {
-            font-size: clamp(15px, 1.5vw, 18px);
+            font-size: clamp(16px, 2vw, 20px);
             color: var(--text-secondary);
-            max-width: 550px;
-            margin: 0 0 36px 0;
-            line-height: 1.7;
-            font-weight: 400;
-            opacity: 0;
-            animation: fadeInUp 0.5s ease 0.2s forwards;
+            max-width: 700px;
+            margin-bottom: 48px;
         }
 
         .hero-buttons {
             display: flex;
             gap: 16px;
             flex-wrap: wrap;
-            opacity: 0;
-            animation: fadeInUp 0.5s ease 0.3s forwards;
+            justify-content: center;
+            margin-bottom: 64px;
         }
 
         .btn-primary {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
-            padding: 16px 36px;
-            background: var(--brand-primary);
-            color: var(--bg-primary);
-            transform: rotate(-20deg);
-            animation-delay: 1s;
-        }
-        .iso-connection:nth-child(10) {
-            left: 28%; top: 53%; width: 140px;
-            transform: rotate(35deg);
-            animation-delay: 1.5s;
-        }
-        .iso-connection:nth-child(11) {
-            left: 68%; top: 48%; width: 110px;
-            transform: rotate(-25deg);
-            animation-delay: 2s;
-        }
-
-        @keyframes connectionPulse {
-            0%, 100% { opacity: 0.3; }
-            50% { opacity: 1; }
-        }
-
-        /* 粒子光效 */
-        .iso-particle {
-            position: absolute;
-            width: 4px;
-            height: 4px;
-            background: var(--brand-accent);
-            border-radius: 50%;
-            box-shadow: 0 0 10px 3px rgba(129, 212, 250, 0.6);
-            animation: particleFloat 6s ease-in-out infinite;
-        }
-
-        .iso-particle:nth-child(12) { left: 10%; top: 25%; animation-delay: 0s; animation-duration: 5s; }
-        .iso-particle:nth-child(13) { left: 20%; top: 40%; animation-delay: 1s; animation-duration: 6s; }
-        .iso-particle:nth-child(14) { left: 30%; top: 15%; animation-delay: 2s; animation-duration: 7s; }
-        .iso-particle:nth-child(15) { left: 40%; top: 35%; animation-delay: 0.5s; animation-duration: 5.5s; }
-        .iso-particle:nth-child(16) { left: 50%; top: 20%; animation-delay: 1.5s; animation-duration: 6.5s; }
-        .iso-particle:nth-child(17) { left: 60%; top: 45%; animation-delay: 2.5s; animation-duration: 5.8s; }
-        .iso-particle:nth-child(18) { left: 70%; top: 30%; animation-delay: 0.8s; animation-duration: 6.2s; }
-        .iso-particle:nth-child(19) { left: 80%; top: 50%; animation-delay: 1.8s; animation-duration: 5.3s; }
-        .iso-particle:nth-child(20) { left: 90%; top: 25%; animation-delay: 2.2s; animation-duration: 6.8s; }
-        .iso-particle:nth-child(21) { left: 15%; top: 55%; animation-delay: 0.3s; animation-duration: 7s; }
-        .iso-particle:nth-child(22) { left: 45%; top: 50%; animation-delay: 1.3s; animation-duration: 5.6s; }
-        .iso-particle:nth-child(23) { left: 75%; top: 55%; animation-delay: 2.8s; animation-duration: 6.4s; }
-
-        @keyframes particleFloat {
-            0%, 100% {
-                transform: translateZ(0px) translateY(0px);
-                opacity: 0.4;
-            }
-            25% {
-                transform: translateZ(20px) translateY(-15px);
-                opacity: 1;
-            }
-            50% {
-                transform: translateZ(40px) translateY(-25px);
-                opacity: 0.8;
-            }
-            75% {
-                transform: translateZ(20px) translateY(-10px);
-                opacity: 1;
-            }
-        }
-
-        /* ============================================
-           等距3D平台 - 复杂电路板风格
-           ============================================ */
-        .iso-platform-scene {
-            position: relative;
-            width: 100%;
-            height: 600px;
-            perspective: 1500px;
-            overflow: visible;
-        }
-
-        .iso-platform {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 600px;
-            height: 600px;
-            transform: translate(-50%, -50%) rotateX(60deg) rotateZ(45deg);
-            transform-style: preserve-3d;
-            animation: platformRotate 20s linear infinite;
-        }
-
-        @keyframes platformRotate {
-            0% { transform: translate(-50%, -50%) rotateX(60deg) rotateZ(45deg); }
-            100% { transform: translate(-50%, -50%) rotateX(60deg) rotateZ(405deg); }
-        }
-
-        /* 多层网格背景 */
-        .iso-grid-layer {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-        }
-
-        .iso-grid-base {
-            background:
-                linear-gradient(rgba(92, 107, 192, 0.3) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(92, 107, 192, 0.3) 1px, transparent 1px);
-            background-size: 40px 40px;
-            animation: gridMove 2s linear infinite;
-            mask-image: radial-gradient(ellipse at center, black 20%, transparent 75%);
-            -webkit-mask-image: radial-gradient(ellipse at center, black 20%, transparent 75%);
-        }
-
-        .iso-grid-accent {
-            background:
-                linear-gradient(rgba(38, 198, 218, 0.5) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(38, 198, 218, 0.5) 1px, transparent 1px);
-            background-size: 40px 40px;
-            animation: gridMove 2s linear infinite;
-            filter: blur(1px);
-            mask-image: radial-gradient(ellipse at center, black 30%, transparent 65%);
-            -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 65%);
-        }
-
-        @keyframes gridMove {
-            0% { background-position: 0 0; }
-            100% { background-position: 40px 40px; }
-        }
-
-        /* 电路板纹理层 */
-        .iso-circuit {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-        }
-
-        .circuit-line {
-            position: absolute;
-            background: linear-gradient(90deg, transparent, rgba(38, 198, 218, 0.6), transparent);
-            animation: circuitPulse 3s ease-in-out infinite;
-        }
-
-        .circuit-line:nth-child(1) { width: 200px; height: 2px; top: 30%; left: 20%; animation-delay: 0s; }
-        .circuit-line:nth-child(2) { width: 150px; height: 2px; top: 50%; left: 40%; animation-delay: 0.5s; }
-        .circuit-line:nth-child(3) { width: 180px; height: 2px; top: 70%; left: 25%; animation-delay: 1s; }
-        .circuit-line:nth-child(4) { width: 2px; height: 120px; top: 25%; left: 60%; animation-delay: 1.5s; }
-        .circuit-line:nth-child(5) { width: 2px; height: 150px; top: 35%; left: 75%; animation-delay: 2s; }
-
-        @keyframes circuitPulse {
-            0%, 100% { opacity: 0.3; transform: scaleX(0.5); }
-            50% { opacity: 1; transform: scaleX(1); }
-        }
-
-        /* 复杂立方体 - 带电路板纹理 */
-        .iso-cube-complex {
-            position: absolute;
-            width: 50px;
-            height: 50px;
-            transform-style: preserve-3d;
-            animation: cubeFloatComplex 5s ease-in-out infinite;
-        }
-
-        .iso-cube-complex:nth-child(3) { left: 10%; top: 25%; animation-delay: 0s; }
-        .iso-cube-complex:nth-child(4) { left: 30%; top: 15%; animation-delay: 0.8s; width: 40px; height: 40px; }
-        .iso-cube-complex:nth-child(5) { left: 50%; top: 30%; animation-delay: 1.6s; width: 60px; height: 60px; }
-        .iso-cube-complex:nth-child(6) { left: 70%; top: 20%; animation-delay: 2.4s; width: 45px; height: 45px; }
-        .iso-cube-complex:nth-child(7) { left: 20%; top: 55%; animation-delay: 0.4s; width: 35px; height: 35px; }
-        .iso-cube-complex:nth-child(8) { left: 60%; top: 50%; animation-delay: 1.2s; width: 55px; height: 55px; }
-        .iso-cube-complex:nth-child(9) { left: 80%; top: 40%; animation-delay: 2s; width: 40px; height: 40px; }
-
-        @keyframes cubeFloatComplex {
-            0%, 100% {
-                transform: translateZ(0px) rotateZ(0deg);
-            }
-            25% {
-                transform: translateZ(30px) rotateZ(5deg);
-            }
-            50% {
-                transform: translateZ(60px) rotateZ(0deg);
-            }
-            75% {
-                transform: translateZ(30px) rotateZ(-5deg);
-            }
-        }
-
-        .cube-face {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg,
-                rgba(12, 16, 26, 0.9),
-                rgba(92, 107, 192, 0.4)
-            );
-            border: 1px solid rgba(38, 198, 218, 0.8);
-            box-shadow: 0 0 15px rgba(38, 198, 218, 0.3), inset 0 0 20px rgba(38, 198, 218, 0.1);
-            backdrop-filter: blur(5px);
-        }
-
-        /* 电路板图案 */
-        .cube-face::before {
-            content: '';
-            position: absolute;
-            top: 20%;
-            left: 20%;
-            width: 60%;
-            height: 60%;
-            background:
-                linear-gradient(rgba(38, 198, 218, 0.4) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(38, 198, 218, 0.4) 1px, transparent 1px);
-            background-size: 8px 8px;
-            opacity: 0.6;
-        }
-
-        /* 芯片图案 */
-        .cube-face::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 40%;
-            height: 40%;
-            background: rgba(38, 198, 218, 0.6);
-            border-radius: 2px;
-            box-shadow: 0 0 10px rgba(38, 198, 218, 0.8);
-            animation: chipPulse 2s ease-in-out infinite;
-        }
-
-        @keyframes chipPulse {
-            0%, 100% { opacity: 0.4; box-shadow: 0 0 5px rgba(38, 198, 218, 0.4); }
-            50% { opacity: 1; box-shadow: 0 0 15px rgba(38, 198, 218, 1); }
-        }
-
-        .cube-face:nth-child(1) { transform: rotateY(0deg) translateZ(25px); }
-        .cube-face:nth-child(2) { transform: rotateY(90deg) translateZ(25px); }
-        .cube-face:nth-child(3) { transform: rotateY(180deg) translateZ(25px); }
-        .cube-face:nth-child(4) { transform: rotateY(270deg) translateZ(25px); }
-        .cube-face:nth-child(5) { transform: rotateX(90deg) translateZ(25px); }
-        .cube-face:nth-child(6) { transform: rotateX(-90deg) translateZ(25px); }
-
-        /* 数据流节点 */
-        .iso-node {
-            position: absolute;
-            width: 12px;
-            height: 12px;
-            background: radial-gradient(circle, rgba(129, 212, 250, 0.9), rgba(38, 198, 218, 0.4));
-            border-radius: 50%;
-            box-shadow: 0 0 20px rgba(38, 198, 218, 0.8), 0 0 40px rgba(92, 107, 192, 0.4);
-            animation: nodePulse 3s ease-in-out infinite;
-        }
-
-        .iso-node::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 24px;
-            height: 24px;
-            border: 1px solid rgba(38, 198, 218, 0.4);
-            border-radius: 50%;
-            animation: nodeRing 2s linear infinite;
-        }
-
-        @keyframes nodePulse {
-            0%, 100% { transform: scale(1); opacity: 0.8; }
-            50% { transform: scale(1.3); opacity: 1; }
-        }
-
-        @keyframes nodeRing {
-            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
-            100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
-        }
-
-        .iso-node:nth-child(10) { left: 15%; top: 35%; animation-delay: 0s; }
-        .iso-node:nth-child(11) { left: 35%; top: 25%; animation-delay: 0.6s; }
-        .iso-node:nth-child(12) { left: 55%; top: 40%; animation-delay: 1.2s; }
-        .iso-node:nth-child(13) { left: 75%; top: 30%; animation-delay: 1.8s; }
-        .iso-node:nth-child(14) { left: 25%; top: 60%; animation-delay: 2.4s; }
-        .iso-node:nth-child(15) { left: 65%; top: 55%; animation-delay: 3s; }
-
-        /* 数据流粒子 */
-        .iso-data-particle {
-            position: absolute;
-            width: 6px;
-            height: 6px;
-            background: var(--brand-accent);
-            border-radius: 50%;
-            box-shadow: 0 0 15px 5px rgba(129, 212, 250, 0.8), 0 0 30px 10px rgba(38, 198, 218, 0.4);
-            animation: dataFlow 4s linear infinite;
-        }
-
-        @keyframes dataFlow {
-            0% {
-                transform: translate(0, 0) scale(0.5);
-                opacity: 0;
-            }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% {
-                transform: translate(100px, -150px) scale(1.5);
-                opacity: 0;
-            }
-        }
-
-        .iso-data-particle:nth-child(16) { left: 20%; top: 40%; animation-delay: 0s; animation-duration: 3.5s; }
-        .iso-data-particle:nth-child(17) { left: 40%; top: 30%; animation-delay: 0.8s; animation-duration: 4s; }
-        .iso-data-particle:nth-child(18) { left: 60%; top: 45%; animation-delay: 1.6s; animation-duration: 4.5s; }
-        .iso-data-particle:nth-child(19) { left: 80%; top: 35%; animation-delay: 2.4s; animation-duration: 3.8s; }
-        .iso-data-particle:nth-child(20) { left: 30%; top: 55%; animation-delay: 3.2s; animation-duration: 4.2s; }
-
-        /* 连接线 - 数据流路径 */
-        .iso-data-line {
-            position: absolute;
-            height: 2px;
-            background: linear-gradient(90deg,
-                transparent 0%,
-                rgba(38, 198, 218, 0.3) 20%,
-                rgba(129, 212, 250, 0.9) 50%,
-                rgba(38, 198, 218, 0.3) 80%,
-                transparent 100%
-            );
-            transform-origin: left center;
-            overflow: visible;
-        }
-
-        .iso-data-line::before {
-            content: '';
-            position: absolute;
-            top: -3px;
-            left: 0;
-            width: 100%;
-            height: 8px;
-            background: linear-gradient(90deg,
-                transparent 0%,
-                rgba(38, 198, 218, 0.1) 30%,
-                rgba(129, 212, 250, 0.3) 50%,
-                rgba(38, 198, 218, 0.1) 70%,
-                transparent 100%
-            );
-            filter: blur(3px);
-        }
-
-        .iso-data-line:nth-child(21) {
-            left: 18%; top: 38%; width: 120px;
-            transform: rotate(-25deg);
-            animation: linePulse 2.5s ease-in-out infinite;
-        }
-        .iso-data-line:nth-child(22) {
-            left: 38%; top: 28%; width: 140px;
-            transform: rotate(20deg);
-            animation: linePulse 2.5s ease-in-out infinite 0.5s;
-        }
-        .iso-data-line:nth-child(23) {
-            left: 58%; top: 33%; width: 110px;
-            transform: rotate(-15deg);
-            animation: linePulse 2.5s ease-in-out infinite 1s;
-        }
-        .iso-data-line:nth-child(24) {
-            left: 28%; top: 58%; width: 130px;
-            transform: rotate(30deg);
-            animation: linePulse 2.5s ease-in-out infinite 1.5s;
-        }
-        .iso-data-line:nth-child(25) {
-            left: 68%; top: 53%; width: 100px;
-            transform: rotate(-20deg);
-            animation: linePulse 2.5s ease-in-out infinite 2s;
-        }
-
-        @keyframes linePulse {
-            0%, 100% { opacity: 0.4; }
-            50% { opacity: 1; }
-        }
-
-        /* 浮动装饰元素 */
-        .iso-float-element {
-            position: absolute;
-            border: 2px solid rgba(38, 198, 218, 0.5);
-            animation: floatRotate 8s linear infinite;
-        }
-
-        .iso-float-element:nth-child(26) {
-            width: 80px;
-            height: 80px;
-            left: 5%;
-            top: 20%;
-            border-radius: 10px;
-            animation-delay: 0s;
-        }
-
-        .iso-float-element:nth-child(27) {
-            width: 60px;
-            height: 60px;
-            right: 10%;
-            top: 30%;
-            border-radius: 50%;
-            animation-delay: 2s;
-        }
-
-        .iso-float-element:nth-child(28) {
-            width: 100px;
-            height: 100px;
-            left: 15%;
-            bottom: 15%;
-            border-radius: 15px;
-            animation-delay: 4s;
-        }
-
-        @keyframes floatRotate {
-            0% { transform: rotate(0deg) scale(1); opacity: 0.3; }
-            50% { transform: rotate(180deg) scale(1.1); opacity: 0.6; }
-            100% { transform: rotate(360deg) scale(1); opacity: 0.3; }
-        }
-
-        .btn-primary {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            padding: 16px 36px;
-            background: var(--brand-primary);
-            color: var(--bg-primary);
+            gap: 8px;
+            padding: 16px 32px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
             font-weight: 600;
-            font-size: 16px;
             border-radius: 12px;
             text-decoration: none;
             transition: all 0.3s ease;
-            border: none;
-            cursor: pointer;
+            box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.39);
         }
 
         .btn-primary:hover {
-            background: #00B8D4;
-            transform: scale(1.02);
-        }
-
-        .btn-primary:active {
-            transform: scale(0.98);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5);
         }
 
         .btn-secondary {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
-            padding: 16px 36px;
-            background: transparent;
-            color: var(--brand-primary);
+            gap: 8px;
+            padding: 16px 32px;
+            background: white;
+            color: var(--text-primary);
             font-weight: 600;
-            font-size: 16px;
-            border: 1px solid var(--brand-primary);
+            border: 1px solid var(--border);
             border-radius: 12px;
             text-decoration: none;
             transition: all 0.3s ease;
-            cursor: pointer;
+            box-shadow: var(--shadow);
         }
 
         .btn-secondary:hover {
-            background: rgba(38, 198, 218, 0.1);
+            background: #f1f5f9;
+            border-color: var(--text-muted);
         }
 
-        .hero-stats {
+        .stats {
             display: flex;
-            gap: 72px;
+            gap: 48px;
             flex-wrap: wrap;
             justify-content: center;
-            opacity: 0;
-            animation: fadeInUp 0.5s ease 0.4s forwards;
         }
 
         .stat-item {
@@ -752,66 +169,44 @@
         .stat-value {
             font-size: 48px;
             font-weight: 800;
-            color: var(--brand-primary);
-            line-height: 1.2;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .stat-label {
             font-size: 14px;
-            color: var(--text-muted);
-            margin-top: 8px;
+            color: var(--text-secondary);
+            margin-top: 4px;
         }
 
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(15px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* Section Styles */
-        .section {
-            padding: 120px 48px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .container {
-            max-width: 1280px;
-            margin: 0 auto;
+        /* Products Section */
+        .products {
+            padding: 100px 24px;
+            background: white;
         }
 
         .section-header {
             text-align: center;
-            margin-bottom: 80px;
+            margin-bottom: 64px;
         }
 
         .section-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
+            display: inline-block;
             padding: 6px 16px;
-            background: rgba(38, 198, 218, 0.1);
-            border: 1px solid rgba(38, 198, 218, 0.25);
+            background: rgba(99, 102, 241, 0.08);
             border-radius: 100px;
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--brand-primary);
-            margin-bottom: 20px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+            font-size: 14px;
+            color: var(--primary);
+            margin-bottom: 16px;
         }
 
         .section-title {
-            font-size: clamp(28px, 3.5vw, 36px);
+            font-size: clamp(32px, 4vw, 48px);
             font-weight: 700;
             margin-bottom: 16px;
             color: var(--text-primary);
-            letter-spacing: -0.02em;
         }
 
         .section-subtitle {
@@ -821,54 +216,164 @@
             margin: 0 auto;
         }
 
-        /* Cards */
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: 36px;
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 24px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .product-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 32px;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+        }
+
+        .product-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .product-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 16px;
+        }
+
+        .product-name {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .product-models {
+            font-size: 14px;
+            color: var(--primary);
+            margin-bottom: 16px;
+        }
+
+        .product-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+            margin-bottom: 24px;
+        }
+
+        .product-meta {
+            display: flex;
+            gap: 24px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .product-meta-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .product-meta-label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .product-meta-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .product-price {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .product-price-current {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        .product-price-original {
+            font-size: 18px;
+            color: var(--text-muted);
+            text-decoration: line-through;
+        }
+
+        .btn-product {
+            display: block;
+            width: 100%;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            font-weight: 600;
+            border-radius: 10px;
+            text-align: center;
+            text-decoration: none;
             transition: all 0.3s ease;
         }
 
-        .card:hover {
-            transform: translateY(-4px);
-            border-color: var(--card-hover-border);
-            box-shadow: var(--shadow-hover);
+        .btn-product:hover {
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
         }
 
-        /* Features Grid */
+        /* Features Section */
+        .features {
+            padding: 100px 24px;
+            background: #f8fafc;
+        }
+
         .features-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 24px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 32px;
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
         .feature-card {
-            text-align: left;
+            padding: 32px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
         }
 
         .feature-icon {
-            width: 56px;
-            height: 56px;
+            width: 64px;
+            height: 64px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(38, 198, 218, 0.1);
-            border: 1px solid rgba(38, 198, 218, 0.2);
-            border-radius: 12px;
-            font-size: 24px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 16px;
+            font-size: 28px;
             margin-bottom: 24px;
-            transition: all 0.3s ease;
-        }
-
-        .feature-card:hover .feature-icon {
-            brightness: 1.2;
-            transform: translateY(-2px);
         }
 
         .feature-title {
-            font-size: 20px;
-            font-weight: 600;
+            font-size: 22px;
+            font-weight: 700;
             margin-bottom: 12px;
             color: var(--text-primary);
         }
@@ -877,11 +382,11 @@
             font-size: 15px;
             color: var(--text-secondary);
             line-height: 1.7;
-            margin-bottom: 20px;
         }
 
         .feature-list {
             list-style: none;
+            margin-top: 16px;
         }
 
         .feature-list li {
@@ -896,150 +401,48 @@
             content: '✓';
             position: absolute;
             left: 0;
-            color: var(--brand-primary);
+            color: var(--secondary);
             font-weight: 700;
         }
 
-        /* Products Grid */
-        .products-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 24px;
+        /* Advantages Section */
+        .advantages {
+            padding: 100px 24px;
+            background: white;
         }
 
-        .product-card {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .product-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 14px;
-            background: linear-gradient(135deg, #FF6B6B 0%, #FF9800 100%);
-            border-radius: 100px;
-            font-size: 12px;
-            font-weight: 600;
-            color: white;
-            margin-bottom: 20px;
-            width: fit-content;
-        }
-
-        .product-name {
-            font-size: 22px;
-            font-weight: 700;
-            margin-bottom: 8px;
-            color: var(--text-primary);
-        }
-
-        .product-models {
-            font-size: 13px;
-            color: var(--brand-primary);
-            margin-bottom: 16px;
-            font-family: 'SF Mono', Monaco, monospace;
-        }
-
-        .product-desc {
-            font-size: 14px;
-            color: var(--text-secondary);
-            line-height: 1.8;
-            margin-bottom: 24px;
-            flex-grow: 1;
-        }
-
-        .product-meta {
-            display: flex;
-            gap: 24px;
-            padding: 20px 0;
-            border-top: 1px solid var(--card-border);
-            border-bottom: 1px solid var(--card-border);
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-        }
-
-        .product-meta-item {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .product-meta-label {
-            font-size: 12px;
-            color: var(--text-muted);
-            margin-bottom: 4px;
-        }
-
-        .product-meta-value {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .product-price {
-            display: flex;
-            align-items: baseline;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-
-        .product-price-current {
-            font-size: 32px;
-            font-weight: 800;
-            color: var(--brand-primary);
-        }
-
-        .product-price-unit {
-            font-size: 14px;
-            color: var(--text-muted);
-        }
-
-        .product-price-original {
-            font-size: 16px;
-            color: var(--text-muted);
-            text-decoration: line-through;
-        }
-
-        .btn-product {
-            display: block;
-            width: 100%;
-            padding: 14px 24px;
-            background: var(--brand-primary);
-            color: var(--bg-primary);
-            font-weight: 600;
-            border-radius: 10px;
-            text-align: center;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            border: none;
-            cursor: pointer;
-        }
-
-        .btn-product:hover {
-            background: #00B8D4;
-            transform: scale(1.02);
-        }
-
-        .btn-product:active {
-            transform: scale(0.98);
-        }
-
-        /* Advantages */
         .advantages-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 24px;
+            max-width: 1000px;
+            margin: 0 auto;
         }
 
         .advantage-item {
             text-align: center;
-            padding: 48px 24px;
+            padding: 40px 24px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow);
+        }
+
+        .advantage-item:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+            box-shadow: var(--shadow-lg);
         }
 
         .advantage-value {
             font-size: 56px;
             font-weight: 800;
-            color: var(--brand-primary);
-            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
         }
 
         .advantage-label {
@@ -1047,17 +450,26 @@
             color: var(--text-secondary);
         }
 
-        /* Testimonials */
+        /* Testimonials Section */
+        .testimonials {
+            padding: 100px 24px;
+            background: #f8fafc;
+        }
+
         .testimonials-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
             gap: 24px;
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
         .testimonial-card {
-            padding: 0;
-            background: transparent;
-            border: none;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 32px;
+            box-shadow: var(--shadow);
         }
 
         .testimonial-header {
@@ -1071,7 +483,7 @@
             width: 56px;
             height: 56px;
             border-radius: 12px;
-            background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-accent) 100%);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1087,7 +499,7 @@
 
         .testimonial-info span {
             font-size: 14px;
-            color: var(--text-muted);
+            color: var(--text-secondary);
         }
 
         .testimonial-stat {
@@ -1095,41 +507,37 @@
             align-items: center;
             gap: 8px;
             padding: 8px 16px;
-            background: rgba(76, 175, 80, 0.1);
-            border: 1px solid rgba(76, 175, 80, 0.25);
+            background: rgba(34, 197, 94, 0.1);
             border-radius: 100px;
             font-size: 14px;
-            color: var(--success);
+            color: #16a34a;
             margin-bottom: 16px;
         }
 
         .testimonial-text {
             font-size: 15px;
             color: var(--text-secondary);
-            line-height: 1.8;
+            line-height: 1.7;
         }
 
         /* CTA Section */
         .cta {
-            padding: 120px 48px;
+            padding: 100px 24px;
             text-align: center;
-            position: relative;
-            z-index: 1;
+            background: white;
         }
 
         .cta-box {
             max-width: 800px;
             margin: 0 auto;
-            padding: 80px 48px;
-            background: linear-gradient(135deg, rgba(38, 198, 218, 0.08) 0%, rgba(129, 212, 250, 0.08) 100%);
-            border: 1px solid rgba(38, 198, 218, 0.2);
-            border-radius: 20px;
-            position: relative;
-            overflow: hidden;
+            padding: 64px 48px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(20, 184, 166, 0.05) 100%);
+            border: 1px solid rgba(99, 102, 241, 0.1);
+            border-radius: 24px;
         }
 
         .cta-title {
-            font-size: clamp(28px, 3.5vw, 36px);
+            font-size: clamp(28px, 4vw, 40px);
             font-weight: 700;
             margin-bottom: 16px;
             color: var(--text-primary);
@@ -1138,311 +546,100 @@
         .cta-subtitle {
             font-size: 18px;
             color: var(--text-secondary);
-            margin-bottom: 40px;
+            margin-bottom: 32px;
         }
 
         /* Footer */
         .footer {
-            padding: 40px 48px;
-            border-top: 1px solid var(--card-border);
+            padding: 32px 24px;
+            border-top: 1px solid var(--border);
             text-align: center;
-            position: relative;
-            z-index: 1;
+            background: white;
         }
 
         .footer-text {
             font-size: 14px;
-            color: var(--text-muted);
-        }
-
-        /* Scroll Reveal */
-        .scroll-reveal {
-            opacity: 0;
-            transform: translateY(15px);
-            transition: all 0.5s ease-out;
-        }
-
-        .scroll-reveal.revealed {
-            opacity: 1;
-            transform: translateY(0);
+            color: var(--text-secondary);
         }
 
         /* Responsive */
-        @media (max-width: 1024px) {
-            .features-grid,
-            .products-grid,
-            .testimonials-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            .advantages-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            .hero-container {
-                grid-template-columns: 1fr;
-                gap: 40px;
-            }
-            .hero-content {
-                text-align: center;
-            }
-            .hero-subtitle {
-                margin: 0 auto 36px;
-            }
-            .hero-buttons {
-                justify-content: center;
-            }
-            .iso-platform-scene {
-                height: 400px;
-            }
-        }
-
         @media (max-width: 768px) {
-            .nav-container {
-                padding: 0 24px;
-            }
-            .nav-links {
-                display: none;
-            }
             .hero {
-                padding: 100px 24px 60px;
+                padding: 60px 20px;
             }
-            .hero-container {
-                grid-template-columns: 1fr;
-                gap: 30px;
+
+            .stats {
+                gap: 32px;
             }
-            .hero-title {
-                font-size: 28px;
+
+            .stat-value {
+                font-size: 36px;
             }
-            .hero-subtitle {
-                font-size: 14px;
-            }
-            .section {
-                padding: 80px 24px;
-            }
-            .features-grid,
+
             .products-grid,
+            .features-grid,
             .testimonials-grid {
                 grid-template-columns: 1fr;
             }
+
+            .cta-box {
+                padding: 40px 24px;
+            }
+
             .advantages-grid {
                 grid-template-columns: repeat(2, 1fr);
-                gap: 16px;
-            }
-            .hero-stats {
-                gap: 32px;
-                justify-content: center;
-            }
-            .iso-platform-scene {
-                height: 300px;
-            }
-            .iso-platform {
-                width: 350px;
-                height: 350px;
-            }
-            .cta-box {
-                padding: 48px 24px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .hero-buttons {
-                flex-direction: column;
-                width: 100%;
-            }
-            .btn-primary,
-            .btn-secondary {
-                width: 100%;
-                justify-content: center;
-            }
-            .advantages-grid {
-                grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
 <body>
-    <!-- 数据流动画 Canvas -->
-    <canvas id="data-flow-canvas"></canvas>
-
-    <!-- 导航栏 -->
-    <nav class="navbar" id="navbar">
-        <div class="nav-container">
-            <a href="/" class="nav-logo">
-                <div class="nav-logo-icon">M</div>
-                <span class="nav-logo-text">Moyu</span>
-            </a>
-            <ul class="nav-links">
-                <li><a href="#products">产品套餐</a></li>
-                <li><a href="#features">核心能力</a></li>
-                <li><a href="#advantages">竞争优势</a></li>
-                <li><a href="#testimonials">客户案例</a></li>
-            </ul>
-            <div class="nav-buttons">
-                <a href="/login" class="btn-nav btn-nav-ghost">登录</a>
-                <a href="/register" class="btn-nav btn-nav-primary">免费注册</a>
-            </div>
-        </div>
-    </nav>
-
     <!-- Hero Section -->
-    <section class="hero" id="hero-section">
-        <div class="hero-container">
-            <!-- 左侧文字内容 -->
-            <div class="hero-content">
-                <div class="hero-badge">
-                    <span class="hero-badge-dot"></span>
-                    企业级智能解决方案
-                </div>
-                <h1 class="hero-title">
-                    企业级大模型<br>智能引擎管理和服务平台
-                </h1>
-                <p class="hero-subtitle">
-                    多场景集成、成本与权限控制、稳定性、安全合规。为您的 AI 项目提供专业级大模型部署、管理和Token引擎服务， 智能赋能产业升级。
-                </p>
-                <div class="hero-buttons">
-                    <a href="/register" class="btn-primary">
-                        立即体验
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                            <path d="M4 10h12M12 6l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </a>
-                    <a href="/pricing" class="btn-secondary">
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                            <path d="M10 4v12M6 8l4-4 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        查看价格
-                    </a>
-                </div>
-                <div class="hero-stats">
-                    <div class="stat-item">
-                        <div class="stat-value">100+</div>
-                        <div class="stat-label">大模型支持</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">99.9%</div>
-                        <div class="stat-label">服务可用性</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value">40%</div>
-                        <div class="stat-label">成本节省</div>
-                    </div>
-                </div>
+    <section class="hero">
+        <div class="container">
+            <div class="hero-badge">🎯 企业级智能解决方案</div>
+            <h1 class="hero-title">企业级大模型<br>智能引擎管理和服务平台</h1>
+            <p class="hero-subtitle">多场景集成、成本与权限控制、稳定性、安全合规、灵活定价。为您的 AI 项目提供专业级大模型部署、管理和Token引擎服务， 智能赋能产业升级。</p>
+            <div class="hero-buttons">
+                <a href="/register" class="btn-primary">
+                    立即体验
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M4 10h12M12 6l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </a>
+                <a href="/pricing" class="btn-secondary">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M10 4v12M6 8l4-4 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    查看价格
+                </a>
             </div>
-            
-            <!-- 右侧3D平台 -->
-            <div class="iso-platform-scene" id="iso-platform-scene">
-                <div class="iso-platform" id="iso-platform">
-                    <!-- 网格层 -->
-                    <div class="iso-grid-layer iso-grid-base"></div>
-                    <div class="iso-grid-layer iso-grid-accent"></div>
-                    
-                    <!-- 电路板纹理 -->
-                    <div class="iso-circuit">
-                        <div class="circuit-line"></div>
-                        <div class="circuit-line"></div>
-                        <div class="circuit-line"></div>
-                        <div class="circuit-line"></div>
-                        <div class="circuit-line"></div>
-                    </div>
-                    
-                    <!-- 复杂立方体 -->
-                    <div class="iso-cube-complex">
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                    </div>
-                    <div class="iso-cube-complex">
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                    </div>
-                    <div class="iso-cube-complex">
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                    </div>
-                    <div class="iso-cube-complex">
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                    </div>
-                    <div class="iso-cube-complex">
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                    </div>
-                    <div class="iso-cube-complex">
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                    </div>
-                    <div class="iso-cube-complex">
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                        <div class="cube-face"></div>
-                    </div>
-                    
-                    <!-- 数据流节点 -->
-                    <div class="iso-node"></div>
-                    <div class="iso-node"></div>
-                    <div class="iso-node"></div>
-                    <div class="iso-node"></div>
-                    <div class="iso-node"></div>
-                    <div class="iso-node"></div>
-                    
-                    <!-- 数据流粒子 -->
-                    <div class="iso-data-particle"></div>
-                    <div class="iso-data-particle"></div>
-                    <div class="iso-data-particle"></div>
-                    <div class="iso-data-particle"></div>
-                    <div class="iso-data-particle"></div>
-                    
-                    <!-- 数据连接线 -->
-                    <div class="iso-data-line"></div>
-                    <div class="iso-data-line"></div>
-                    <div class="iso-data-line"></div>
-                    <div class="iso-data-line"></div>
-                    <div class="iso-data-line"></div>
-                    
-                    <!-- 浮动装饰元素 -->
-                    <div class="iso-float-element"></div>
-                    <div class="iso-float-element"></div>
-                    <div class="iso-float-element"></div>
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-value">100+</div>
+                    <div class="stat-label">大模型支持</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">99.9%</div>
+                    <div class="stat-label">服务可用性</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">40%</div>
+                    <div class="stat-label">成本节省</div>
                 </div>
             </div>
         </div>
     </section>
 
     <!-- Products Section -->
-    <section class="section" id="products">
+    <section class="products">
         <div class="container">
-            <div class="section-header scroll-reveal">
+            <div class="section-header">
                 <span class="section-tag">🔥 爆款热销</span>
                 <h2 class="section-title">精选热门模型套餐</h2>
                 <p class="section-subtitle">精选热门模型套餐，专享优惠折扣</p>
             </div>
             <div class="products-grid">
-                <div class="card product-card scroll-reveal">
+                <div class="product-card">
                     <span class="product-badge">🔥 爆款热销</span>
                     <h3 class="product-name">豆包视频模型 2.0</h3>
                     <p class="product-models">doubao-seedance-2-0-260128</p>
@@ -1467,7 +664,7 @@
                     </div>
                     <a href="/console" class="btn-product">立即购买</a>
                 </div>
-                <div class="card product-card scroll-reveal">
+                <div class="product-card">
                     <span class="product-badge">🔥 爆款热销</span>
                     <h3 class="product-name">MiniMax m2.7</h3>
                     <p class="product-models">MiniMax-M2.7 </p>
@@ -1492,7 +689,7 @@
                     </div>
                     <a href="/console" class="btn-product">立即购买</a>
                 </div>
-                <div class="card product-card scroll-reveal">
+                <div class="product-card">
                     <span class="product-badge">🔥 爆款热销</span>
                     <h3 class="product-name">Z-image</h3>
                     <p class="product-models">Z-Image</p>
@@ -1522,15 +719,15 @@
     </section>
 
     <!-- Features Section -->
-    <section class="section" id="features">
+    <section class="features">
         <div class="container">
-            <div class="section-header scroll-reveal">
+            <div class="section-header">
                 <span class="section-tag">⚡ 核心能力</span>
                 <h2 class="section-title">端到端企业级大模型管理</h2>
                 <p class="section-subtitle">从集成到计费，从安全到合规 — 完整的大模型管理解决方案</p>
             </div>
             <div class="features-grid">
-                <div class="card feature-card scroll-reveal">
+                <div class="feature-card">
                     <div class="feature-icon">🚀</div>
                     <h3 class="feature-title">快速集成</h3>
                     <p class="feature-desc">快速适配各种业务场景，无需复杂配置即可完成大模型集成</p>
@@ -1540,7 +737,7 @@
                         <li>支持 OpenAPI、Enterprise SDK 等多种集成方式</li>
                     </ul>
                 </div>
-                <div class="card feature-card scroll-reveal">
+                <div class="feature-card">
                     <div class="feature-icon">💴</div>
                     <h3 class="feature-title">成本与权限控制</h3>
                     <p class="feature-desc">细粒度权限管理，精准计费，全面掌控成本和访问</p>
@@ -1550,7 +747,7 @@
                         <li>Token 级别的管理：有效期、配额、模型使用</li>
                     </ul>
                 </div>
-                <div class="card feature-card scroll-reveal">
+                <div class="feature-card">
                     <div class="feature-icon">⚡</div>
                     <h3 class="feature-title">稳定可靠</h3>
                     <p class="feature-desc">企业级服务连续性，避免业务中断风险</p>
@@ -1560,7 +757,7 @@
                         <li>7x24 小时电话支持和现场协助</li>
                     </ul>
                 </div>
-                <div class="card feature-card scroll-reveal">
+                <div class="feature-card">
                     <div class="feature-icon">🔐</div>
                     <h3 class="feature-title">安全合规</h3>
                     <p class="feature-desc">数据脱敏和泄露防护，全方位数据保护和合规支持</p>
@@ -1570,7 +767,7 @@
                         <li>通过 ISO 27001 及等效安全认证</li>
                     </ul>
                 </div>
-                <div class="card feature-card scroll-reveal">
+                <div class="feature-card">
                     <div class="feature-icon">💰</div>
                     <h3 class="feature-title">灵活定价</h3>
                     <p class="feature-desc">按量付费配合节省计划，无需大额预付，灵活控制成本</p>
@@ -1580,7 +777,7 @@
                         <li>模型使用最高可享 40% 折扣</li>
                     </ul>
                 </div>
-                <div class="card feature-card scroll-reveal">
+                <div class="feature-card">
                     <div class="feature-icon">🛡️</div>
                     <h3 class="feature-title">企业定制服务</h3>
                     <p class="feature-desc">专业技术支持和尊享服务保障</p>
@@ -1595,27 +792,27 @@
     </section>
 
     <!-- Advantages Section -->
-    <section class="section" id="advantages">
+    <section class="advantages">
         <div class="container">
-            <div class="section-header scroll-reveal">
+            <div class="section-header">
                 <span class="section-tag">💪 竞争优势</span>
                 <h2 class="section-title">为什么选择我们</h2>
                 <p class="section-subtitle">更稳定、更经济、更安全的企业级管理方案</p>
             </div>
             <div class="advantages-grid">
-                <div class="card advantage-item scroll-reveal">
+                <div class="advantage-item">
                     <div class="advantage-value">-40%</div>
                     <div class="advantage-label">最大节省</div>
                 </div>
-                <div class="card advantage-item scroll-reveal">
+                <div class="advantage-item">
                     <div class="advantage-value">10分钟</div>
                     <div class="advantage-label">快速部署</div>
                 </div>
-                <div class="card advantage-item scroll-reveal">
+                <div class="advantage-item">
                     <div class="advantage-value">100%</div>
                     <div class="advantage-label">透明计费</div>
                 </div>
-                <div class="card advantage-item scroll-reveal">
+                <div class="advantage-item">
                     <div class="advantage-value">0</div>
                     <div class="advantage-label">数据风险</div>
                 </div>
@@ -1624,67 +821,61 @@
     </section>
 
     <!-- Testimonials Section -->
-    <section class="section" id="testimonials">
+    <section class="testimonials">
         <div class="container">
-            <div class="section-header scroll-reveal">
+            <div class="section-header">
                 <span class="section-tag">👥 客户案例</span>
                 <h2 class="section-title">跨行业信赖之选</h2>
                 <p class="section-subtitle">为不同行业和场景提供灵活的解决方案</p>
             </div>
             <div class="testimonials-grid">
-                <div class="testimonial-card scroll-reveal">
-                    <div class="card">
-                        <div class="testimonial-header">
-                            <div class="testimonial-avatar">🏠</div>
-                            <div class="testimonial-info">
-                                <h4>家居企业</h4>
-                                <span>智能制造</span>
-                            </div>
+                <div class="testimonial-card">
+                    <div class="testimonial-header">
+                        <div class="testimonial-avatar">🏠</div>
+                        <div class="testimonial-info">
+                            <h4>家居企业</h4>
+                            <span>智能制造</span>
                         </div>
-                        <div class="testimonial-stat">
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                <path d="M8 1v14M4 5l4-4 4 4M4 11l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                            AI 成本降低 35%
-                        </div>
-                        <p class="testimonial-text">接入平台后，我们实现了 6 个研发部门的独立核算，Token 消费透明可控。自动脱敏功能让我们可以安全地将客服数据用于 AI 训练。</p>
                     </div>
+                    <div class="testimonial-stat">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M8 1v14M4 5l4-4 4 4M4 11l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        AI 成本降低 35%
+                    </div>
+                    <p class="testimonial-text">接入平台后，我们实现了 6 个研发部门的独立核算，Token 消费透明可控。自动脱敏功能让我们可以安全地将客服数据用于 AI 训练。</p>
                 </div>
-                <div class="testimonial-card scroll-reveal">
-                    <div class="card">
-                        <div class="testimonial-header">
-                            <div class="testimonial-avatar">🛒</div>
-                            <div class="testimonial-info">
-                                <h4>头部电商平台</h4>
-                                <span>互联网零售</span>
-                            </div>
+                <div class="testimonial-card">
+                    <div class="testimonial-header">
+                        <div class="testimonial-avatar">🛒</div>
+                        <div class="testimonial-info">
+                            <h4>头部电商平台</h4>
+                            <span>互联网零售</span>
                         </div>
-                        <div class="testimonial-stat">
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                <path d="M8 1v14M4 5l4-4 4 4M4 11l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                            效率提升 50%
-                        </div>
-                        <p class="testimonial-text">通过飞书权限自动同步，IT 部门不再需要手动配置 API 访问权限。财务部门自动收到分账报表，对账时间从 3 天缩短到 10 分钟。</p>
                     </div>
+                    <div class="testimonial-stat">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M8 1v14M4 5l4-4 4 4M4 11l4 4 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        效率提升 50%
+                    </div>
+                    <p class="testimonial-text">通过飞书权限自动同步，IT 部门不再需要手动配置 API 访问权限。财务部门自动收到分账报表，对账时间从 3 天缩短到 10 分钟。</p>
                 </div>
-                <div class="testimonial-card scroll-reveal">
-                    <div class="card">
-                        <div class="testimonial-header">
-                            <div class="testimonial-avatar">🏦</div>
-                            <div class="testimonial-info">
-                                <h4>金融机构</h4>
-                                <span>金融科技</span>
-                            </div>
+                <div class="testimonial-card">
+                    <div class="testimonial-header">
+                        <div class="testimonial-avatar">🏦</div>
+                        <div class="testimonial-info">
+                            <h4>金融机构</h4>
+                            <span>金融科技</span>
                         </div>
-                        <div class="testimonial-stat">
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                                <path d="M1 8a7 7 0 1014 0A7 7 0 001 8z" stroke="currentColor" stroke-width="2"/>
-                            </svg>
-                            合规率 100%
-                        </div>
-                        <p class="testimonial-text">数据脱敏和安全认证是我们选择该平台的关键原因。客户隐私数据在传输过程中自动脱敏，完全满足金融监管要求。</p>
                     </div>
+                    <div class="testimonial-stat">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                            <path d="M1 8a7 7 0 1014 0A7 7 0 001 8z" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                        合规率 100%
+                    </div>
+                    <p class="testimonial-text">数据脱敏和安全认证是我们选择该平台的关键原因。客户隐私数据在传输过程中自动脱敏，完全满足金融监管要求。</p>
                 </div>
             </div>
         </div>
@@ -1693,7 +884,7 @@
     <!-- CTA Section -->
     <section class="cta">
         <div class="container">
-            <div class="cta-box scroll-reveal">
+            <div class="cta-box">
                 <h2 class="cta-title">立即开始使用企业级大模型管理</h2>
                 <p class="cta-subtitle">立即注册，体验企业级大模型管理的强大能力</p>
                 <a href="/register" class="btn-primary">
@@ -1707,296 +898,8 @@
     </section>
 
     <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <p class="footer-text">© 2025 Moyu. 企业级大模型智能引擎管理和服务平台</p>
-        </div>
-    </footer>
 
     <script>
-        // ============================================
-        // 数据流动画 - 轻量化线条 + 光点效果
-        // ============================================
-        const canvas = document.getElementById('data-flow-canvas');
-        const ctx = canvas.getContext('2d');
-        
-        let width, height;
-        let lines = [];
-        let dots = [];
-        let mouse = { x: null, y: null, radius: 100 };
-        
-        // 检测设备性能
-        const isLowPerformance = navigator.hardwareConcurrency ? navigator.hardwareConcurrency <= 4 : false;
-        
-        // 配置
-        const config = isLowPerformance ? {
-            lineCount: 15,
-            dotCount: 20,
-            enabled: false
-        } : {
-            lineCount: 30,
-            dotCount: 40,
-            enabled: true
-        };
-        
-        function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-        }
-        
-        class Line {
-            constructor() {
-                this.x1 = Math.random() * width;
-                this.y1 = Math.random() * height;
-                this.x2 = this.x1 + (Math.random() - 0.5) * 300;
-                this.y2 = this.y1 + (Math.random() - 0.5) * 300;
-                this.alpha = Math.random() * 0.15 + 0.05;
-                this.speed = Math.random() * 0.2 + 0.05;
-                this.direction = Math.random() > 0.5 ? 1 : -1;
-            }
-            
-            update() {
-                this.x1 += this.speed * this.direction;
-                this.y1 += this.speed * 0.5 * this.direction;
-                this.x2 += this.speed * this.direction;
-                this.y2 += this.speed * 0.5 * this.direction;
-                
-                if (this.x1 < -100 || this.x1 > width + 100) this.direction *= -1;
-                if (this.x2 < -100 || this.x2 > width + 100) this.direction *= -1;
-            }
-            
-            draw() {
-                ctx.beginPath();
-                ctx.moveTo(this.x1, this.y1);
-                ctx.lineTo(this.x2, this.y2);
-                ctx.strokeStyle = `rgba(38, 198, 218, ${this.alpha})`;
-                ctx.lineWidth = 1;
-                ctx.stroke();
-            }
-        }
-        
-        class Dot {
-            constructor() {
-                this.x = Math.random() * width;
-                this.y = Math.random() * height;
-                this.size = Math.random() * 2 + 1;
-                this.speedX = (Math.random() - 0.5) * 0.5;
-                this.speedY = (Math.random() - 0.5) * 0.5;
-                this.alpha = Math.random() * 0.5 + 0.3;
-                this.color = Math.random() > 0.5 ? '38, 198, 218' : '129, 212, 250';
-            }
-            
-            update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
-                
-                if (mouse.x !== null && mouse.y !== null) {
-                    const dx = mouse.x - this.x;
-                    const dy = mouse.y - this.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    if (distance < mouse.radius) {
-                        this.x -= dx * 0.01;
-                        this.y -= dy * 0.01;
-                    }
-                }
-                
-                if (this.x < 0) this.x = width;
-                if (this.x > width) this.x = 0;
-                if (this.y < 0) this.y = height;
-                if (this.y > height) this.y = 0;
-            }
-            
-            draw() {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(${this.color}, ${this.alpha})`;
-                ctx.fill();
-            }
-        }
-        
-        function init() {
-            lines = [];
-            dots = [];
-            for (let i = 0; i < config.lineCount; i++) {
-                lines.push(new Line());
-            }
-            for (let i = 0; i < config.dotCount; i++) {
-                dots.push(new Dot());
-            }
-        }
-        
-        function animate() {
-            if (!config.enabled) return;
-            
-            ctx.clearRect(0, 0, width, height);
-            
-            lines.forEach(line => {
-                line.update();
-                line.draw();
-            });
-            
-            dots.forEach(dot => {
-                dot.update();
-                dot.draw();
-            });
-            
-            requestAnimationFrame(animate);
-        }
-        
-        window.addEventListener('resize', () => {
-            resize();
-            init();
-        });
-        
-        window.addEventListener('mousemove', (e) => {
-            mouse.x = e.clientX;
-            mouse.y = e.clientY;
-        });
-        
-        window.addEventListener('mouseout', () => {
-            mouse.x = null;
-            mouse.y = null;
-        });
-        
-        resize();
-        init();
-        animate();
-        
-        // ============================================
-        // 导航栏滚动效果
-        // ============================================
-        const navbar = document.getElementById('navbar');
-        window.addEventListener('scroll', () => {
-            if (window.scrollY > 50) {
-                navbar.classList.add('scrolled');
-            } else {
-                navbar.classList.remove('scrolled');
-            }
-        });
-        
-        // ============================================
-        // 滚动显示动画
-        // ============================================
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -30px 0px'
-        };
-        
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('revealed');
-                    observer.unobserve(entry.target);
-                }
-            });
-        }, observerOptions);
-        
-        document.querySelectorAll('.scroll-reveal').forEach(el => {
-            observer.observe(el);
-        });
-        
-        // ============================================
-        // 平滑滚动
-        // ============================================
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function(e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                }
-            });
-        });
-        
-        // ============================================
-        // 等距3D平台鼠标视差交互
-        // ============================================
-        const heroSection = document.getElementById('hero-section');
-        const isoPlatformScene = document.getElementById('iso-platform-scene');
-        const isoPlatform = document.getElementById('iso-platform');
-        
-        if (heroSection && isoPlatformScene && isoPlatform) {
-            let targetRotateZ = 45;
-            let currentRotateZ = 45;
-            
-            heroSection.addEventListener('mousemove', (e) => {
-                const rect = heroSection.getBoundingClientRect();
-                const x = (e.clientX - rect.left) / rect.width - 0.5;
-                const y = (e.clientY - rect.top) / rect.height - 0.5;
-                
-                targetRotateZ = 45 + x * 15;
-                
-                // 复杂立方体视差偏移
-                const cubes = isoPlatform.querySelectorAll('.iso-cube-complex');
-                cubes.forEach((cube, index) => {
-                    const depth = (index + 1) * 0.25;
-                    const parallaxX = x * 25 * depth;
-                    const parallaxY = y * 20 * depth;
-                    cube.style.transform = `translate(${parallaxX}px, ${parallaxY}px)`;
-                });
-                
-                // 数据流粒子视差偏移
-                const particles = isoPlatform.querySelectorAll('.iso-data-particle');
-                particles.forEach((particle, index) => {
-                    const depth = (index + 1) * 0.2;
-                    const parallaxX = x * 35 * depth;
-                    const parallaxY = y * 25 * depth;
-                    particle.style.transform = `translate(${parallaxX}px, ${parallaxY}px)`;
-                });
-                
-                // 节点视差偏移
-                const nodes = isoPlatform.querySelectorAll('.iso-node');
-                nodes.forEach((node, index) => {
-                    const depth = (index + 1) * 0.15;
-                    const parallaxX = x * 30 * depth;
-                    const parallaxY = y * 20 * depth;
-                    node.style.transform = `translate(${parallaxX}px, ${parallaxY}px)`;
-                });
-                
-                // 连接线视差偏移
-                const lines = isoPlatform.querySelectorAll('.iso-data-line');
-                lines.forEach((line, index) => {
-                    const depth = (index + 1) * 0.1;
-                    const parallaxX = x * 20 * depth;
-                    const parallaxY = y * 15 * depth;
-                    line.style.transform = `${line.style.transform || ''} translate(${parallaxX}px, ${parallaxY}px)`;
-                });
-            });
-            
-            heroSection.addEventListener('mouseleave', () => {
-                targetRotateZ = 45;
-                
-                const cubes = isoPlatform.querySelectorAll('.iso-cube-complex');
-                cubes.forEach(cube => {
-                    cube.style.transform = '';
-                });
-                
-                const particles = isoPlatform.querySelectorAll('.iso-data-particle');
-                particles.forEach(particle => {
-                    particle.style.transform = '';
-                });
-                
-                const nodes = isoPlatform.querySelectorAll('.iso-node');
-                nodes.forEach(node => {
-                    node.style.transform = '';
-                });
-            });
-            
-            // 平滑动画循环
-            function animateIsoPlatform() {
-                const lerp = 0.08;
-                currentRotateZ += (targetRotateZ - currentRotateZ) * lerp;
-                
-                isoPlatform.style.transform = `translate(-50%, -50%) rotateX(60deg) rotateZ(${currentRotateZ}deg)`;
-                
-                requestAnimationFrame(animateIsoPlatform);
-            }
-            animateIsoPlatform();
-        }
-        
         window.addEventListener('message', function(event) {
             if (event.data.lang) {
                 document.documentElement.lang = event.data.lang;
