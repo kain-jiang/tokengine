@@ -71,6 +71,11 @@ func GetZSPaymentSetting() *ZSPaymentSetting {
 
 // IsZSPayEnabled 检查招商银行聚合支付是否启用
 func IsZSPayEnabled() bool {
+	common.OptionMapRWMutex.RLock()
+	defer common.OptionMapRWMutex.RUnlock()
+	if val, ok := common.OptionMap["zs_payment.Enabled"]; ok && val != "" {
+		return val == "true"
+	}
 	return zsPaymentSetting.Enabled
 }
 
@@ -98,11 +103,6 @@ func GetZSPayPrivateKey() string {
 func GetZSPayPublicKey() string {
 	return zsPaymentSetting.PublicKey
 }
-
-
-
-
-
 
 // GetZSPayBaseURL 获取API地址
 // 首先从数据库读取用户修改的值，不存在则使用内置默认值
