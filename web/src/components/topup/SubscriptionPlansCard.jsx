@@ -450,11 +450,15 @@ const SubscriptionPlansCard = ({
                     ? `${symbol}${(actualValueUSD * rate).toFixed(2)}`
                     : t('不限');
                   
-                  // 计算折扣比例：实付/实得价值，折扣应该小于1
+                  // 计算折扣比例：实付/实得价值，转换为"X折"格式
                   const discount = price > 0 && actualValueUSD > 0
-                    ? (price / actualValueUSD).toFixed(1)
+                    ? (price / actualValueUSD)
                     : null;
                   const isDiscounted = discount && parseFloat(discount) < 1;
+                  // 将小数转换为"X折"格式，如 0.9 -> "9折"
+                  const discountLabel = isDiscounted
+                    ? `${Math.round(parseFloat(discount) * 10)}折`
+                    : null;
                   
                   const totalLabel =
                     totalAmount > 0
@@ -494,9 +498,9 @@ const SubscriptionPlansCard = ({
                         {/* 右上角标签区域 - 横向排列 */}
                         <div className='absolute top-4 right-4 z-10 flex flex-row gap-1'>
                           {/* 折扣标签 */}
-                          {isDiscounted && (
+                          {isDiscounted && discountLabel && (
                             <Tag color='red' shape='circle' size='small'>
-                              {t('折扣')} {discount}
+                              {discountLabel}
                             </Tag>
                           )}
                           {/* 推荐标签 */}
