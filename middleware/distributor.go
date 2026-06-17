@@ -81,21 +81,36 @@ func Distribute() func(c *gin.Context) {
 				}
 				var selectGroup string
 				usingGroup := common.GetContextKeyString(c, constant.ContextKeyUsingGroup)
-				// Playground：聊天与文生图均支持按请求体中的分组选择渠道
+				// Playground：聊天、文生图与文生视频均支持按请求体中的分组选择渠道
 				if strings.HasPrefix(c.Request.URL.Path, "/pg/chat/completions") ||
-					strings.HasPrefix(c.Request.URL.Path, "/pg/images/generations") {
-					playgroundRequest := &dto.PlayGroundRequest{}
-					err = common.UnmarshalBodyReusable(c, playgroundRequest)
-					if err != nil {
-						abortWithOpenAiMessage(c, http.StatusBadRequest, i18n.T(c, i18n.MsgDistributorInvalidPlayground, map[string]any{"Error": err.Error()}))
-						return
+					strings.HasPrefix(c.Request.URL.Path, "/pg/images/generations") ||
+					strings.HasPrefix(c.Request.URL.Path, "/pg/video/generations") {
+					var groupFromRequest string
+					if strings.HasPrefix(c.Request.URL.Path, "/pg/chat/completions") ||
+						strings.HasPrefix(c.Request.URL.Path, "/pg/images/generations") {
+						playgroundRequest := &dto.PlayGroundRequest{}
+						err = common.UnmarshalBodyReusable(c, playgroundRequest)
+						if err != nil {
+							abortWithOpenAiMessage(c, http.StatusBadRequest, i18n.T(c, i18n.MsgDistributorInvalidPlayground, map[string]any{"Error": err.Error()}))
+							return
+						}
+						groupFromRequest = playgroundRequest.Group
+					} else {
+						// /pg/video/generations: extract group from ModelRequest
+						modelReq := &ModelRequest{}
+						err = common.UnmarshalBodyReusable(c, modelReq)
+						if err != nil {
+							abortWithOpenAiMessage(c, http.StatusBadRequest, i18n.T(c, i18n.MsgDistributorInvalidRequest, map[string]any{"Error": err.Error()}))
+							return
+						}
+						groupFromRequest = modelReq.Group
 					}
-					if playgroundRequest.Group != "" {
-						if !service.GroupInUserUsableGroups(usingGroup, playgroundRequest.Group) && playgroundRequest.Group != usingGroup {
+					if groupFromRequest != "" {
+						if !service.GroupInUserUsableGroups(usingGroup, groupFromRequest) && groupFromRequest != usingGroup {
 							abortWithOpenAiMessage(c, http.StatusForbidden, i18n.T(c, i18n.MsgDistributorGroupAccessDenied))
 							return
 						}
-						usingGroup = playgroundRequest.Group
+						usingGroup = groupFromRequest
 						common.SetContextKey(c, constant.ContextKeyUsingGroup, usingGroup)
 					}
 				}
@@ -129,12 +144,14 @@ func Distribute() func(c *gin.Context) {
 				}
 
 				if channel == nil {
+					common.SysLog(fmt.Sprintf("[DISTRIBUTOR_DEBUG] About to call CacheGetRandomSatisfiedChannel: model=%s, group=%s, retry=0", modelRequest.Model, usingGroup))
 					channel, selectGroup, err = service.CacheGetRandomSatisfiedChannel(&service.RetryParam{
 						Ctx:        c,
 						ModelName:  modelRequest.Model,
 						TokenGroup: usingGroup,
 						Retry:      common.GetPointer(0),
 					})
+					common.SysLog(fmt.Sprintf("[DISTRIBUTOR_DEBUG] CacheGetRandomSatisfiedChannel returned: channel=%v, selectGroup=%s, err=%v", channel, selectGroup, err))
 					if err != nil {
 						showGroup := usingGroup
 						if usingGroup == "auto" {
@@ -149,15 +166,25 @@ func Distribute() func(c *gin.Context) {
 						abortWithOpenAiMessage(c, http.StatusServiceUnavailable, message, types.ErrorCodeModelNotFound)
 						return
 					}
+					common.SysLog(fmt.Sprintf("[DISTRIBUTOR_DEBUG] After CacheGetRandomSatisfiedChannel check: channel=%v, usingGroup=%s, selectGroup=%s", channel, usingGroup, selectGroup))
 					if channel == nil {
+						common.SysLog(fmt.Sprintf("[DISTRIBUTOR_DEBUG] channel is nil, about to abort with no_available_channel error: group=%s, model=%s", usingGroup, modelRequest.Model))
 						abortWithOpenAiMessage(c, http.StatusServiceUnavailable, i18n.T(c, i18n.MsgDistributorNoAvailableChannel, map[string]any{"Group": usingGroup, "Model": modelRequest.Model}), types.ErrorCodeModelNotFound)
 						return
 					}
+					common.SysLog(fmt.Sprintf("[DISTRIBUTOR_DEBUG] channel is not nil, proceeding: channel.id=%d, channel.name=%s", channel.Id, channel.Name))
 				}
 			}
 		}
 		common.SetContextKey(c, constant.ContextKeyRequestStartTime, time.Now())
-		SetupContextForSelectedChannel(c, channel, modelRequest.Model)
+		// Only setup context if a channel was selected (skip for GET/fetch requests)
+		if channel != nil {
+			if newAPIError := SetupContextForSelectedChannel(c, channel, modelRequest.Model); newAPIError != nil {
+				common.SysLog(fmt.Sprintf("[DISTRIBUTOR_DEBUG] SetupContextForSelectedChannel returned error: %v", newAPIError))
+				abortWithOpenAiMessage(c, newAPIError.StatusCode, newAPIError.Error(), types.ErrorCodeModelNotFound)
+				return
+			}
+		}
 		c.Next()
 		if channel != nil && c.Writer != nil && c.Writer.Status() < http.StatusBadRequest {
 			service.RecordChannelAffinity(c, channel.Id)
@@ -241,6 +268,10 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 			}
 			if req != nil {
 				modelRequest.Model = req.Model
+				// Agnes AI requires lowercase model names for channel matching
+				if strings.Contains(strings.ToLower(modelRequest.Model), "agnes") {
+					modelRequest.Model = strings.ToLower(modelRequest.Model)
+				}
 			}
 		} else if c.Request.Method == http.MethodGet {
 			relayMode = relayconstant.RelayModeVideoFetchByID
@@ -256,6 +287,10 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 			}
 			modelRequest.Model = req.Model
 			modelRequest.Group = req.Group
+			// Agnes AI requires lowercase model names for channel matching
+			if strings.Contains(strings.ToLower(modelRequest.Model), "agnes") {
+				modelRequest.Model = strings.ToLower(modelRequest.Model)
+			}
 			if req.Group != "" {
 				common.SetContextKey(c, constant.ContextKeyTokenGroup, req.Group)
 				common.SetContextKey(c, constant.ContextKeyUsingGroup, req.Group)
@@ -354,10 +389,14 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 }
 
 func SetupContextForSelectedChannel(c *gin.Context, channel *model.Channel, modelName string) *types.NewAPIError {
-	c.Set("original_model", modelName) // for retry
+	// Nil check must come BEFORE any channel property access to avoid panic
 	if channel == nil {
+		common.SysLog("[SETUP_CTX_DEBUG] channel is nil, returning error")
 		return types.NewError(errors.New("channel is nil"), types.ErrorCodeGetChannelFailed, types.ErrOptionWithSkipRetry())
 	}
+	common.SysLog(fmt.Sprintf("[SETUP_CTX_DEBUG] Entry: channel=id=%d, name=%s, type=%d, modelName=%s",
+		channel.Id, channel.Name, channel.Type, modelName))
+	c.Set("original_model", modelName) // for retry
 	common.SetContextKey(c, constant.ContextKeyChannelId, channel.Id)
 	common.SetContextKey(c, constant.ContextKeyChannelName, channel.Name)
 	common.SetContextKey(c, constant.ContextKeyChannelType, channel.Type)
@@ -379,7 +418,10 @@ func SetupContextForSelectedChannel(c *gin.Context, channel *model.Channel, mode
 	common.SetContextKey(c, constant.ContextKeyChannelStatusCodeMapping, channel.GetStatusCodeMapping())
 
 	key, index, newAPIError := channel.GetNextEnabledKey()
+	common.SysLog(fmt.Sprintf("[SETUP_CTX_DEBUG] GetNextEnabledKey: channel=id=%d, key=%q, index=%d, newAPIError=%v",
+		channel.Id, key, index, newAPIError))
 	if newAPIError != nil {
+		common.SysLog(fmt.Sprintf("[SETUP_CTX_DEBUG] GetNextEnabledKey returned error: %v", newAPIError))
 		return newAPIError
 	}
 	if channel.ChannelInfo.IsMultiKey {

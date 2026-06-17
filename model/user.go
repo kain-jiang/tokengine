@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
@@ -45,6 +46,7 @@ type User struct {
 	AffQuota         int            `json:"aff_quota" gorm:"type:int;default:0;column:aff_quota"`           // 邀请剩余额度
 	AffHistoryQuota  int            `json:"aff_history_quota" gorm:"type:int;default:0;column:aff_history"` // 邀请历史额度
 	InviterId        int            `json:"inviter_id" gorm:"type:int;column:inviter_id;index"`
+	CreatedAt        int64          `json:"created_at" gorm:"type:bigint;default:0;index"` // 创建时间（Unix时间戳）
 	DeletedAt        gorm.DeletedAt `gorm:"index"`
 	LinuxDOId        string         `json:"linux_do_id" gorm:"column:linux_do_id;index"`
 	Setting          string         `json:"setting" gorm:"type:text;column:setting"`
@@ -418,6 +420,7 @@ func (user *User) Insert(inviterId int) error {
 		}
 	}
 	user.Quota = common.QuotaForNewUser
+	user.CreatedAt = time.Now().Unix()
 	//user.SetAccessToken(common.GetUUID())
 	user.AffCode = common.GetRandomString(4)
 
@@ -477,6 +480,7 @@ func (user *User) InsertWithTx(tx *gorm.DB, inviterId int) error {
 		}
 	}
 	user.Quota = common.QuotaForNewUser
+	user.CreatedAt = time.Now().Unix()
 	user.AffCode = common.GetRandomString(4)
 
 	// 初始化用户设置

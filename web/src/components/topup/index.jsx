@@ -1100,13 +1100,6 @@ const TopUp = () => {
             topupInfo={topupInfo}
             onOpenHistory={handleOpenHistory}
             onOpenInvitation={() => setShowInvitation(true)}
-            subscriptionLoading={subscriptionLoading}
-            subscriptionPlans={subscriptionPlans}
-            billingPreference={billingPreference}
-            onChangeBillingPreference={updateBillingPreference}
-            activeSubscriptions={activeSubscriptions}
-            allSubscriptions={allSubscriptions}
-            reloadSubscriptionSelf={getSubscriptionSelf}
             enableHelipayTopUp={enableHelipayTopUp}
           />
         </div>

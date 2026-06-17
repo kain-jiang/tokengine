@@ -76,6 +76,8 @@ import {
   Server,
   CalendarClock,
   ImagePlus,
+  Video,
+  Receipt,
 } from 'lucide-react';
 import {
   SiAtlassian,
@@ -135,6 +137,8 @@ export function getLucideIcon(key, selected = false) {
       return <CheckSquare {...commonProps} color={iconColor} />;
     case 'topup':
       return <CreditCard {...commonProps} color={iconColor} />;
+    case 'myPlan':
+      return <Package {...commonProps} color={iconColor} />;
     case 'channel':
       return <Layers {...commonProps} color={iconColor} />;
     case 'redemption':
@@ -150,6 +154,10 @@ export function getLucideIcon(key, selected = false) {
       return <CalendarClock {...commonProps} color={iconColor} />;
     case 'setting':
       return <Settings {...commonProps} color={iconColor} />;
+    case 'textToVideo':
+      return <Video {...commonProps} color={iconColor} />;
+    case 'billing':
+      return <Receipt {...commonProps} color={iconColor} />;
     default:
       return <CircleUser {...commonProps} color={iconColor} />;
   }
@@ -399,10 +407,22 @@ export function getChannelIcon(channelType) {
       return <Kling.Color size={iconSize} />;
     case 51: // 即梦 Jimeng
       return <Jimeng.Color size={iconSize} />;
+    case 52: // Vidu（使用通用图标）
+      return <OpenAI size={iconSize} />;
     case 54: // 豆包视频 Doubao Video
       return <Doubao.Color size={iconSize} />;
+    case 55: // Sora
+      return <OpenAI size={iconSize} />;
     case 56: // Replicate
       return <Replicate size={iconSize} />;
+    case 58: // 众联 ZLHub（使用通用图标）
+      return <OpenAI size={iconSize} />;
+    case 59: // 字节seedance代理（使用通用图标）
+      return <OpenAI size={iconSize} />;
+    case 60: // Agnes AI（使用通用图标）
+      return <OpenAI size={iconSize} />;
+    case 53: // SubModel
+      return <OpenAI size={iconSize} />;
     case 8: // 自定义渠道
     case 22: // 知识库：FastGPT
       return <FastGPT.Color size={iconSize} />;

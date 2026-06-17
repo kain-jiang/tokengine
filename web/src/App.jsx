@@ -37,6 +37,8 @@ import Channel from './pages/Channel';
 import Token from './pages/Token';
 import Redemption from './pages/Redemption';
 import TopUp from './pages/TopUp';
+import MyPlan from './pages/MyPlan';
+import MyPlanBilling from './pages/MyPlanBilling';
 import Log from './pages/Log';
 import Chat from './pages/Chat';
 import Chat2Link from './pages/Chat2Link';
@@ -304,6 +306,26 @@ function App() {
             <PrivateRoute>
               <Suspense fallback={<Loading></Loading>} key={location.pathname}>
                 <TopUp />
+              </Suspense>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='/console/my-plan'
+          element={
+            <PrivateRoute>
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <MyPlan />
+              </Suspense>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='/console/billing'
+          element={
+            <PrivateRoute>
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <MyPlanBilling />
               </Suspense>
             </PrivateRoute>
           }

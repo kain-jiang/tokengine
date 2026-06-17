@@ -91,6 +91,9 @@ func RelayErrorHandler(ctx context.Context, resp *http.Response, showBodyWhenFai
 		return
 	}
 	CloseResponseBodyGracefully(resp)
+
+	// 记录上游 API 返回的完整错误响应
+	logger.LogError(ctx, fmt.Sprintf("[UPSTREAM_ERROR] status=%d, body=%s, url=%s", resp.StatusCode, string(responseBody), resp.Request.URL.String()))
 	var errResponse dto.GeneralErrorResponse
 	buildErrWithBody := func(message string) error {
 		if message == "" {

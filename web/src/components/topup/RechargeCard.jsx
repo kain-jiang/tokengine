@@ -33,8 +33,6 @@ import {
   Col,
   Spin,
   Tooltip,
-  Tabs,
-  TabPane,
 } from '@douyinfe/semi-ui';
 import { SiAlipay, SiWechat, SiStripe } from 'react-icons/si';
 import {
@@ -44,13 +42,11 @@ import {
   BarChart2,
   TrendingUp,
   Receipt,
-  Sparkles,
   Gift,
 } from 'lucide-react';
 import { IconGift } from '@douyinfe/semi-icons';
 import { useMinimumLoadingTime } from '../../hooks/common/useMinimumLoadingTime';
 import { getCurrencyConfig } from '../../helpers/render';
-import SubscriptionPlansCard from './SubscriptionPlansCard';
 
 const { Text } = Typography;
 
@@ -95,35 +91,11 @@ const RechargeCard = ({
   waffoPayMethods,
   enableZsPayTopUp,
   enableHelipayTopUp,
-  subscriptionLoading = false,
-  subscriptionPlans = [],
-  billingPreference,
-  onChangeBillingPreference,
-  activeSubscriptions = [],
-  allSubscriptions = [],
-  reloadSubscriptionSelf,
 }) => {
   const onlineFormApiRef = useRef(null);
   const redeemFormApiRef = useRef(null);
-  const initialTabSetRef = useRef(false);
   const showAmountSkeleton = useMinimumLoadingTime(amountLoading);
-  const [activeTab, setActiveTab] = useState('topup');
   const [isTopUpInputFocused, setIsTopUpInputFocused] = useState(false);
-  const shouldShowSubscription =
-    !subscriptionLoading && subscriptionPlans.length > 0;
-
-  useEffect(() => {
-    if (initialTabSetRef.current) return;
-    if (subscriptionLoading) return;
-    setActiveTab(shouldShowSubscription ? 'subscription' : 'topup');
-    initialTabSetRef.current = true;
-  }, [shouldShowSubscription, subscriptionLoading]);
-
-  useEffect(() => {
-    if (!shouldShowSubscription && activeTab !== 'topup') {
-      setActiveTab('topup');
-    }
-  }, [shouldShowSubscription, activeTab]);
 
   // 判断是否只启用了招行支付（是的话隐藏充值数量输入和支付方式选择）
   const onlyZsPayEnabled = enableZsPayTopUp && !enableOnlineTopUp && !enableStripeTopUp && !enableWaffoTopUp && !enableHelipayTopUp;
@@ -733,56 +705,12 @@ const RechargeCard = ({
             theme='solid'
             onClick={onOpenHistory}
           >
-            {t('账单')}
+            {t('充值账单')}
           </Button>
         </div>
       </div>
 
-      {shouldShowSubscription ? (
-        <Tabs type='card' activeKey={activeTab} onChange={setActiveTab}>
-          <TabPane
-            tab={
-              <div className='flex items-center gap-2'>
-                <Sparkles size={16} />
-                {t('订阅套餐')}
-              </div>
-            }
-            itemKey='subscription'
-          >
-            <div className='py-2'>
-              <SubscriptionPlansCard
-                t={t}
-                loading={subscriptionLoading}
-                plans={subscriptionPlans}
-                payMethods={payMethods}
-                enableOnlineTopUp={enableOnlineTopUp}
-                enableStripeTopUp={enableStripeTopUp}
-                enableCreemTopUp={enableCreemTopUp}
-                billingPreference={billingPreference}
-                onChangeBillingPreference={onChangeBillingPreference}
-                activeSubscriptions={activeSubscriptions}
-                allSubscriptions={allSubscriptions}
-                reloadSubscriptionSelf={reloadSubscriptionSelf}
-                withCard={false}
-                userQuota={userState?.user?.quota || 0}
-              />
-            </div>
-          </TabPane>
-          <TabPane
-            tab={
-              <div className='flex items-center gap-2'>
-                <Wallet size={16} />
-                {t('额度充值')}
-              </div>
-            }
-            itemKey='topup'
-          >
-            <div className='py-2'>{topupContent}</div>
-          </TabPane>
-        </Tabs>
-      ) : (
-        topupContent
-      )}
+      {topupContent}
     </Card>
   );
 };
