@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"strconv"
 	"time"
@@ -110,98 +111,16 @@ func RequestZSPay(c *gin.Context) {
 func ZSPayNotify(c *gin.Context) {
 	var notifyData service.ZSPaymentNotifyData
 
-	if c.Request.Method == "POST" {
-		if err := c.Request.ParseForm(); err != nil {
-			log.Println("招商银行聚合支付回调POST解析失败:", err)
-			c.Writer.Write([]byte("fail"))
-			return
-		}
-
-		for key, values := range c.Request.PostForm {
-			if len(values) > 0 {
-				switch key {
-				case "version":
-					notifyData.Version = values[0]
-				case "encoding":
-					notifyData.Encoding = values[0]
-				case "signMethod":
-					notifyData.SignMethod = values[0]
-				case "sign":
-					notifyData.Sign = values[0]
-				case "merId":
-					notifyData.MerID = values[0]
-				case "orderId":
-					notifyData.OrderID = values[0]
-				case "cmbOrderId":
-					notifyData.CmbOrderID = values[0]
-				case "userId":
-					notifyData.UserID = values[0]
-				case "txnAmt":
-					notifyData.TxnAmt = values[0]
-				case "dscAmt":
-					notifyData.DscAmt = values[0]
-				case "payType":
-					notifyData.PayType = values[0]
-				case "openId":
-					notifyData.OpenID = values[0]
-				case "payBank":
-					notifyData.PayBank = values[0]
-				case "thirdOrderId":
-					notifyData.ThirdOrderID = values[0]
-				case "txnTime":
-					notifyData.TxnTime = values[0]
-				case "endDate":
-					notifyData.EndDate = values[0]
-				case "endTime":
-					notifyData.EndTime = values[0]
-				case "mchReserved":
-					notifyData.MchReserved = values[0]
-				}
-			}
-		}
-	} else {
-		for key, values := range c.Request.URL.Query() {
-			if len(values) > 0 {
-				switch key {
-				case "version":
-					notifyData.Version = values[0]
-				case "encoding":
-					notifyData.Encoding = values[0]
-				case "signMethod":
-					notifyData.SignMethod = values[0]
-				case "sign":
-					notifyData.Sign = values[0]
-				case "merId":
-					notifyData.MerID = values[0]
-				case "orderId":
-					notifyData.OrderID = values[0]
-				case "cmbOrderId":
-					notifyData.CmbOrderID = values[0]
-				case "userId":
-					notifyData.UserID = values[0]
-				case "txnAmt":
-					notifyData.TxnAmt = values[0]
-				case "dscAmt":
-					notifyData.DscAmt = values[0]
-				case "payType":
-					notifyData.PayType = values[0]
-				case "openId":
-					notifyData.OpenID = values[0]
-				case "payBank":
-					notifyData.PayBank = values[0]
-				case "thirdOrderId":
-					notifyData.ThirdOrderID = values[0]
-				case "txnTime":
-					notifyData.TxnTime = values[0]
-				case "endDate":
-					notifyData.EndDate = values[0]
-				case "endTime":
-					notifyData.EndTime = values[0]
-				case "mchReserved":
-					notifyData.MchReserved = values[0]
-				}
-			}
-		}
+	// 招行回调是 formdata 格式，使用 ShouldBind 自动绑定
+	// 支持 application/x-www-form-urlencoded 和 multipart/form-data
+	if err := c.ShouldBind(&notifyData); err != nil {
+		log.Printf("[ZSPay-Notify] 绑定失败: %v", err)
+		// 记录原始请求信息用于调试
+		log.Printf("[ZSPay-Notify] Content-Type: %s", c.Request.Header.Get("Content-Type"))
+		body, _ := io.ReadAll(c.Request.Body)
+		log.Printf("[ZSPay-Notify] 原始body: %s", string(body))
+		c.Writer.Write([]byte("fail"))
+		return
 	}
 
 	log.Printf("[ZSPay-Notify] 收到回调: orderId=%s, cmbOrderId=%s, txnAmt=%s, payType=%s",

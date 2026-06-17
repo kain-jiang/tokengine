@@ -523,7 +523,8 @@ const MySubscriptionSection = ({
       dataIndex: 'group',
       width: 120,
     },
-    {title: t('已用额度'),
+    {
+      title: t('已用额度'),
       dataIndex: 'usedQuota',
       width: 150,
     },
