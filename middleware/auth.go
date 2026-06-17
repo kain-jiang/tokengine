@@ -40,6 +40,8 @@ func authHelper(c *gin.Context, minRole int) {
 	id := session.Get("id")
 	status := session.Get("status")
 	useAccessToken := false
+	fmt.Printf("[DEBUG] Session values - id: %v (type: %T), username: %v, role: %v, status: %v\n",
+		id, id, username, role, status)
 	if username == nil {
 		// Check access token
 		accessToken := c.Request.Header.Get("Authorization")
@@ -94,6 +96,7 @@ func authHelper(c *gin.Context, minRole int) {
 	}
 	// get header New-Api-User
 	apiUserIdStr := c.Request.Header.Get("New-Api-User")
+	fmt.Println("apiUserIdStr", apiUserIdStr)
 	if apiUserIdStr == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
@@ -103,6 +106,7 @@ func authHelper(c *gin.Context, minRole int) {
 		return
 	}
 	apiUserId, err := strconv.Atoi(apiUserIdStr)
+	fmt.Println("apiUserId", apiUserId)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
