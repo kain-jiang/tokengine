@@ -103,7 +103,7 @@ const QRCodeModal = ({ qrCodeUrl, tradeNo, amount, expireAt, onSuccess, onRefres
   
   // 单次查询支付状态
   const checkPaymentStatus = useCallback(async () => {
-    if (!tradeNo || remainingSeconds <= 0 || isPaid) {
+    if (!tradeNo || isPaid) {
       return false;
     }
     
@@ -163,13 +163,13 @@ const QRCodeModal = ({ qrCodeUrl, tradeNo, amount, expireAt, onSuccess, onRefres
     stopPolling();
     
     pollingTimerRef.current = setInterval(async () => {
-      if (!tradeNo || remainingSeconds <= 0 || isPaid) {
+      if (!tradeNo || isPaid) {
         stopPolling();
         return;
       }
       await checkPaymentStatus();
     }, 5000); // 每5秒轮询一次
-  }, [tradeNo, remainingSeconds, isPaid, checkPaymentStatus]);
+  }, [tradeNo, isPaid, checkPaymentStatus]);
   
   // 停止轮询
   const stopPolling = useCallback(() => {
