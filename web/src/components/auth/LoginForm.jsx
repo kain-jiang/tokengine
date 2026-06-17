@@ -474,7 +474,7 @@ const LoginForm = () => {
   // 包装的重置密码点击处理
   const handleResetPasswordClick = () => {
     setResetPasswordLoading(true);
-    navigate('/reset');
+    navigate('/resetWithPhone');
     setResetPasswordLoading(false);
   };
 
@@ -722,12 +722,17 @@ const LoginForm = () => {
         <div className='w-full max-w-md'>
           <div className='flex items-center justify-center mb-6 gap-2'>
             <img src={logo} alt='Logo' className='h-10 rounded-full' />
-            <Title heading={3} className='section-heading'>{systemName}</Title>
+            <Title heading={3} className='section-heading'>
+              {systemName}
+            </Title>
           </div>
 
           <Card className='border border-border-light !rounded-lg overflow-hidden shadow-elevated'>
             <div className='flex justify-center pt-6 pb-2'>
-              <Title heading={3} className='text-gray-800 dark:text-gray-200 section-heading'>
+              <Title
+                heading={3}
+                className='text-gray-800 dark:text-gray-200 section-heading'
+              >
                 {t('登 录')}
               </Title>
             </div>
@@ -825,6 +830,15 @@ const LoginForm = () => {
                     loading={resetPasswordLoading}
                   >
                     {t('忘记密码？')}
+                  </Button>
+                  <Button
+                    theme='borderless'
+                    type='tertiary'
+                    className='w-full !rounded-md body'
+                    onClick={() => navigate('/login/phone')}
+                    loading={resetPasswordLoading}
+                  >
+                    {t('手机号登录')}
                   </Button>
                 </div>
               </Form>

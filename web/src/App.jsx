@@ -24,6 +24,8 @@ import User from './pages/User';
 import { AuthRedirect, PrivateRoute, AdminRoute } from './helpers';
 import RegisterForm from './components/auth/RegisterForm';
 import LoginForm from './components/auth/LoginForm';
+import PhoneLoginForm from './components/auth/PhoneLoginForm';
+import PasswordResetWithPhone from './components/auth/PasswordResetWithPhone';
 import NotFound from './pages/NotFound';
 import Forbidden from './pages/Forbidden';
 import Setting from './pages/Setting';
@@ -199,6 +201,16 @@ function App() {
           }
         />
         <Route
+          path='/login/phone'
+          element={
+            <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+              <AuthRedirect>
+                <PhoneLoginForm />
+              </AuthRedirect>
+            </Suspense>
+          }
+        />
+        <Route
           path='/register'
           element={
             <Suspense fallback={<Loading></Loading>} key={location.pathname}>
@@ -213,6 +225,16 @@ function App() {
           element={
             <Suspense fallback={<Loading></Loading>} key={location.pathname}>
               <PasswordResetForm />
+            </Suspense>
+          }
+        />
+        <Route
+          path='/resetWithPhone'
+          element={
+            <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+              <AuthRedirect>
+                <PasswordResetWithPhone />
+              </AuthRedirect>
             </Suspense>
           }
         />

@@ -50,6 +50,7 @@ import {
   IconUser,
   IconLock,
   IconKey,
+  IconPhone,
 } from '@douyinfe/semi-icons';
 import {
   onGitHubOAuthClicked,
@@ -102,7 +103,7 @@ const RegisterForm = () => {
   const [wechatCodeSubmitLoading, setWechatCodeSubmitLoading] = useState(false);
   const [customOAuthLoading, setCustomOAuthLoading] = useState({});
   const [disableButton, setDisableButton] = useState(false);
-  const [countdown, setCountdown] = useState(30);
+  const [countdown, setCountdown] = useState(60);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [hasUserAgreement, setHasUserAgreement] = useState(false);
   const [hasPrivacyPolicy, setHasPrivacyPolicy] = useState(false);
@@ -163,7 +164,7 @@ const RegisterForm = () => {
       }, 1000);
     } else if (countdown === 0) {
       setDisableButton(false);
-      setCountdown(30);
+      setCountdown(60);
     }
     return () => clearInterval(countdownInterval); // Clean up on unmount
   }, [disableButton, countdown]);
@@ -224,6 +225,19 @@ const RegisterForm = () => {
       showInfo('两次输入的密码不一致');
       return;
     }
+    if (inputs.telephone && !/^1[3-9]\d{9}$/.test(inputs.telephone)) {
+      showInfo('请输入正确的手机号格式');
+      return;
+    }
+    if (inputs.telephone && !inputs.verification_code) {
+      showInfo('请输入短信验证码');
+      return;
+    }
+    if (inputs.telephone && !/^\d{6}$/.test(inputs.verification_code)) {
+      showInfo('请输入6位数字验证码');
+      return;
+    }
+
     if (username && password) {
       if (turnstileEnabled && turnstileToken === '') {
         showInfo('请稍后几秒重试，Turnstile 正在检查用户环境！');
@@ -274,6 +288,39 @@ const RegisterForm = () => {
       }
     } catch (error) {
       showError('发送验证码失败，请重试');
+    } finally {
+      setVerificationCodeLoading(false);
+    }
+  };
+
+  // 发送短信验证码
+  const sendSMSVerificationCode = async () => {
+    const phoneRegex = /^1[3-9]\d{9}$/;
+    if (!phoneRegex.test(inputs.telephone)) {
+      showInfo('请输入正确的手机号格式');
+      return;
+    }
+    if (turnstileEnabled && turnstileToken === '') {
+      showInfo('请稍后几秒重试，Turnstile 正在检查用户环境！');
+      return;
+    }
+    setVerificationCodeLoading(true);
+    try {
+      const res = await API.post(
+        `/api/verify/code?turnstile=${turnstileToken}`,
+        {
+          telephone: inputs.telephone,
+        },
+      );
+      const { success, message } = res.data;
+      if (success) {
+        showSuccess('短信验证码发送成功，请检查你的手机！');
+        setDisableButton(true);
+      } else {
+        showError(message);
+      }
+    } catch (error) {
+      showError('发送短信验证码失败，请重试');
     } finally {
       setVerificationCodeLoading(false);
     }
@@ -600,6 +647,47 @@ const RegisterForm = () => {
                   mode='password'
                   onChange={(value) => handleChange('password2', value)}
                   prefix={<IconLock />}
+                />
+
+                <Form.Input
+                  field='telephone'
+                  label={t('手机号')}
+                  placeholder={t('输入手机号')}
+                  name='telephone'
+                  onChange={(value) => handleChange('telephone', value)}
+                  prefix={<IconPhone />}
+                />
+
+                <Button
+                  theme='light'
+                  className='w-full !rounded-full font-semibold transition-colors duration-200'
+                  type='tertiary'
+                  onClick={sendSMSVerificationCode}
+                  loading={verificationCodeLoading}
+                  disabled={
+                    disableButton ||
+                    verificationCodeLoading
+                  }
+                  style={{
+                    fontWeight: '600',
+                    backgroundColor: disableButton || verificationCodeLoading ? '#e5e7eb' : '#f3f4f6',
+                    color: disableButton || verificationCodeLoading ? '#CCCED0' : '#2563eb',
+                    cursor: disableButton || verificationCodeLoading ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {disableButton
+                    ? `${t('重新发送')} (${countdown})`
+                    : t('获取验证码')}
+                </Button>
+
+                <Form.Input
+                  field='verification_code'
+                  label={t('短信验证码')}
+                  placeholder={t('输入6位验证码')}
+                  name='verification_code'
+                  onChange={(value) => handleChange('verification_code', value)}
+                  prefix={<IconKey />}
+                  maxLength={6}
                 />
 
                 {showEmailVerification && (
