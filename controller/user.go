@@ -131,6 +131,11 @@ func LoginWithPhone(c *gin.Context) {
 		return
 	}
 
+	if err = common.Validate.Struct(&request); err != nil {
+		common.ApiErrorI18n(c, i18n.MsgUserInputInvalid, map[string]any{"Error": err.Error()})
+		return
+	}
+
 	// 验证短信验证码
 	if !common.VerifySMSCodeWithKey(request.Telephone, request.VerificationCode) {
 		common.ApiErrorMsg(c, i18n.MsgUserVerificationCodeError)
@@ -1078,6 +1083,51 @@ func EmailBind(c *gin.Context) {
 	}
 	user.Email = email
 	// no need to check if this email already taken, because we have used verification code to check it
+	err = user.Update(false)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+	})
+	return
+}
+
+type phoneBindRequest struct {
+	Telephone        string `json:"telephone" validate:"len=11"`
+	VerificationCode string `json:"verification_code" validate:"len=6"`
+}
+
+func PhoneBind(c *gin.Context) {
+	var req phoneBindRequest
+	if err := common.DecodeJson(c.Request.Body, &req); err != nil {
+		common.ApiError(c, errors.New("invalid request body"))
+		return
+	}
+	if err := common.Validate.Struct(&req); err != nil {
+		common.ApiErrorI18n(c, i18n.MsgUserInputInvalid, map[string]any{"Error": err.Error()})
+		return
+	}
+
+	if !common.VerifySMSCodeWithKey(req.Telephone, req.VerificationCode) {
+		common.ApiErrorMsg(c, "短信验证码错误或已过期")
+		return
+	}
+	common.DeleteSMSCode(req.Telephone)
+	session := sessions.Default(c)
+	id := session.Get("id")
+	user := model.User{
+		Id: id.(int),
+	}
+	err := user.FillUserById()
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	user.TelePhone = req.Telephone
+	// 绑定手机号
 	err = user.Update(false)
 	if err != nil {
 		common.ApiError(c, err)

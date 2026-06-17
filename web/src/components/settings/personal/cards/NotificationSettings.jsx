@@ -32,7 +32,7 @@ import {
   Row,
   Col,
 } from '@douyinfe/semi-ui';
-import { IconMail, IconKey, IconBell, IconLink } from '@douyinfe/semi-icons';
+import { IconMail, IconKey, IconBell, IconLink, IconPhone } from '@douyinfe/semi-icons';
 import { ShieldCheck, Bell, DollarSign, Settings } from 'lucide-react';
 import {
   renderQuotaWithPrompt,
@@ -434,6 +434,7 @@ const NotificationSettings = ({
                   rules={[{ required: true, message: t('请选择通知方式') }]}
                 >
                   <Radio value='email'>{t('邮件通知')}</Radio>
+                  <Radio value='sms'>{t('短信通知')}</Radio>
                   <Radio value='webhook'>{t('Webhook通知')}</Radio>
                   <Radio value='bark'>{t('Bark通知')}</Radio>
                   <Radio value='gotify'>{t('Gotify通知')}</Radio>
@@ -503,6 +504,23 @@ const NotificationSettings = ({
                     prefix={<IconMail />}
                     extraText={t(
                       '设置用于接收额度预警的邮箱地址，不填则使用账号绑定的邮箱',
+                    )}
+                    showClear
+                  />
+                )}
+
+                {/* 短信通知设置 */}
+                {notificationSettings.warningType === 'sms' && (
+                  <Form.Input
+                    field='notificationPhone'
+                    label={t('通知手机号')}
+                    placeholder={t('留空则使用账号绑定的手机号')}
+                    onChange={(val) =>
+                      handleFormChange('notificationPhone', val)
+                    }
+                    prefix={<IconPhone />}
+                    extraText={t(
+                      '设置用于接收额度预警的手机号码，不填则使用账号绑定的手机号',
                     )}
                     showClear
                   />

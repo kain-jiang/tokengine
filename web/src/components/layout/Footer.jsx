@@ -55,9 +55,7 @@ const FooterBar = () => {
 
             <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 w-full'>
               <div className='text-left'>
-                <p className='mb-5 feature-title'>
-                  {t('关于我们')}
-                </p>
+                <p className='mb-5 feature-title'>{t('关于我们')}</p>
                 <div className='flex flex-col gap-4'>
                   <a
                     href='https://docs.newapi.pro/wiki/project-introduction/'
@@ -87,9 +85,7 @@ const FooterBar = () => {
               </div>
 
               <div className='text-left'>
-                <p className='mb-5 feature-title'>
-                  {t('文档')}
-                </p>
+                <p className='mb-5 feature-title'>{t('文档')}</p>
                 <div className='flex flex-col gap-4'>
                   <a
                     href='https://docs.newapi.pro/getting-started/'
@@ -119,9 +115,7 @@ const FooterBar = () => {
               </div>
 
               <div className='text-left'>
-                <p className='mb-5 feature-title'>
-                  {t('相关项目')}
-                </p>
+                <p className='mb-5 feature-title'>{t('相关项目')}</p>
                 <div className='flex flex-col gap-4'>
                   <a
                     href='https://github.com/songquanpeng/one-api'
@@ -151,9 +145,7 @@ const FooterBar = () => {
               </div>
 
               <div className='text-left'>
-                <p className='mb-5 feature-title'>
-                  {t('友情链接')}
-                </p>
+                <p className='mb-5 feature-title'>{t('友情链接')}</p>
                 <div className='flex flex-col gap-4'>
                   <a
                     href='https://github.com/Calcium-Ion/new-api-horizon'
@@ -188,10 +180,10 @@ const FooterBar = () => {
         <div className='flex flex-col md:flex-row items-center justify-between w-full max-w-[1110px] gap-6'>
           <div className='flex flex-wrap items-center gap-2'>
             <Typography.Text className='text-sm text-white/80 caption'>
-              © {currentYear} {systemName}. {t('版权所有')}
+              {/*© {currentYear} {systemName}. {t('版权所有')}*/}
+              <a href='https://beian.miit.gov.cn' target={'_blank'}>蜀ICP备2026023568号</a>
             </Typography.Text>
           </div>
-
         </div>
       </footer>
     ),
