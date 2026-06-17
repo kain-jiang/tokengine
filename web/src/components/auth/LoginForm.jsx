@@ -59,6 +59,7 @@ import {
   IconMail,
   IconLock,
   IconKey,
+  IconUser,
 } from '@douyinfe/semi-icons';
 import OIDCIcon from '../common/logo/OIDCIcon';
 import WeChatIcon from '../common/logo/WeChatIcon';
@@ -752,11 +753,11 @@ const LoginForm = () => {
               <Form className='space-y-3'>
                 <Form.Input
                   field='username'
-                  label={t('用户名或邮箱')}
-                  placeholder={t('请输入您的用户名或邮箱地址')}
+                  label={t('用户名或手机号')}
+                  placeholder={t('请输入您的用户名或手机号')}
                   name='username'
                   onChange={(value) => handleChange('username', value)}
-                  prefix={<IconMail />}
+                  prefix={<IconUser/>}
                 />
 
                 <Form.Input
@@ -838,7 +839,7 @@ const LoginForm = () => {
                     onClick={() => navigate('/login/phone')}
                     loading={resetPasswordLoading}
                   >
-                    {t('手机号登录')}
+                    {t('手机号验证码登录')}
                   </Button>
                 </div>
               </Form>
