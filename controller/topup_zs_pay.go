@@ -1,11 +1,10 @@
 package controller
 
 import (
+	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -109,29 +108,39 @@ func RequestZSPay(c *gin.Context) {
 	})
 }
 
+// 只有成功支付的交易才会有支付结果通知
 func ZSPayNotify(c *gin.Context) {
 	var notifyData service.ZSPaymentNotifyData
 
-	// 先读取原始 body 用于调试
-	body, _ := io.ReadAll(c.Request.Body)
-	c.Request.Body = io.NopCloser(strings.NewReader(string(body)))
-	log.Printf("[ZSPay-Notify] Content-Type: %s", c.Request.Header.Get("Content-Type"))
-	log.Printf("[ZSPay-Notify] 原始body: %s", string(body))
-	log.Printf("[ZSPay-Notify] Form: %+v", c.Request.Form)
-	log.Printf("[ZSPay-Notify] PostForm: %+v", c.Request.PostForm)
-	log.Printf("[ZSPay-Notify] MultipartForm: %+v", c.Request.MultipartForm)
-
-	// 招行回调是 formdata 格式，使用 ShouldBind 自动绑定
-	// 支持 application/x-www-form-urlencoded 和 multipart/form-data
-	if err := c.ShouldBind(&notifyData); err != nil {
-		log.Printf("[ZSPay-Notify] 绑定失败: %v", err)
-		// 记录原始请求信息用于调试
-		log.Printf("[ZSPay-Notify] Content-Type: %s", c.Request.Header.Get("Content-Type"))
-		body, _ := io.ReadAll(c.Request.Body)
-		log.Printf("[ZSPay-Notify] 原始body: %s", string(body))
+	// 招行回调格式：biz_content=<URL编码的JSON>&sign=xxx&encoding=UTF-8&version=0.0.1&signMethod=02
+	// 需要先解析 form 获取 biz_content，再解析 biz_content 中的 JSON
+	if err := c.Request.ParseForm(); err != nil {
+		log.Printf("[ZSPay-Notify] ParseForm失败: %v", err)
 		c.Writer.Write([]byte("fail"))
 		return
 	}
+
+	bizContent := c.Request.FormValue("biz_content")
+	if bizContent == "" {
+		log.Println("[ZSPay-Notify] biz_content为空")
+		c.Writer.Write([]byte("fail"))
+		return
+	}
+
+	log.Printf("[ZSPay-Notify] biz_content: %s", bizContent)
+
+	// 解析 biz_content 中的 JSON 数据
+	if err := json.Unmarshal([]byte(bizContent), &notifyData); err != nil {
+		log.Printf("[ZSPay-Notify] 解析biz_content失败: %v", err)
+		c.Writer.Write([]byte("fail"))
+		return
+	}
+
+	// 获取外层字段（sign, version, encoding, signMethod）
+	notifyData.Sign = c.Request.FormValue("sign")
+	notifyData.Version = c.Request.FormValue("version")
+	notifyData.Encoding = c.Request.FormValue("encoding")
+	notifyData.SignMethod = c.Request.FormValue("signMethod")
 
 	log.Printf("[ZSPay-Notify] 收到回调: orderId=%s, cmbOrderId=%s, txnAmt=%s, payType=%s",
 		notifyData.OrderID, notifyData.CmbOrderID, notifyData.TxnAmt, notifyData.PayType)
