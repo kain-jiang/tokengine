@@ -178,9 +178,8 @@ func ZSPayNotify(c *gin.Context) {
 			return
 		}
 
-		dAmount := decimal.NewFromInt(int64(topUp.Amount))
 		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-		quotaToAdd := int(dAmount.Mul(dQuotaPerUnit).IntPart())
+		quotaToAdd := int(decimal.NewFromFloat(topUp.Money).Mul(dQuotaPerUnit).IntPart())
 
 		if err := model.IncreaseUserQuota(topUp.UserId, quotaToAdd, true); err != nil {
 			log.Printf("招商银行聚合支付回调更新用户失败: %v", topUp)
@@ -240,9 +239,8 @@ func QueryZSPayStatus(c *gin.Context) {
 			if err := topUp.Update(); err != nil {
 				log.Printf("招商银行聚合支付查询更新订单失败: %s, 错误: %v", tradeNo, err)
 			} else {
-				dAmount := decimal.NewFromInt(topUp.Amount)
 				dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-				quotaToAdd := int(dAmount.Mul(dQuotaPerUnit).IntPart())
+				quotaToAdd := int(decimal.NewFromFloat(topUp.Money).Mul(dQuotaPerUnit).IntPart())
 
 				if err := model.IncreaseUserQuota(topUp.UserId, quotaToAdd, true); err != nil {
 					log.Printf("招商银行聚合支付查询更新用户额度失败: %s, 错误: %v", tradeNo, err)

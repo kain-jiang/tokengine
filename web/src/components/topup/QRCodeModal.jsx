@@ -258,10 +258,13 @@ const QRCodeModal = ({ qrCodeUrl, tradeNo, amount, expireAt, onSuccess, onRefres
     setIsManualCheckCooldown(false);
     startCountdown();
     
+    // 计算初始剩余时间（避免闭包中 remainingSeconds 为初始值 0）
+    const initialRemaining = calculateRemaining();
+    
     // 5秒后自动开始轮询（如果用户未点击「我已支付」）
     stopAutoPollingTimeout();
     autoPollingTimeoutRef.current = setTimeout(() => {
-      if (!isPaid && remainingSeconds > 0 && !autoPollingStarted) {
+      if (initialRemaining > 0) {
         setAutoPollingStarted(true);
         startPolling();
       }
