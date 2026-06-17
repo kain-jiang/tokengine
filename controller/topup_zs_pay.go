@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -110,6 +111,15 @@ func RequestZSPay(c *gin.Context) {
 
 func ZSPayNotify(c *gin.Context) {
 	var notifyData service.ZSPaymentNotifyData
+
+	// 先读取原始 body 用于调试
+	body, _ := io.ReadAll(c.Request.Body)
+	c.Request.Body = io.NopCloser(strings.NewReader(string(body)))
+	log.Printf("[ZSPay-Notify] Content-Type: %s", c.Request.Header.Get("Content-Type"))
+	log.Printf("[ZSPay-Notify] 原始body: %s", string(body))
+	log.Printf("[ZSPay-Notify] Form: %+v", c.Request.Form)
+	log.Printf("[ZSPay-Notify] PostForm: %+v", c.Request.PostForm)
+	log.Printf("[ZSPay-Notify] MultipartForm: %+v", c.Request.MultipartForm)
 
 	// 招行回调是 formdata 格式，使用 ShouldBind 自动绑定
 	// 支持 application/x-www-form-urlencoded 和 multipart/form-data
