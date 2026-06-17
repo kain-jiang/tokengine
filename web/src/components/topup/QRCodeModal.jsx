@@ -258,14 +258,14 @@ const QRCodeModal = ({ qrCodeUrl, tradeNo, amount, expireAt, onSuccess, onRefres
     setIsManualCheckCooldown(false);
     startCountdown();
     
-    // 1分钟后自动开始轮询（如果用户未点击「我已支付」）
+    // 5秒后自动开始轮询（如果用户未点击「我已支付」）
     stopAutoPollingTimeout();
     autoPollingTimeoutRef.current = setTimeout(() => {
       if (!isPaid && remainingSeconds > 0 && !autoPollingStarted) {
         setAutoPollingStarted(true);
         startPolling();
       }
-    }, 60 * 1000);
+    }, 5 * 1000);
     
     return () => {
       stopCountdown();

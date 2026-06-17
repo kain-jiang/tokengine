@@ -202,6 +202,18 @@ func QueryZSPayStatus(c *gin.Context) {
 		return
 	}
 
+	// 先查数据库，如果已支付就直接返回
+	topUp := model.GetTopUpByTradeNo(tradeNo)
+	if topUp != nil && topUp.Status == "success" {
+		c.JSON(200, gin.H{
+			"message":    "success",
+			"status":     "PAID",
+			"tradeState": "S",
+		})
+		return
+	}
+
+	// 数据库未支付，再查银行
 	zsService := service.GetZSPayService()
 	if zsService == nil {
 		c.JSON(200, gin.H{"message": "error", "data": "招商银行聚合支付未启用"})
