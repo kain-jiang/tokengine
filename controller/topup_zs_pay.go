@@ -1,9 +1,12 @@
 package controller
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -111,51 +114,97 @@ func ZSPayNotify(c *gin.Context) {
 	var notifyData service.ZSPaymentNotifyData
 
 	if c.Request.Method == "POST" {
-		if err := c.Request.ParseForm(); err != nil {
-			log.Println("招商银行聚合支付回调POST解析失败:", err)
-			c.Writer.Write([]byte("fail"))
-			return
-		}
+		contentType := c.Request.Header.Get("Content-Type")
+		log.Printf("[ZSPay-Notify] Content-Type: %s", contentType)
 
-		for key, values := range c.Request.PostForm {
-			if len(values) > 0 {
-				switch key {
-				case "version":
-					notifyData.Version = values[0]
-				case "encoding":
-					notifyData.Encoding = values[0]
-				case "signMethod":
-					notifyData.SignMethod = values[0]
-				case "sign":
-					notifyData.Sign = values[0]
-				case "merId":
-					notifyData.MerID = values[0]
-				case "orderId":
-					notifyData.OrderID = values[0]
-				case "cmbOrderId":
-					notifyData.CmbOrderID = values[0]
-				case "userId":
-					notifyData.UserID = values[0]
-				case "txnAmt":
-					notifyData.TxnAmt = values[0]
-				case "dscAmt":
-					notifyData.DscAmt = values[0]
-				case "payType":
-					notifyData.PayType = values[0]
-				case "openId":
-					notifyData.OpenID = values[0]
-				case "payBank":
-					notifyData.PayBank = values[0]
-				case "thirdOrderId":
-					notifyData.ThirdOrderID = values[0]
-				case "txnTime":
-					notifyData.TxnTime = values[0]
-				case "endDate":
-					notifyData.EndDate = values[0]
-				case "endTime":
-					notifyData.EndTime = values[0]
-				case "mchReserved":
-					notifyData.MchReserved = values[0]
+		if strings.Contains(contentType, "application/json") {
+			// 解析 JSON 格式的回调
+			body, err := io.ReadAll(c.Request.Body)
+			if err != nil {
+				log.Println("招商银行聚合支付回调读取body失败:", err)
+				c.Writer.Write([]byte("fail"))
+				return
+			}
+			defer c.Request.Body.Close()
+
+			log.Printf("[ZSPay-Notify] 原始回调body: %s", string(body))
+
+			// 先尝试解析为基础响应格式（包含biz_content）
+			var baseNotify struct {
+				Version    string `json:"version"`
+				Encoding   string `json:"encoding"`
+				SignMethod string `json:"signMethod"`
+				Sign       string `json:"sign"`
+				BizContent string `json:"biz_content"`
+			}
+			if err := json.Unmarshal(body, &baseNotify); err == nil && baseNotify.BizContent != "" {
+				// 有 biz_content 嵌套格式
+				notifyData.Version = baseNotify.Version
+				notifyData.Encoding = baseNotify.Encoding
+				notifyData.SignMethod = baseNotify.SignMethod
+				notifyData.Sign = baseNotify.Sign
+
+				if err := json.Unmarshal([]byte(baseNotify.BizContent), &notifyData); err != nil {
+					log.Println("招商银行聚合支付回调解析biz_content失败:", err)
+					c.Writer.Write([]byte("fail"))
+					return
+				}
+			} else {
+				// 直接解析为业务数据格式（扁平JSON）
+				if err := json.Unmarshal(body, &notifyData); err != nil {
+					log.Println("招商银行聚合支付回调JSON解析失败:", err)
+					c.Writer.Write([]byte("fail"))
+					return
+				}
+			}
+		} else {
+			// 解析 form 格式的回调
+			if err := c.Request.ParseForm(); err != nil {
+				log.Println("招商银行聚合支付回调POST解析失败:", err)
+				c.Writer.Write([]byte("fail"))
+				return
+			}
+
+			for key, values := range c.Request.PostForm {
+				if len(values) > 0 {
+					switch key {
+					case "version":
+						notifyData.Version = values[0]
+					case "encoding":
+						notifyData.Encoding = values[0]
+					case "signMethod":
+						notifyData.SignMethod = values[0]
+					case "sign":
+						notifyData.Sign = values[0]
+					case "merId":
+						notifyData.MerID = values[0]
+					case "orderId":
+						notifyData.OrderID = values[0]
+					case "cmbOrderId":
+						notifyData.CmbOrderID = values[0]
+					case "userId":
+						notifyData.UserID = values[0]
+					case "txnAmt":
+						notifyData.TxnAmt = values[0]
+					case "dscAmt":
+						notifyData.DscAmt = values[0]
+					case "payType":
+						notifyData.PayType = values[0]
+					case "openId":
+						notifyData.OpenID = values[0]
+					case "payBank":
+						notifyData.PayBank = values[0]
+					case "thirdOrderId":
+						notifyData.ThirdOrderID = values[0]
+					case "txnTime":
+						notifyData.TxnTime = values[0]
+					case "endDate":
+						notifyData.EndDate = values[0]
+					case "endTime":
+						notifyData.EndTime = values[0]
+					case "mchReserved":
+						notifyData.MchReserved = values[0]
+					}
 				}
 			}
 		}
