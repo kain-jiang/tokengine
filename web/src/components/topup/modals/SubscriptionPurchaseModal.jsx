@@ -113,6 +113,13 @@ const SubscriptionPurchaseModal = ({
   const totalAmount = Number(plan?.total_amount || 0);
   const { symbol, rate } = getCurrencyConfig();
   const price = plan ? Number(plan.price_amount || 0) : 0;
+  
+  // 计算实得价值（将额度转换为美元价值）
+  const quotaPerUnit = getQuotaPerUnit();
+  const actualValueUSD = quotaPerUnit > 0 ? totalAmount / quotaPerUnit : 0;
+  const actualValueDisplay = actualValueUSD > 0
+    ? `${symbol}${(actualValueUSD * rate).toFixed(2)}`
+    : t('不限');
   const convertedPrice = price * rate;
   const displayPrice = convertedPrice.toFixed(
     Number.isInteger(convertedPrice) ? 0 : 2,
@@ -184,14 +191,14 @@ const SubscriptionPurchaseModal = ({
               )}
               <div className='flex justify-between items-center'>
                 <Text strong className='text-slate-700 dark:text-slate-200'>
-                  {t('总额度')}：
+                  {t('实得价值')}：
                 </Text>
                 <div className='flex items-center'>
                   <Package size={14} className='mr-1 text-slate-500' />
                   {totalAmount > 0 ? (
                     <Tooltip content={`${t('原生额度')}：${totalAmount}`}>
                       <Text className='text-slate-900 dark:text-slate-100'>
-                        {formatQuotaAmount(totalAmount)}
+                        {actualValueDisplay}
                       </Text>
                     </Tooltip>
                   ) : (
