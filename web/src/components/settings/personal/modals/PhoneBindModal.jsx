@@ -57,6 +57,7 @@ const PhoneBindModal = ({
         <div className='flex gap-3'>
           <Input
             placeholder={t('输入手机号')}
+            value={inputs.telephone}
             onChange={(value) => handleInputChange('telephone', value)}
             name='telephone'
             size='large'

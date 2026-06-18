@@ -18,6 +18,8 @@ var (
 	maskIPPattern     = regexp.MustCompile(`\b(?:\d{1,3}\.){3}\d{1,3}\b`)
 	// maskApiKeyPattern matches patterns like 'api_key:xxx' or "api_key:xxx" to mask the API key value
 	maskApiKeyPattern = regexp.MustCompile(`(['"]?)api_key:([^\s'"]+)(['"]?)`)
+	// phonePattern validates Chinese mobile phone numbers (11 digits, starting with 1)
+	phonePattern = regexp.MustCompile(`^1[3-9]\d{9}$`)
 )
 
 func GetStringIfEmpty(str string, defaultValue string) string {
@@ -25,6 +27,14 @@ func GetStringIfEmpty(str string, defaultValue string) string {
 		return defaultValue
 	}
 	return str
+}
+
+// 手机号验证
+func IsValidPhoneNumber(phone string) bool {
+	if phone == "" {
+		return false
+	}
+	return phonePattern.MatchString(phone)
 }
 
 func GetRandomString(length int) string {

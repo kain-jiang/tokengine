@@ -278,6 +278,7 @@ const PersonalSetting = () => {
       userDispatch({ type: 'login', payload: data });
       setUserData(data);
       await loadPasskeyStatus();
+      inputs.telephone = userState.user?.telephone;
     } else {
       showError(message);
     }
@@ -424,6 +425,11 @@ const PersonalSetting = () => {
   };
 
   const bindPhone = async () => {
+    const phoneRegex = /^1[3-9]\d{9}$/;
+    if (!phoneRegex.test(inputs.telephone)) {
+      showError(t('请输入正确的手机号格式'));
+      return;
+    }
     if (inputs.phone_verification_code === '') {
       showError(t('请输入短信验证码！'));
       return;
@@ -445,7 +451,11 @@ const PersonalSetting = () => {
     } else {
       showError(message);
     }
-    setInputs({ ...inputs, phone_verification_code: '', telephone: '' });
+    setInputs({
+      ...inputs,
+      phone_verification_code: '',
+      telephone: userState.user.telephone,
+    });
     setLoading(false);
   };
 

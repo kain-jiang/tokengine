@@ -94,6 +94,7 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.GET("/aff", controller.GetAffCode)
 				selfRoute.GET("/topup/info", controller.GetTopUpInfo)
 				selfRoute.GET("/topup/self", controller.GetUserTopUps)
+				selfRoute.GET("/topup/self/export", controller.ExportUserTopUps)
 				selfRoute.POST("/topup", middleware.CriticalRateLimit(), controller.TopUp)
 				selfRoute.POST("/pay", middleware.CriticalRateLimit(), controller.RequestEpay)
 				selfRoute.POST("/zs_pay/pay", middleware.CriticalRateLimit(), controller.RequestZSPay)
@@ -131,6 +132,7 @@ func SetApiRouter(router *gin.Engine) {
 			{
 				adminRoute.GET("/", controller.GetAllUsers)
 				adminRoute.GET("/topup", controller.GetAllTopUps)
+				adminRoute.GET("/topup/export", controller.ExportAllTopUps)
 				adminRoute.POST("/topup/complete", controller.AdminCompleteTopUp)
 				adminRoute.GET("/search", controller.SearchUsers)
 				adminRoute.GET("/:id/oauth/bindings", controller.GetUserOAuthBindingsByAdmin)
