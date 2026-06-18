@@ -49,7 +49,6 @@ const ModelPricingTable = ({
       .filter((g) => modelEnableGroups.includes(g));
 
     // 准备表格数据
-    // 模型定价页面固定使用美元，不受全局币种设置影响
     const tableData = availableGroups.map((group) => {
       const priceData = modelData
         ? calculateModelPrice({
@@ -58,8 +57,8 @@ const ModelPricingTable = ({
             groupRatio,
             tokenUnit,
             displayPrice,
-            currency: 'USD',
-            quotaDisplayType: 'USD',
+            currency,
+            quotaDisplayType: siteDisplayType || 'USD',
           })
         : { inputPrice: '-', outputPrice: '-', price: '-' };
 
