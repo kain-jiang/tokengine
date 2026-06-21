@@ -1,7 +1,6 @@
 package common
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
@@ -86,10 +85,25 @@ func sendAliyunSMS(phoneNumber string, code string) error {
 	}
 
 	resp, err := client.SendSmsWithOptions(sendSmsRequest, &util.RuntimeOptions{})
-	bytes, err := json.Marshal(resp.Body)
-	SysLog(phoneNumber + ":" + string(bytes))
 	if err != nil {
+		SysLog(fmt.Sprintf("发送短信失败: %v, resp == nil: %v", err, resp == nil))
 		return fmt.Errorf("发送短信失败: %w", err)
+	}
+
+	if resp == nil {
+		SysLog("发送短信失败: 响应对象为空")
+		return fmt.Errorf("发送短信失败: 响应对象为空")
+	}
+
+	bytes, marshalErr := Marshal(resp.Body)
+	SysLog(phoneNumber + ":" + string(bytes))
+	if marshalErr != nil {
+		SysLog(fmt.Sprintf("序列化响应体失败: %v", marshalErr))
+	}
+
+	if resp.Body == nil {
+		SysLog("发送短信失败: 响应体为空")
+		return fmt.Errorf("发送短信失败: 响应体为空")
 	}
 
 	if resp.Body.Code == nil || *resp.Body.Code != "OK" {
@@ -97,7 +111,12 @@ func sendAliyunSMS(phoneNumber string, code string) error {
 		if resp.Body.Message != nil {
 			errorMsg = *resp.Body.Message
 		}
-		return fmt.Errorf("短信发送失败 [%s]: %s", *resp.Body.Code, errorMsg)
+		codeStr := "nil"
+		if resp.Body.Code != nil {
+			codeStr = *resp.Body.Code
+		}
+		SysLog(fmt.Sprintf("短信发送失败: Code=%s, Message=%s", codeStr, errorMsg))
+		return fmt.Errorf("短信发送失败 [%s]: %s", codeStr, errorMsg)
 	}
 
 	SysLog(fmt.Sprintf("短信发送成功: 手机号=%s, BizId=%s", phoneNumber, *resp.Body.BizId))

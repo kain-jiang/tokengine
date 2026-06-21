@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useRef } from 'react';
-import { Form, Button } from '@douyinfe/semi-ui';
+import { Form, Button, Select } from '@douyinfe/semi-ui';
 import { IconSearch } from '@douyinfe/semi-icons';
 
 const ModelsFilters = ({
@@ -27,6 +27,9 @@ const ModelsFilters = ({
   searchModels,
   loading,
   searching,
+  channels,
+  channelFilter,
+  setChannelFilter,
   t,
 }) => {
   // Handle form reset and immediate search
@@ -35,71 +38,93 @@ const ModelsFilters = ({
   const handleReset = () => {
     if (!formApiRef.current) return;
     formApiRef.current.reset();
+    setChannelFilter('');
     setTimeout(() => {
       searchModels();
     }, 100);
   };
 
   return (
-    <Form
-      initValues={formInitValues}
-      getFormApi={(api) => {
-        setFormApi(api);
-        formApiRef.current = api;
-      }}
-      onSubmit={searchModels}
-      allowEmpty={true}
-      autoComplete='off'
-      layout='horizontal'
-      trigger='change'
-      stopValidateWithError={false}
-      className='w-full md:w-auto order-1 md:order-2'
-    >
-      <div className='flex flex-col md:flex-row items-center gap-2 w-full md:w-auto'>
-        <div className='relative w-full md:w-56'>
-          <Form.Input
-            field='searchKeyword'
-            prefix={<IconSearch />}
-            placeholder={t('搜索模型名称')}
-            showClear
-            pure
-            size='small'
-          />
-        </div>
-
-        <div className='relative w-full md:w-56'>
-          <Form.Input
-            field='searchVendor'
-            prefix={<IconSearch />}
-            placeholder={t('搜索供应商')}
-            showClear
-            pure
-            size='small'
-          />
-        </div>
-
-        <div className='flex gap-2 w-full md:w-auto'>
-          <Button
-            type='tertiary'
-            htmlType='submit'
-            loading={loading || searching}
-            className='flex-1 md:flex-initial md:w-auto'
-            size='small'
-          >
-            {t('查询')}
-          </Button>
-
-          <Button
-            type='tertiary'
-            onClick={handleReset}
-            className='flex-1 md:flex-initial md:w-auto'
-            size='small'
-          >
-            {t('重置')}
-          </Button>
-        </div>
+    <div className='flex flex-col gap-2 w-full'>
+      {/* Channel filter dropdown */}
+      <div className='w-full md:w-56'>
+        <Select
+          placeholder={t('筛选渠道')}
+          value={channelFilter}
+          onChange={(value) => setChannelFilter(value)}
+          style={{ width: '100%' }}
+          size='small'
+          showClear
+        >
+          <Select.Option value=''>{t('全部渠道')}</Select.Option>
+          {channels.map((ch) => (
+            <Select.Option key={ch.id} value={ch.name}>
+              {ch.name}
+            </Select.Option>
+          ))}
+        </Select>
       </div>
-    </Form>
+
+      <Form
+        initValues={formInitValues}
+        getFormApi={(api) => {
+          setFormApi(api);
+          formApiRef.current = api;
+        }}
+        onSubmit={searchModels}
+        allowEmpty={true}
+        autoComplete='off'
+        layout='horizontal'
+        trigger='change'
+        stopValidateWithError={false}
+        className='w-full md:w-auto order-1 md:order-2'
+      >
+        <div className='flex flex-col md:flex-row items-center gap-2 w-full md:w-auto'>
+          <div className='relative w-full md:w-56'>
+            <Form.Input
+              field='searchKeyword'
+              prefix={<IconSearch />}
+              placeholder={t('搜索模型名称')}
+              showClear
+              pure
+              size='small'
+            />
+          </div>
+
+          <div className='relative w-full md:w-56'>
+            <Form.Input
+              field='searchVendor'
+              prefix={<IconSearch />}
+              placeholder={t('搜索供应商')}
+              showClear
+              pure
+              size='small'
+            />
+          </div>
+
+          <div className='flex gap-2 w-full md:w-auto'>
+            <Button
+              type='tertiary'
+              htmlType='submit'
+              loading={loading || searching}
+              className='flex-1 md:flex-initial md:w-auto'
+              size='small'
+            >
+              {t('查询')}
+            </Button>
+
+            <Button
+              type='tertiary'
+              onClick={handleReset}
+              className='flex-1 md:flex-initial md:w-auto'
+              size='small'
+            >
+              {t('重置')}
+            </Button>
+          </div>
+        </div>
+      </Form>
+    </div>
   );
 };
 

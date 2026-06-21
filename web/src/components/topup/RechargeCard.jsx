@@ -376,7 +376,7 @@ const RechargeCard = ({
                 <Form.Slot
                   label={
                     <div className='flex items-center gap-2'>
-                      <span>{t('选择充值额度')}</span>
+                      <span>{t('快捷充值')}</span>
                     </div>
                   }
                 >
@@ -564,8 +564,8 @@ const RechargeCard = ({
                 </Form.Slot>
               )}
 
-              {/* 招商银行聚合支付区域 - 当只启用招行支付且未选择套餐时隐藏 */}
-              {enableZsPayTopUp && !(onlyZsPayEnabled && !selectedPreset) && (
+              {/* 招商银行聚合支付区域 - 招行支付启用时始终显示 */}
+              {enableZsPayTopUp && (
                 <Form.Slot label={t('招商银行聚合支付')}>
                   <div className='flex items-center gap-3'>
                     <Button

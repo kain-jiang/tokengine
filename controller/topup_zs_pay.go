@@ -178,9 +178,14 @@ func ZSPayNotify(c *gin.Context) {
 			return
 		}
 
-		dAmount := decimal.NewFromInt(int64(topUp.Amount))
+		// 招行支付金额为人民币（CNY），需要先转换为美元再计算配额
+		// 公式：配额 = (人民币金额 / 汇率) * 每美元配额
+		usdExchangeRate := operation_setting.USDExchangeRate
+		if usdExchangeRate <= 0 {
+			usdExchangeRate = 7.3 // 默认汇率
+		}
 		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-		quotaToAdd := int(dAmount.Mul(dQuotaPerUnit).IntPart())
+		quotaToAdd := int(decimal.NewFromFloat(topUp.Money).Div(decimal.NewFromFloat(usdExchangeRate)).Mul(dQuotaPerUnit).IntPart())
 
 		if err := model.IncreaseUserQuota(topUp.UserId, quotaToAdd, true); err != nil {
 			log.Printf("招商银行聚合支付回调更新用户失败: %v", topUp)
@@ -190,6 +195,8 @@ func ZSPayNotify(c *gin.Context) {
 
 		log.Printf("招商银行聚合支付回调成功: %s, 用户: %d, 充值: %d", orderNo, topUp.UserId, quotaToAdd)
 		model.RecordLog(topUp.UserId, model.LogTypeTopup, fmt.Sprintf("使用招商银行聚合支付成功，充值金额: %v", quotaToAdd))
+	} else {
+		log.Printf("招商银行聚合支付回调时，本次订单状态是: %s", topUp.Status)
 	}
 
 	c.Writer.Write([]byte("success"))
@@ -202,6 +209,18 @@ func QueryZSPayStatus(c *gin.Context) {
 		return
 	}
 
+	// 先查数据库，如果已支付就直接返回
+	topUp := model.GetTopUpByTradeNo(tradeNo)
+	if topUp != nil && topUp.Status == "success" {
+		c.JSON(200, gin.H{
+			"message":    "success",
+			"status":     "PAID",
+			"tradeState": "S",
+		})
+		return
+	}
+
+	// 数据库未支付，再查银行
 	zsService := service.GetZSPayService()
 	if zsService == nil {
 		c.JSON(200, gin.H{"message": "error", "data": "招商银行聚合支付未启用"})
@@ -228,9 +247,13 @@ func QueryZSPayStatus(c *gin.Context) {
 			if err := topUp.Update(); err != nil {
 				log.Printf("招商银行聚合支付查询更新订单失败: %s, 错误: %v", tradeNo, err)
 			} else {
-				dAmount := decimal.NewFromInt(topUp.Amount)
+				// 招行支付金额为人民币（CNY），需要先转换为美元再计算配额
+				usdExchangeRate := operation_setting.USDExchangeRate
+				if usdExchangeRate <= 0 {
+					usdExchangeRate = 7.3 // 默认汇率
+				}
 				dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-				quotaToAdd := int(dAmount.Mul(dQuotaPerUnit).IntPart())
+				quotaToAdd := int(decimal.NewFromFloat(topUp.Money).Div(decimal.NewFromFloat(usdExchangeRate)).Mul(dQuotaPerUnit).IntPart())
 
 				if err := model.IncreaseUserQuota(topUp.UserId, quotaToAdd, true); err != nil {
 					log.Printf("招商银行聚合支付查询更新用户额度失败: %s, 错误: %v", tradeNo, err)
