@@ -326,7 +326,9 @@ func SetApiRouter(router *gin.Engine) {
 		billingRoute.Use(middleware.UserAuth())
 		{
 			billingRoute.GET("/self/model-summary", controller.GetModelSummary)
+			billingRoute.GET("/self/model-summary/export", controller.ExportModelSummary)
 			billingRoute.GET("/self/token-summary", controller.GetTokenSummary)
+			billingRoute.GET("/self/token-summary/export", controller.ExportTokenSummary)
 		}
 
 		logRoute.Use(middleware.CORS(), middleware.CriticalRateLimit())

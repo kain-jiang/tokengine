@@ -108,3 +108,61 @@ func (s *BillingSummaryService) GetTokenSummary(userId int, req dto.BillingSumma
 		Items:             items,
 	}, nil
 }
+
+// GetModelSummaryExport 获取模型维度汇总（用于导出）
+func (s *BillingSummaryService) GetModelSummaryExport(userId int, req dto.BillingSummaryRequest) ([]dto.ModelSummaryItem, error) {
+	// 默认最近一周
+	if req.StartDate == "" {
+		req.StartDate = time.Now().AddDate(0, 0, -7).Format("2006-01-02")
+	}
+	if req.EndDate == "" {
+		req.EndDate = time.Now().Format("2006-01-02")
+	}
+
+	startTime := parseDateToTimestamp(req.StartDate)
+	endTime := parseDateToTimestamp(req.EndDate) + 86400 // 结束日期加一天
+
+	var items []dto.ModelSummaryItem
+
+	// 构建查询
+	query := model.DB.Model(&model.Log{}).
+		Select("username, model_name, COUNT(*) as request_count, SUM(prompt_tokens + completion_tokens) as total_tokens, SUM(quota) / 100000.0 as quota_consumed").
+		Where("user_id = ? AND type = 2 AND created_at >= ? AND created_at < ?", userId, startTime, endTime)
+
+	query = query.Group("username, model_name").Order("total_tokens DESC")
+
+	if err := query.Scan(&items).Error; err != nil {
+		return nil, err
+	}
+
+	return items, nil
+}
+
+// GetTokenSummaryExport 获取令牌维度汇总（用于导出）
+func (s *BillingSummaryService) GetTokenSummaryExport(userId int, req dto.BillingSummaryRequest) ([]dto.TokenSummaryItem, error) {
+	// 默认最近一周
+	if req.StartDate == "" {
+		req.StartDate = time.Now().AddDate(0, 0, -7).Format("2006-01-02")
+	}
+	if req.EndDate == "" {
+		req.EndDate = time.Now().Format("2006-01-02")
+	}
+
+	startTime := parseDateToTimestamp(req.StartDate)
+	endTime := parseDateToTimestamp(req.EndDate) + 86400 // 结束日期加一天
+
+	var items []dto.TokenSummaryItem
+
+	// 构建查询
+	query := model.DB.Model(&model.Log{}).
+		Select("username, token_name, COUNT(*) as request_count, SUM(prompt_tokens + completion_tokens) as total_tokens, SUM(quota) / 100000.0 as quota_consumed").
+		Where("user_id = ? AND type = 2 AND created_at >= ? AND created_at < ?", userId, startTime, endTime)
+
+	query = query.Group("username, token_name").Order("total_tokens DESC")
+
+	if err := query.Scan(&items).Error; err != nil {
+		return nil, err
+	}
+
+	return items, nil
+}
