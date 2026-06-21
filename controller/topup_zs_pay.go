@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
@@ -107,102 +108,39 @@ func RequestZSPay(c *gin.Context) {
 	})
 }
 
+// 只有成功支付的交易才会有支付结果通知
 func ZSPayNotify(c *gin.Context) {
 	var notifyData service.ZSPaymentNotifyData
 
-	if c.Request.Method == "POST" {
-		if err := c.Request.ParseForm(); err != nil {
-			log.Println("招商银行聚合支付回调POST解析失败:", err)
-			c.Writer.Write([]byte("fail"))
-			return
-		}
-
-		for key, values := range c.Request.PostForm {
-			if len(values) > 0 {
-				switch key {
-				case "version":
-					notifyData.Version = values[0]
-				case "encoding":
-					notifyData.Encoding = values[0]
-				case "signMethod":
-					notifyData.SignMethod = values[0]
-				case "sign":
-					notifyData.Sign = values[0]
-				case "merId":
-					notifyData.MerID = values[0]
-				case "orderId":
-					notifyData.OrderID = values[0]
-				case "cmbOrderId":
-					notifyData.CmbOrderID = values[0]
-				case "userId":
-					notifyData.UserID = values[0]
-				case "txnAmt":
-					notifyData.TxnAmt = values[0]
-				case "dscAmt":
-					notifyData.DscAmt = values[0]
-				case "payType":
-					notifyData.PayType = values[0]
-				case "openId":
-					notifyData.OpenID = values[0]
-				case "payBank":
-					notifyData.PayBank = values[0]
-				case "thirdOrderId":
-					notifyData.ThirdOrderID = values[0]
-				case "txnTime":
-					notifyData.TxnTime = values[0]
-				case "endDate":
-					notifyData.EndDate = values[0]
-				case "endTime":
-					notifyData.EndTime = values[0]
-				case "mchReserved":
-					notifyData.MchReserved = values[0]
-				}
-			}
-		}
-	} else {
-		for key, values := range c.Request.URL.Query() {
-			if len(values) > 0 {
-				switch key {
-				case "version":
-					notifyData.Version = values[0]
-				case "encoding":
-					notifyData.Encoding = values[0]
-				case "signMethod":
-					notifyData.SignMethod = values[0]
-				case "sign":
-					notifyData.Sign = values[0]
-				case "merId":
-					notifyData.MerID = values[0]
-				case "orderId":
-					notifyData.OrderID = values[0]
-				case "cmbOrderId":
-					notifyData.CmbOrderID = values[0]
-				case "userId":
-					notifyData.UserID = values[0]
-				case "txnAmt":
-					notifyData.TxnAmt = values[0]
-				case "dscAmt":
-					notifyData.DscAmt = values[0]
-				case "payType":
-					notifyData.PayType = values[0]
-				case "openId":
-					notifyData.OpenID = values[0]
-				case "payBank":
-					notifyData.PayBank = values[0]
-				case "thirdOrderId":
-					notifyData.ThirdOrderID = values[0]
-				case "txnTime":
-					notifyData.TxnTime = values[0]
-				case "endDate":
-					notifyData.EndDate = values[0]
-				case "endTime":
-					notifyData.EndTime = values[0]
-				case "mchReserved":
-					notifyData.MchReserved = values[0]
-				}
-			}
-		}
+	// 招行回调格式：biz_content=<URL编码的JSON>&sign=xxx&encoding=UTF-8&version=0.0.1&signMethod=02
+	// 需要先解析 form 获取 biz_content，再解析 biz_content 中的 JSON
+	if err := c.Request.ParseForm(); err != nil {
+		log.Printf("[ZSPay-Notify] ParseForm失败: %v", err)
+		c.Writer.Write([]byte("fail"))
+		return
 	}
+
+	bizContent := c.Request.FormValue("biz_content")
+	if bizContent == "" {
+		log.Println("[ZSPay-Notify] biz_content为空")
+		c.Writer.Write([]byte("fail"))
+		return
+	}
+
+	log.Printf("[ZSPay-Notify] biz_content: %s", bizContent)
+
+	// 解析 biz_content 中的 JSON 数据
+	if err := json.Unmarshal([]byte(bizContent), &notifyData); err != nil {
+		log.Printf("[ZSPay-Notify] 解析biz_content失败: %v", err)
+		c.Writer.Write([]byte("fail"))
+		return
+	}
+
+	// 获取外层字段（sign, version, encoding, signMethod）
+	notifyData.Sign = c.Request.FormValue("sign")
+	notifyData.Version = c.Request.FormValue("version")
+	notifyData.Encoding = c.Request.FormValue("encoding")
+	notifyData.SignMethod = c.Request.FormValue("signMethod")
 
 	log.Printf("[ZSPay-Notify] 收到回调: orderId=%s, cmbOrderId=%s, txnAmt=%s, payType=%s",
 		notifyData.OrderID, notifyData.CmbOrderID, notifyData.TxnAmt, notifyData.PayType)
@@ -240,9 +178,14 @@ func ZSPayNotify(c *gin.Context) {
 			return
 		}
 
-		dAmount := decimal.NewFromInt(int64(topUp.Amount))
+		// 招行支付金额为人民币（CNY），需要先转换为美元再计算配额
+		// 公式：配额 = (人民币金额 / 汇率) * 每美元配额
+		usdExchangeRate := operation_setting.USDExchangeRate
+		if usdExchangeRate <= 0 {
+			usdExchangeRate = 7.3 // 默认汇率
+		}
 		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-		quotaToAdd := int(dAmount.Mul(dQuotaPerUnit).IntPart())
+		quotaToAdd := int(decimal.NewFromFloat(topUp.Money).Div(decimal.NewFromFloat(usdExchangeRate)).Mul(dQuotaPerUnit).IntPart())
 
 		if err := model.IncreaseUserQuota(topUp.UserId, quotaToAdd, true); err != nil {
 			log.Printf("招商银行聚合支付回调更新用户失败: %v", topUp)
@@ -252,6 +195,8 @@ func ZSPayNotify(c *gin.Context) {
 
 		log.Printf("招商银行聚合支付回调成功: %s, 用户: %d, 充值: %d", orderNo, topUp.UserId, quotaToAdd)
 		model.RecordLog(topUp.UserId, model.LogTypeTopup, fmt.Sprintf("使用招商银行聚合支付成功，充值金额: %v", quotaToAdd))
+	} else {
+		log.Printf("招商银行聚合支付回调时，本次订单状态是: %s", topUp.Status)
 	}
 
 	c.Writer.Write([]byte("success"))
@@ -264,6 +209,18 @@ func QueryZSPayStatus(c *gin.Context) {
 		return
 	}
 
+	// 先查数据库，如果已支付就直接返回
+	topUp := model.GetTopUpByTradeNo(tradeNo)
+	if topUp != nil && topUp.Status == "success" {
+		c.JSON(200, gin.H{
+			"message":    "success",
+			"status":     "PAID",
+			"tradeState": "S",
+		})
+		return
+	}
+
+	// 数据库未支付，再查银行
 	zsService := service.GetZSPayService()
 	if zsService == nil {
 		c.JSON(200, gin.H{"message": "error", "data": "招商银行聚合支付未启用"})
@@ -290,9 +247,13 @@ func QueryZSPayStatus(c *gin.Context) {
 			if err := topUp.Update(); err != nil {
 				log.Printf("招商银行聚合支付查询更新订单失败: %s, 错误: %v", tradeNo, err)
 			} else {
-				dAmount := decimal.NewFromInt(topUp.Amount)
+				// 招行支付金额为人民币（CNY），需要先转换为美元再计算配额
+				usdExchangeRate := operation_setting.USDExchangeRate
+				if usdExchangeRate <= 0 {
+					usdExchangeRate = 7.3 // 默认汇率
+				}
 				dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-				quotaToAdd := int(dAmount.Mul(dQuotaPerUnit).IntPart())
+				quotaToAdd := int(decimal.NewFromFloat(topUp.Money).Div(decimal.NewFromFloat(usdExchangeRate)).Mul(dQuotaPerUnit).IntPart())
 
 				if err := model.IncreaseUserQuota(topUp.UserId, quotaToAdd, true); err != nil {
 					log.Printf("招商银行聚合支付查询更新用户额度失败: %s, 错误: %v", tradeNo, err)

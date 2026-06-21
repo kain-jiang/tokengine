@@ -98,6 +98,7 @@ func setupLogin(user *model.User, c *gin.Context) {
 	session.Set("status", user.Status)
 	session.Set("group", user.Group)
 	err := session.Save()
+
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgUserSessionSaveFailed)
 		return
@@ -114,6 +115,53 @@ func setupLogin(user *model.User, c *gin.Context) {
 			"group":        user.Group,
 		},
 	})
+}
+
+type LoginWithPhoneRequest struct {
+	Telephone        string `json:"telephone" validate:"len=11"`
+	VerificationCode string `json:"verification_code" validate:"len=6"`
+}
+
+// 手机登录
+func LoginWithPhone(c *gin.Context) {
+	var request LoginWithPhoneRequest
+	err := json.NewDecoder(c.Request.Body).Decode(&request)
+	if err != nil {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+
+	if err = common.Validate.Struct(&request); err != nil {
+		common.ApiErrorI18n(c, i18n.MsgUserInputInvalid, map[string]any{"Error": err.Error()})
+		return
+	}
+
+	// 验证短信验证码
+	if !common.VerifySMSCodeWithKey(request.Telephone, request.VerificationCode) {
+		common.ApiErrorMsg(c, i18n.MsgUserVerificationCodeError)
+		return
+	}
+	common.DeleteSMSCode(request.Telephone)
+	exist, err := model.CheckUserExistByPhone(request.Telephone)
+	if err != nil {
+		common.ApiErrorI18n(c, i18n.MsgDatabaseError)
+		common.SysLog(fmt.Sprintf("CheckUserExistByPhone error: %v", err))
+		return
+	}
+	if !exist {
+		common.ApiErrorI18n(c, i18n.MsgUserNotExists)
+		return
+	}
+
+	user, err := model.GetUserByPhone(request.Telephone)
+	if err != nil {
+		common.ApiErrorI18n(c, i18n.MsgDatabaseError)
+		common.SysLog(fmt.Sprintf("GetUserByPhone error: %v", err))
+		return
+	}
+
+	setupLogin(user, c)
+	return
 }
 
 func Logout(c *gin.Context) {
@@ -133,6 +181,11 @@ func Logout(c *gin.Context) {
 	})
 }
 
+type UserRegisterRequest struct {
+	model.User       `json:",inline"`
+	VerificationCode string `json:"verification_code"`
+}
+
 func Register(c *gin.Context) {
 	if !common.RegisterEnabled {
 		common.ApiErrorI18n(c, i18n.MsgUserRegisterDisabled)
@@ -142,7 +195,7 @@ func Register(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgUserPasswordRegisterDisabled)
 		return
 	}
-	var user model.User
+	var user UserRegisterRequest
 	err := json.NewDecoder(c.Request.Body).Decode(&user)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
@@ -162,6 +215,12 @@ func Register(c *gin.Context) {
 			return
 		}
 	}
+	// 验证短信验证码
+	if !common.VerifySMSCodeWithKey(user.TelePhone, user.VerificationCode) {
+		common.ApiErrorMsg(c, i18n.MsgUserVerificationCodeError)
+		return
+	}
+	common.DeleteSMSCode(user.TelePhone)
 	exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgDatabaseError)
@@ -180,6 +239,7 @@ func Register(c *gin.Context) {
 		DisplayName: user.Username,
 		InviterId:   inviterId,
 		Role:        common.RoleCommonUser, // 明确设置角色为普通用户
+		TelePhone:   user.TelePhone,        // 添加手机号
 	}
 	if common.EmailVerificationEnabled {
 		cleanUser.Email = user.Email
@@ -414,6 +474,7 @@ func GetSelf(c *gin.Context) {
 		"stripe_customer":   user.StripeCustomer,
 		"sidebar_modules":   userSetting.SidebarModules, // 正确提取sidebar_modules字段
 		"permissions":       permissions,                // 新增权限字段
+		"telephone":         user.TelePhone,             // 新增手机号
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -1022,6 +1083,51 @@ func EmailBind(c *gin.Context) {
 	}
 	user.Email = email
 	// no need to check if this email already taken, because we have used verification code to check it
+	err = user.Update(false)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+	})
+	return
+}
+
+type phoneBindRequest struct {
+	Telephone        string `json:"telephone" validate:"len=11"`
+	VerificationCode string `json:"verification_code" validate:"len=6"`
+}
+
+func PhoneBind(c *gin.Context) {
+	var req phoneBindRequest
+	if err := common.DecodeJson(c.Request.Body, &req); err != nil {
+		common.ApiError(c, errors.New("invalid request body"))
+		return
+	}
+	if err := common.Validate.Struct(&req); err != nil {
+		common.ApiErrorI18n(c, i18n.MsgUserInputInvalid, map[string]any{"Error": err.Error()})
+		return
+	}
+
+	if !common.VerifySMSCodeWithKey(req.Telephone, req.VerificationCode) {
+		common.ApiErrorMsg(c, "短信验证码错误或已过期")
+		return
+	}
+	common.DeleteSMSCode(req.Telephone)
+	session := sessions.Default(c)
+	id := session.Get("id")
+	user := model.User{
+		Id: id.(int),
+	}
+	err := user.FillUserById()
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	user.TelePhone = req.Telephone
+	// 绑定手机号
 	err = user.Update(false)
 	if err != nil {
 		common.ApiError(c, err)

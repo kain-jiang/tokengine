@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企业级大模型管理平台</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --brand-magenta: #ef2cc1;
+            --brand-orange: #fc4c02;
+            --dark-blue: #010120;
+            --soft-lavender: #bdbbff;
+            --pure-white: #ffffff;
+            --glass-light: rgba(255, 255, 255, 0.12);
+            --glass-dark: rgba(0, 0, 0, 0.04);
+            --border-light: rgba(0, 0, 0, 0.08);
+            --border-dark: rgba(255, 255, 255, 0.12);
+            --text-primary-light: #000000;
+            --text-primary-dark: #ffffff;
+            --text-secondary-light: rgba(0, 0, 0, 0.6);
+            --text-secondary-dark: rgba(255, 255, 255, 0.7);
+            --shadow-elevated: rgba(1, 1, 32, 0.1) 0px 4px 10px;
+            --radius-sharp: 4px;
+            --radius-comfortable: 8px;
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 12px;
+            --space-lg: 20px;
+            --space-xl: 28px;
+            --space-2xl: 40px;
+            --space-3xl: 64px;
+            --space-4xl: 96px;
+            --font-display: 'Inter', 'Noto Sans SC', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --gradient-pastel: linear-gradient(135deg, #f8c8dc 0%, #e8d5f5 30%, #c8d8f8 60%, #d8e8f8 100%);
+            --gradient-hero: linear-gradient(180deg, rgba(248, 200, 220, 0.25) 0%, rgba(200, 216, 248, 0.15) 50%, transparent 100%);
+            --gradient-dark: linear-gradient(135deg, #010120 0%, #0a0a3a 50%, #010120 100%);
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--font-display);
+            background: var(--pure-white);
+            color: var(--text-primary-light);
+            line-height: 1.25;
+            letter-spacing: -0.01em;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        /* Particle Canvas */
+        #particle-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .display-hero {
+            font-size: clamp(36px, 5vw, 56px);
+            font-weight: 500;
+            line-height: 1.08;
+            letter-spacing: -0.035em;
+        }
+
+        .section-heading {
+            font-size: clamp(28px, 3.5vw, 36px);
+            font-weight: 500;
+            line-height: 1.18;
+            letter-spacing: -0.025em;
+        }
+
+        .body-large {
+            font-size: 16px;
+            font-weight: 400;
+            line-height: 1.28;
+            letter-spacing: -0.01em;
+            color: var(--text-secondary-light);
+        }
+
+        .mono-label {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        /* Hero */
+        .hero {
+            min-height: 90vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-3xl) var(--space-xl) var(--space-2xl);
+            position: relative;
+            overflow: hidden;
+            background: var(--pure-white);
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: var(--gradient-hero);
+            pointer-events: none;
+        }
+
+        .hero-glow {
+            position: absolute;
+            width: 500px; height: 500px;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.4;
+            animation: glowPulse 6s ease-in-out infinite;
+        }
+
+        .hero-glow-1 {
+            top: -15%; right: -10%;
+            background: linear-gradient(135deg, var(--brand-magenta), var(--soft-lavender));
+        }
+
+        .hero-glow-2 {
+            bottom: -20%; left: -15%;
+            background: linear-gradient(135deg, var(--soft-lavender), #88aaff);
+            animation-delay: 3s;
+        }
+
+        @keyframes glowPulse {
+            0%, 100% { transform: scale(1); opacity: 0.35; }
+            50% { transform: scale(1.15); opacity: 0.5; }
+        }
+
+        .hero-container {
+            max-width: 1100px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-xs) var(--space-md);
+            background: var(--glass-dark);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-sharp);
+            font-size: 13px;
+            font-weight: 400;
+            color: var(--text-secondary-light);
+            margin-bottom: var(--space-lg);
+        }
+
+        .hero-badge-dot {
+            width: 5px; height: 5px;
+            background: var(--brand-magenta);
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.4); }
+        }
+
+        .hero-title {
+            margin-bottom: var(--space-md);
+            max-width: 750px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hero-title .accent {
+            background: linear-gradient(135deg, var(--brand-magenta) 0%, var(--brand-orange) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 16px;
+            color: var(--text-secondary-light);
+            max-width: 550px;
+            margin: 0 auto var(--space-xl);
+            line-height: 1.28;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: var(--space-md);
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-dark {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: 12px 24px;
+            background: var(--dark-blue);
+            color: var(--pure-white);
+            font-size: 15px;
+            font-weight: 500;
+            border-radius: var(--radius-sharp);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-dark:hover { opacity: 0.85; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(1, 1, 32, 0.2); }
+
+        .btn-outlined {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: 12px 24px;
+            background: transparent;
+            color: var(--text-primary-light);
+            font-size: 15px;
+            font-weight: 500;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-sharp);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .btn-outlined:hover { background: var(--glass-dark); transform: translateY(-2px); }
+
+        .stats-bar {
+            display: flex;
+            justify-content: center;
+            gap: var(--space-2xl);
+            margin-top: var(--space-2xl);
+            flex-wrap: wrap;
+        }
+
+        .stat-item { text-align: center; }
+
+        .stat-value {
+            font-size: clamp(36px, 4vw, 48px);
+            font-weight: 500;
+            line-height: 1.08;
+            letter-spacing: -0.025em;
+            background: linear-gradient(135deg, var(--dark-blue) 0%, var(--brand-magenta) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-secondary-light);
+            margin-top: var(--space-xs);
+        }
+
+        /* Sections */
+        .section {
+            padding: var(--space-3xl) var(--space-xl);
+            position: relative;
+        }
+
+        .section-dark {
+            background: var(--gradient-dark);
+            color: var(--pure-white);
+        }
+
+        .section-dark .body-large { color: var(--text-secondary-dark); }
+
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        .section-header { text-align: center; margin-bottom: var(--space-2xl); }
+
+        .section-tag {
+            display: inline-block;
+            padding: var(--space-xs) var(--space-sm);
+            background: var(--glass-dark);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-sharp);
+            margin-bottom: var(--space-lg);
+        }
+
+        .section-dark .section-tag {
+            background: var(--glass-light);
+            border-color: var(--border-dark);
+            color: var(--pure-white);
+        }
+
+        .section-title { margin-bottom: var(--space-sm); }
+
+        .section-subtitle { max-width: 550px; margin: 0 auto; }
+
+        /* Cards */
+        .card {
+            background: var(--pure-white);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-comfortable);
+            padding: var(--space-lg);
+            transition: all 0.25s ease;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-elevated);
+            transform: translateY(-3px);
+            border-color: rgba(239, 44, 193, 0.2);
+        }
+
+        .section-dark .card {
+            background: rgba(255, 255, 255, 0.03);
+            border-color: var(--border-dark);
+        }
+
+        .section-dark .card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(189, 187, 255, 0.3);
+        }
+
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-md);
+        }
+
+        .feature-icon {
+            width: 40px; height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--glass-dark);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-sharp);
+            font-size: 18px;
+            margin-bottom: var(--space-md);
+        }
+
+        .section-dark .feature-icon {
+            background: var(--glass-light);
+            border-color: var(--border-dark);
+        }
+
+        .feature-title {
+            font-size: 18px;
+            font-weight: 500;
+            line-height: 1.12;
+            letter-spacing: -0.015em;
+            margin-bottom: var(--space-xs);
+        }
+
+        .feature-desc {
+            font-size: 14px;
+            color: var(--text-secondary-light);
+            line-height: 1.28;
+            margin-bottom: var(--space-md);
+        }
+
+        .section-dark .feature-desc { color: var(--text-secondary-dark); }
+
+        .feature-list { list-style: none; }
+
+        .feature-list li {
+            position: relative;
+            padding-left: 18px;
+            margin-bottom: var(--space-xs);
+            font-size: 13px;
+            color: var(--text-secondary-light);
+            line-height: 1.35;
+        }
+
+        .section-dark .feature-list li { color: var(--text-secondary-dark); }
+
+        .feature-list li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--brand-magenta);
+            font-weight: 500;
+        }
+
+        /* Products Grid */
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-md);
+        }
+
+        .product-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            background: linear-gradient(135deg, var(--brand-magenta) 0%, var(--brand-orange) 100%);
+            border-radius: var(--radius-sharp);
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--pure-white);
+            margin-bottom: var(--space-md);
+            width: fit-content;
+        }
+
+        .product-name {
+            font-size: 18px;
+            font-weight: 500;
+            line-height: 1.12;
+            letter-spacing: -0.015em;
+            margin-bottom: var(--space-xs);
+        }
+
+        .product-models {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--brand-magenta);
+            margin-bottom: var(--space-sm);
+            letter-spacing: 0.06em;
+        }
+
+        .product-desc {
+            font-size: 13px;
+            color: var(--text-secondary-light);
+            line-height: 1.35;
+            margin-bottom: var(--space-md);
+            flex-grow: 1;
+        }
+
+        .product-meta {
+            display: flex;
+            gap: var(--space-md);
+            padding: var(--space-sm) 0;
+            border-top: 1px solid var(--border-light);
+            border-bottom: 1px solid var(--border-light);
+            margin-bottom: var(--space-sm);
+            flex-wrap: wrap;
+        }
+
+        .section-dark .product-meta { border-color: var(--border-dark); }
+
+        .product-meta-label {
+            font-family: var(--font-mono);
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-secondary-light);
+            margin-bottom: 2px;
+        }
+
+        .section-dark .product-meta-label { color: var(--text-secondary-dark); }
+
+        .product-meta-value { font-size: 13px; font-weight: 500; }
+
+        .product-price {
+            display: flex;
+            align-items: baseline;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-sm);
+        }
+
+        .product-price-current {
+            font-size: 28px;
+            font-weight: 500;
+            letter-spacing: -0.025em;
+            color: var(--dark-blue);
+        }
+
+        .section-dark .product-price-current { color: var(--pure-white); }
+
+        .product-price-original {
+            font-size: 14px;
+            color: var(--text-secondary-light);
+            text-decoration: line-through;
+        }
+
+        .section-dark .product-price-original { color: var(--text-secondary-dark); }
+
+        .btn-product {
+            display: block;
+            width: 100%;
+            padding: 12px 20px;
+            background: var(--dark-blue);
+            color: var(--pure-white);
+            font-weight: 500;
+            font-size: 14px;
+            border-radius: var(--radius-sharp);
+            text-align: center;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-product:hover { opacity: 0.85; transform: translateY(-2px); }
+
+        /* Advantages */
+        .advantages-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-md);
+        }
+
+        .advantage-item { text-align: center; padding: var(--space-xl) var(--space-sm); }
+
+        .advantage-value {
+            font-size: clamp(36px, 4vw, 48px);
+            font-weight: 500;
+            line-height: 1.08;
+            letter-spacing: -0.025em;
+            margin-bottom: var(--space-xs);
+        }
+
+        .section-dark .advantage-value {
+            background: linear-gradient(135deg, var(--soft-lavender), var(--brand-magenta));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .advantage-label { font-size: 14px; color: var(--text-secondary-light); }
+        .section-dark .advantage-label { color: var(--text-secondary-dark); }
+
+        /* Testimonials */
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-md);
+        }
+
+        .testimonial-header {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            margin-bottom: var(--space-md);
+        }
+
+        .testimonial-avatar {
+            width: 40px; height: 40px;
+            border-radius: var(--radius-sharp);
+            background: var(--gradient-pastel);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .testimonial-name { font-size: 16px; font-weight: 500; letter-spacing: -0.01em; }
+        .testimonial-role { font-size: 12px; color: var(--text-secondary-light); }
+        .section-dark .testimonial-role { color: var(--text-secondary-dark); }
+
+        .testimonial-stat {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-xs);
+            padding: var(--space-xs) var(--space-sm);
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.25);
+            border-radius: var(--radius-sharp);
+            font-size: 12px;
+            color: #4CAF50;
+            margin-bottom: var(--space-sm);
+        }
+
+        .testimonial-text { font-size: 13px; color: var(--text-secondary-light); line-height: 1.35; }
+        .section-dark .testimonial-text { color: var(--text-secondary-dark); }
+
+        /* CTA */
+        .cta { padding: var(--space-3xl) var(--space-xl); text-align: center; }
+
+        .cta-box {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: var(--space-2xl) var(--space-xl);
+            background: var(--gradient-pastel);
+            border-radius: var(--radius-comfortable);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-box::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .cta-content { position: relative; z-index: 10; }
+        .cta-title { margin-bottom: var(--space-sm); }
+        .cta-subtitle { margin-bottom: var(--space-lg); }
+
+        /* Footer */
+        .footer {
+            padding: var(--space-xl) var(--space-xl);
+            background: var(--dark-blue);
+            color: var(--pure-white);
+            text-align: center;
+        }
+
+        .footer-logo {
+            font-size: clamp(40px, 5vw, 56px);
+            font-weight: 500;
+            letter-spacing: -0.035em;
+            margin-bottom: var(--space-md);
+            opacity: 0.25;
+        }
+
+        .footer-text { font-size: 12px; color: var(--text-secondary-dark); }
+
+        /* Scroll Reveal */
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(12px);
+            transition: all 0.4s ease-out;
+        }
+
+        .scroll-reveal.revealed { opacity: 1; transform: translateY(0); }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .features-grid, .products-grid, .testimonials-grid { grid-template-columns: repeat(2, 1fr); }
+            .advantages-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 768px) {
+            .hero { padding: var(--space-2xl) var(--space-lg) var(--space-xl); }
+            .hero-glow { width: 300px; height: 300px; }
+            .section { padding: var(--space-2xl) var(--space-lg); }
+            .features-grid, .products-grid, .testimonials-grid { grid-template-columns: 1fr; }
+            .advantages-grid { grid-template-columns: repeat(2, 1fr); gap: var(--space-sm); }
+            .stats-bar { gap: var(--space-lg); }
+        }
+
+        @media (max-width: 480px) {
+            .hero-buttons { flex-direction: column; width: 100%; }
+            .btn-dark, .btn-outlined { width: 100%; justify-content: center; }
+            .advantages-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="particle-canvas"></canvas>
+
+    <!-- Hero Section -->
+    <section class="hero" id="hero">
+        <div class="hero-glow hero-glow-1"></div>
+        <div class="hero-glow hero-glow-2"></div>
+        <div class="hero-container">
+            <div class="hero-badge">
+                <span class="hero-badge-dot"></span>
+                <span class="mono-label">AI-NATIVE CLOUD</span>
+            </div>
+            <h1 class="display-hero hero-title">
+                企业级大模型<br><span class="accent">智能引擎</span>管理平台
+            </h1>
+            <p class="hero-subtitle">
+                多场景集成、成本与权限控制、稳定性、安全合规。为您的 AI 项目提供专业级大模型部署、管理和 Token 引擎服务。
+            </p>
+            <div class="hero-buttons">
+                <a href="/register" class="btn-dark">
+                    立即体验
+                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                        <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </a>
+                <a href="/pricing" class="btn-outlined">查看价格</a>
+            </div>
+            <div class="stats-bar">
+                <div class="stat-item"><div class="stat-value">100+</div><div class="stat-label">大模型支持</div></div>
+                <div class="stat-item"><div class="stat-value">99.9%</div><div class="stat-label">服务可用性</div></div>
+                <div class="stat-item"><div class="stat-value">40%</div><div class="stat-label">成本节省</div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Products Section -->
+    <section class="section" id="products">
+        <div class="container">
+            <div class="section-header scroll-reveal">
+                <span class="section-tag mono-label">🔥 HOT</span>
+                <h2 class="section-heading section-title">精选热门模型套餐</h2>
+                <p class="body-large section-subtitle">专享优惠折扣，企业级 AI 能力触手可及</p>
+            </div>
+            <div class="products-grid">
+                <div class="card scroll-reveal">
+                    <span class="product-badge">🔥 爆款</span>
+                    <h3 class="product-name">豆包视频模型 2.0</h3>
+                    <p class="product-models">doubao-seedance-2-0-260128</p>
+                    <p class="product-desc">新一代专业级多模态创作视频模型，深度适配商业广告、影视制作</p>
+                    <div class="product-meta">
+                        <div><div class="product-meta-label">形态</div><div class="product-meta-value">节省计划</div></div>
+                        <div><div class="product-meta-label">有效期</div><div class="product-meta-value">3个月</div></div>
+                        <div><div class="product-meta-label">规格</div><div class="product-meta-value">500万 Tokens</div></div>
+                    </div>
+                    <div class="product-price">
+                        <span class="product-price-current">¥138</span>
+                        <span class="product-price-original">¥230</span>
+                    </div>
+                    <a href="/console" class="btn-product">立即购买</a>
+                </div>
+                <div class="card scroll-reveal">
+                    <span class="product-badge">🔥 爆款</span>
+                    <h3 class="product-name">MiniMax m2.7</h3>
+                    <p class="product-models">minimax-m2.7</p>
+                    <p class="product-desc">高性能文本生成模型，支持长上下文理解，适用于智能对话、代码生成</p>
+                    <div class="product-meta">
+                        <div><div class="product-meta-label">形态</div><div class="product-meta-value">节省计划</div></div>
+                        <div><div class="product-meta-label">有效期</div><div class="product-meta-value">3个月</div></div>
+                        <div><div class="product-meta-label">规格</div><div class="product-meta-value">1000万 Tokens</div></div>
+                    </div>
+                    <div class="product-price">
+                        <span class="product-price-current">¥192</span>
+                        <span class="product-price-original">¥240</span>
+                    </div>
+                    <a href="/console" class="btn-product">立即购买</a>
+                </div>
+                <div class="card scroll-reveal">
+                    <span class="product-badge">🔥 爆款</span>
+                    <h3 class="product-name">Z-image</h3>
+                    <p class="product-models">z-image</p>
+                    <p class="product-desc">先进的图像生成与编辑模型，支持高质量文生图、图像风格转换</p>
+                    <div class="product-meta">
+                        <div><div class="product-meta-label">形态</div><div class="product-meta-value">节省计划</div></div>
+                        <div><div class="product-meta-label">有效期</div><div class="product-meta-value">3个月</div></div>
+                        <div><div class="product-meta-label">规格</div><div class="product-meta-value">1,000 张</div></div>
+                    </div>
+                    <div class="product-price">
+                        <span class="product-price-current">¥160</span>
+                        <span class="product-price-original">¥200</span>
+                    </div>
+                    <a href="/console" class="btn-product">立即购买</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="section section-dark" id="features">
+        <div class="container">
+            <div class="section-header scroll-reveal">
+                <span class="section-tag mono-label">⚡ CAPABILITIES</span>
+                <h2 class="section-heading section-title">端到端企业级大模型管理</h2>
+                <p class="body-large section-subtitle">从集成到计费，从安全到合规</p>
+            </div>
+            <div class="features-grid">
+                <div class="card scroll-reveal">
+                    <div class="feature-icon">🚀</div>
+                    <h3 class="feature-title">快速集成</h3>
+                    <p class="feature-desc">快速适配各种业务场景</p>
+                    <ul class="feature-list">
+                        <li>统一 API 访问 200+ 大模型</li>
+                        <li>企业 IM 工具权限同步</li>
+                        <li>OpenAPI、Enterprise SDK</li>
+                    </ul>
+                </div>
+                <div class="card scroll-reveal">
+                    <div class="feature-icon">💴</div>
+                    <h3 class="feature-title">成本与权限控制</h3>
+                    <p class="feature-desc">细粒度权限管理，精准计费</p>
+                    <ul class="feature-list">
+                        <li>Token 使用统计与预算告警</li>
+                        <li>按部门/项目成本分配</li>
+                        <li>Token 级别有效期管理</li>
+                    </ul>
+                </div>
+                <div class="card scroll-reveal">
+                    <div class="feature-icon">⚡</div>
+                    <h3 class="feature-title">稳定可靠</h3>
+                    <p class="feature-desc">企业级服务连续性</p>
+                    <ul class="feature-list">
+                        <li>多模型/多渠道负载均衡</li>
+                        <li>金丝雀版本切换</li>
+                        <li>7x24 小时支持</li>
+                    </ul>
+                </div>
+                <div class="card scroll-reveal">
+                    <div class="feature-icon">🔐</div>
+                    <h3 class="feature-title">安全合规</h3>
+                    <p class="feature-desc">数据脱敏和泄露防护</p>
+                    <ul class="feature-list">
+                        <li>请求/响应审计日志</li>
+                        <li>HTTPS/TLS 加密、mTLS</li>
+                        <li>ISO 27001 认证</li>
+                    </ul>
+                </div>
+                <div class="card scroll-reveal">
+                    <div class="feature-icon">💰</div>
+                    <h3 class="feature-title">灵活定价</h3>
+                    <p class="feature-desc">按量付费配合节省计划</p>
+                    <ul class="feature-list">
+                        <li>无需大额预付</li>
+                        <li>按时长/流量/API 计费</li>
+                        <li>最高 40% 折扣</li>
+                    </ul>
+                </div>
+                <div class="card scroll-reveal">
+                    <div class="feature-icon">🛡️</div>
+                    <h3 class="feature-title">企业定制</h3>
+                    <p class="feature-desc">专业技术支持</p>
+                    <ul class="feature-list">
+                        <li>Prompt 工程设计调优</li>
+                        <li>私有化部署指导</li>
+                        <li>RAG 知识库方案</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Advantages Section -->
+    <section class="section" id="advantages">
+        <div class="container">
+            <div class="section-header scroll-reveal">
+                <span class="section-tag mono-label">💪 ADVANTAGES</span>
+                <h2 class="section-heading section-title">为什么选择我们</h2>
+                <p class="body-large section-subtitle">更稳定、更经济、更安全</p>
+            </div>
+            <div class="advantages-grid">
+                <div class="card advantage-item scroll-reveal"><div class="advantage-value">-40%</div><div class="advantage-label">最大节省</div></div>
+                <div class="card advantage-item scroll-reveal"><div class="advantage-value">10分钟</div><div class="advantage-label">快速部署</div></div>
+                <div class="card advantage-item scroll-reveal"><div class="advantage-value">100%</div><div class="advantage-label">透明计费</div></div>
+                <div class="card advantage-item scroll-reveal"><div class="advantage-value">0</div><div class="advantage-label">数据风险</div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="section section-dark" id="testimonials">
+        <div class="container">
+            <div class="section-header scroll-reveal">
+                <span class="section-tag mono-label">👥 CASES</span>
+                <h2 class="section-heading section-title">跨行业信赖之选</h2>
+                <p class="body-large section-subtitle">为不同行业提供灵活方案</p>
+            </div>
+            <div class="testimonials-grid">
+                <div class="card scroll-reveal">
+                    <div class="testimonial-header">
+                        <div class="testimonial-avatar">🏠</div>
+                        <div><div class="testimonial-name">家居企业</div><div class="testimonial-role">智能制造</div></div>
+                    </div>
+                    <div class="testimonial-stat">AI 成本降低 35%</div>
+                    <p class="testimonial-text">接入平台后，6 个研发部门独立核算，Token 消费透明可控。自动脱敏功能让客服数据安全用于 AI 训练。</p>
+                </div>
+                <div class="card scroll-reveal">
+                    <div class="testimonial-header">
+                        <div class="testimonial-avatar">🛒</div>
+                        <div><div class="testimonial-name">头部电商</div><div class="testimonial-role">互联网零售</div></div>
+                    </div>
+                    <div class="testimonial-stat">效率提升 50%</div>
+                    <p class="testimonial-text">飞书权限自动同步，财务自动分账报表，对账时间从 3 天缩短到 10 分钟。</p>
+                </div>
+                <div class="card scroll-reveal">
+                    <div class="testimonial-header">
+                        <div class="testimonial-avatar">🏦</div>
+                        <div><div class="testimonial-name">金融机构</div><div class="testimonial-role">金融科技</div></div>
+                    </div>
+                    <div class="testimonial-stat">合规率 100%</div>
+                    <p class="testimonial-text">数据脱敏和安全认证是关键原因。客户隐私数据自动脱敏，完全满足金融监管要求。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <div class="container">
+            <div class="cta-box scroll-reveal">
+                <div class="cta-content">
+                    <h2 class="section-heading cta-title">立即开始使用</h2>
+                    <p class="body-large cta-subtitle">体验企业级大模型管理的强大能力</p>
+                    <a href="/register" class="btn-dark">
+                        立即体验
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                            <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-logo">moyu</div>
+            <p class="footer-text">© 2025 Moyu. 企业级大模型智能引擎管理和服务平台</p>
+        </div>
+    </footer>
+
+    <script>
+        // Particle Animation
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let mouse = { x: null, y: null };
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 1.5 + 0.5;
+                this.speedX = (Math.random() - 0.5) * 0.3;
+                this.speedY = (Math.random() - 0.5) * 0.3;
+                this.alpha = Math.random() * 0.3 + 0.1;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (mouse.x) {
+                    const dx = mouse.x - this.x;
+                    const dy = mouse.y - this.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 120) {
+                        this.x -= dx * 0.008;
+                        this.y -= dy * 0.008;
+                    }
+                }
+                if (this.x < 0) this.x = canvas.width;
+                if (this.x > canvas.width) this.x = 0;
+                if (this.y < 0) this.y = canvas.height;
+                if (this.y > canvas.height) this.y = 0;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(239, 44, 193, ${this.alpha})`;
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            const count = Math.min(60, Math.floor(canvas.width * canvas.height / 15000));
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function drawConnections() {
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 100) {
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.strokeStyle = `rgba(239, 44, 193, ${0.08 * (1 - dist / 100)})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            drawConnections();
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', () => { resize(); initParticles(); });
+        window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        window.addEventListener('mouseout', () => { mouse.x = null; mouse.y = null; });
+
+        resize();
+        initParticles();
+        animate();
+
+        // Scroll reveal
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('revealed');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1, rootMargin: '0px 0px -20px 0px' });
+
+        document.querySelectorAll('.scroll-reveal').forEach(el => observer.observe(el));
+
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+    </script>
+</body>
+</html>

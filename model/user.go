@@ -52,6 +52,7 @@ type User struct {
 	Setting          string         `json:"setting" gorm:"type:text;column:setting"`
 	Remark           string         `json:"remark,omitempty" gorm:"type:varchar(255)" validate:"max=255"`
 	StripeCustomer   string         `json:"stripe_customer" gorm:"type:varchar(64);column:stripe_customer;index"`
+	TelePhone        string         `json:"telephone" gorm:"type:varchar(11);column:telephone;unique" validate:"len=11"` // 手机号
 }
 
 func (user *User) ToBaseUser() *UserBase {
@@ -182,6 +183,38 @@ func CheckUserExistOrDeleted(username string, email string) (bool, error) {
 	}
 	// exist, return true, nil
 	return true, nil
+}
+
+// 手机号查询用户
+func CheckUserExistByPhone(telePhone string) (bool, error) {
+	var user User
+	err := DB.First(&user, "telephone = ?", telePhone).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// not exist, return false, nil
+			return false, nil
+		}
+		// other error, return false, err
+		return false, err
+	}
+	// exist, return true, nil
+	return true, nil
+}
+
+// 获取用户
+func GetUserByPhone(telePhone string) (*User, error) {
+	var user User
+	err := DB.First(&user, "telephone = ?", telePhone).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// not exist, return false, nil
+			return nil, nil
+		}
+		// other error, return false, err
+		return nil, err
+	}
+	// exist, return true, nil
+	return &user, nil
 }
 
 func GetMaxUserId() int {
@@ -603,8 +636,9 @@ func (user *User) ValidateAndFill() (err error) {
 	if username == "" || password == "" {
 		return ErrUserEmptyCredentials
 	}
-	// find by username or email
-	err = DB.Where("username = ? OR email = ?", username, username).First(user).Error
+	// find by username or email or telephone
+	//err = DB.Where("username = ? OR email = ?", username, username).First(user).Error
+	err = DB.Where("username = ? OR telephone = ? OR email = ?", username, username, username).First(user).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrInvalidCredentials

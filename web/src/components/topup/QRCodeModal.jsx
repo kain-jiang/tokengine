@@ -103,7 +103,7 @@ const QRCodeModal = ({ qrCodeUrl, tradeNo, amount, expireAt, onSuccess, onRefres
   
   // 单次查询支付状态
   const checkPaymentStatus = useCallback(async () => {
-    if (!tradeNo || remainingSeconds <= 0 || isPaid) {
+    if (!tradeNo || isPaid) {
       return false;
     }
     
@@ -163,13 +163,13 @@ const QRCodeModal = ({ qrCodeUrl, tradeNo, amount, expireAt, onSuccess, onRefres
     stopPolling();
     
     pollingTimerRef.current = setInterval(async () => {
-      if (!tradeNo || remainingSeconds <= 0 || isPaid) {
+      if (!tradeNo || isPaid) {
         stopPolling();
         return;
       }
       await checkPaymentStatus();
     }, 5000); // 每5秒轮询一次
-  }, [tradeNo, remainingSeconds, isPaid, checkPaymentStatus]);
+  }, [tradeNo, isPaid, checkPaymentStatus]);
   
   // 停止轮询
   const stopPolling = useCallback(() => {
@@ -258,14 +258,17 @@ const QRCodeModal = ({ qrCodeUrl, tradeNo, amount, expireAt, onSuccess, onRefres
     setIsManualCheckCooldown(false);
     startCountdown();
     
-    // 1分钟后自动开始轮询（如果用户未点击「我已支付」）
+    // 计算初始剩余时间（避免闭包中 remainingSeconds 为初始值 0）
+    const initialRemaining = calculateRemaining();
+    
+    // 5秒后自动开始轮询（如果用户未点击「我已支付」）
     stopAutoPollingTimeout();
     autoPollingTimeoutRef.current = setTimeout(() => {
-      if (!isPaid && remainingSeconds > 0 && !autoPollingStarted) {
+      if (initialRemaining > 0) {
         setAutoPollingStarted(true);
         startPolling();
       }
-    }, 60 * 1000);
+    }, 5 * 1000);
     
     return () => {
       stopCountdown();
