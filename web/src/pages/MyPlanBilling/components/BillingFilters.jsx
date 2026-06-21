@@ -1,8 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { Button, DatePicker, Space } from '@douyinfe/semi-ui';
+import { Download } from 'lucide-react';
 import { IconSearch, IconRefresh } from '@douyinfe/semi-icons';
 
-const BillingFilters = ({ filters, onChange }) => {
+const BillingFilters = ({ filters, onChange, onExport, exportLoading }) => {
   const { t } = useTranslation();
 
   const handleChange = (key, value) => {
@@ -53,6 +54,14 @@ const BillingFilters = ({ filters, onChange }) => {
           onClick={handleReset}
         >
           {t('重置')}
+        </Button>
+        <Button
+          icon={<Download size={16} />}
+          type="primary"
+          onClick={onExport}
+          loading={exportLoading}
+        >
+          {t('导出')}
         </Button>
       </Space>
     </div>

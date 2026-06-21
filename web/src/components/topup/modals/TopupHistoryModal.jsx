@@ -28,12 +28,13 @@ import {
   Input,
   Tag,
   Select,
+  DatePicker,
 } from '@douyinfe/semi-ui';
 import {
   IllustrationNoResult,
   IllustrationNoResultDark,
 } from '@douyinfe/semi-illustrations';
-import { Coins } from 'lucide-react';
+import { Coins, Download } from 'lucide-react';
 import { IconSearch } from '@douyinfe/semi-icons';
 import { API, timestamp2string } from '../../../helpers';
 import { isAdmin } from '../../../helpers/utils';
@@ -68,7 +69,19 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
   const [pageSize, setPageSize] = useState(10);
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [exportLoading, setExportLoading] = useState(false);
+  const [dateRange, setDateRange] = useState({
+    startDate: null,
+    endDate: null,
+  });
   const isMobile = useIsMobile();
+
+  // 计算半年前的日期（最大导出范围）
+  const getMaxStartDate = () => {
+    const now = new Date();
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+    return sixMonthsAgo;
+  };
 
   const loadTopups = async (currentPage, currentPageSize) => {
     setLoading(true);
@@ -80,6 +93,12 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
       }
       if (statusFilter) {
         qs += `&status=${encodeURIComponent(statusFilter)}`;
+      }
+      if (dateRange.startDate) {
+        qs += `&start_time=${Math.floor(dateRange.startDate.getTime() / 1000)}`;
+      }
+      if (dateRange.endDate) {
+        qs += `&end_time=${Math.floor(dateRange.endDate.getTime() / 1000)}`;
       }
       const endpoint = `${base}?${qs}`;
       const res = await API.get(endpoint);
@@ -95,6 +114,86 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // 导出充值账单
+  const handleExport = async () => {
+    // 验证日期范围
+    if (dateRange.startDate && dateRange.endDate) {
+      const diffDays = Math.floor((dateRange.endDate - dateRange.startDate) / (1000 * 60 * 60 * 24));
+      if (diffDays > 180) {
+        Toast.error({ content: t('导出时间范围不能超过半年（180天）') });
+        return;
+      }
+    }
+
+    setExportLoading(true);
+    try {
+      const base = isAdmin() ? '/api/user/topup/export' : '/api/user/topup/self/export';
+      let qs = '';
+      if (keyword) {
+        qs += `keyword=${encodeURIComponent(keyword)}`;
+      }
+      if (statusFilter) {
+        qs += qs ? '&' : '';
+        qs += `status=${encodeURIComponent(statusFilter)}`;
+      }
+      if (dateRange.startDate) {
+        qs += qs ? '&' : '';
+        qs += `start_time=${Math.floor(dateRange.startDate.getTime() / 1000)}`;
+      }
+      if (dateRange.endDate) {
+        qs += qs ? '&' : '';
+        qs += `end_time=${Math.floor(dateRange.endDate.getTime() / 1000)}`;
+      }
+      const endpoint = qs ? `${base}?${qs}` : base;
+
+      const res = await API.get(endpoint, {
+        responseType: 'blob',
+      });
+
+      // 检查返回的 blob 是否是 JSON 错误响应
+      const contentType = res.headers['content-type'];
+      if (contentType && contentType.includes('application/json')) {
+        // 将 blob 转换为文本并解析 JSON
+        const text = await res.data.text();
+        const json = JSON.parse(text);
+        Toast.error({ content: json.message || t('导出失败') });
+        return;
+      }
+
+      // 创建下载链接
+      const blob = new Blob([res.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `topup_history_${Date.now()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      Toast.success({ content: t('导出成功') });
+    } catch (error) {
+      Toast.error({ content: error.response?.data?.message || t('导出失败') });
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  // 快速选择时间范围
+  const handleQuickDateSelect = (days) => {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - days);
+    setDateRange({ startDate, endDate });
+    setPage(1);
+  };
+
+  // 清除日期筛选
+  const clearDateFilter = () => {
+    setDateRange({ startDate: null, endDate: null });
+    setPage(1);
   };
 
   useEffect(() => {
@@ -274,14 +373,103 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
       footer={null}
       size={isMobile ? 'full-width' : 'large'}
     >
-      <div className='flex gap-3 mb-3'>
+      {/* 时间范围筛选和导出 */}
+      <div className='mb-3 p-3 bg-gray-50 rounded-lg'>
+        <div className='flex items-center justify-between mb-3'>
+          <div className='flex flex-wrap items-center gap-2'>
+            <span className='text-sm text-gray-600 mr-2'>{t('时间范围')}</span>
+            <Button
+              size='small'
+              type='tertiary'
+              onClick={() => handleQuickDateSelect(7)}
+              className={dateRange.startDate && dateRange.endDate && 
+                Math.floor((dateRange.endDate - dateRange.startDate) / (1000 * 60 * 60 * 24)) === 7 ? 'bg-green-100 text-green-700 border border-green-300' : 'text-gray-600 hover:text-gray-800'}
+            >
+              {t('近7天')}
+            </Button>
+            <Button
+              size='small'
+              type='tertiary'
+              onClick={() => handleQuickDateSelect(30)}
+              className={dateRange.startDate && dateRange.endDate && 
+                Math.floor((dateRange.endDate - dateRange.startDate) / (1000 * 60 * 60 * 24)) === 30 ? 'bg-green-100 text-green-700 border border-green-300' : 'text-gray-600 hover:text-gray-800'}
+            >
+              {t('近30天')}
+            </Button>
+            <Button
+              size='small'
+              type='tertiary'
+              onClick={() => handleQuickDateSelect(90)}
+              className={dateRange.startDate && dateRange.endDate && 
+                Math.floor((dateRange.endDate - dateRange.startDate) / (1000 * 60 * 60 * 24)) === 90 ? 'bg-green-100 text-green-700 border border-green-300' : 'text-gray-600 hover:text-gray-800'}
+            >
+              {t('近90天')}
+            </Button>
+            <Button
+              size='small'
+              type='tertiary'
+              onClick={() => handleQuickDateSelect(180)}
+              className={dateRange.startDate && dateRange.endDate && 
+                Math.floor((dateRange.endDate - dateRange.startDate) / (1000 * 60 * 60 * 24)) === 180 ? 'bg-green-100 text-green-700 border border-green-300' : 'text-gray-600 hover:text-gray-800'}
+            >
+              {t('近半年')}
+            </Button>
+            {(dateRange.startDate || dateRange.endDate) && (
+              <Button size='small' theme='borderless' onClick={clearDateFilter}>
+                {t('清除')}
+              </Button>
+            )}
+          </div>
+          <Button
+            type='primary'
+            theme='solid'
+            onClick={handleExport}
+            loading={exportLoading}
+            icon={<Download size={16} />}
+            size='small'
+          >
+            {t('导出')}
+          </Button>
+        </div>
+        <div className='flex flex-wrap items-center gap-2'>
+          <DatePicker
+            type='date'
+            placeholder={t('开始日期')}
+            value={dateRange.startDate}
+            onChange={(value) => {
+              setDateRange((prev) => ({ ...prev, startDate: value }));
+              setPage(1);
+            }}
+            maxDate={dateRange.endDate || new Date()}
+            disabledDate={(date) => date > new Date() || date < getMaxStartDate()}
+          />
+          <span className='text-gray-400'>~</span>
+          <DatePicker
+            type='date'
+            placeholder={t('结束日期')}
+            value={dateRange.endDate}
+            onChange={(value) => {
+              setDateRange((prev) => ({ ...prev, endDate: value }));
+              setPage(1);
+            }}
+            minDate={dateRange.startDate}
+            maxDate={new Date()}
+          />
+          <span className='text-xs text-gray-500'>
+            {t('最大导出范围：半年')}
+          </span>
+        </div>
+      </div>
+
+      {/* 搜索和状态筛选 */}
+      <div className='flex flex-wrap gap-3 mb-3'>
         <Input
           prefix={<IconSearch />}
           placeholder={t('订单号')}
           value={keyword}
           onChange={handleKeywordChange}
           showClear
-          style={{ flex: 1 }}
+          style={{ flex: 1, minWidth: '200px' }}
         />
         <Select
           placeholder={t('全部状态')}

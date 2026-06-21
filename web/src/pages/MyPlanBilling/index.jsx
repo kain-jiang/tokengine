@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TabPane, Tabs, Spin, Typography } from '@douyinfe/semi-ui';
+import { TabPane, Tabs, Spin, Typography, Toast } from '@douyinfe/semi-ui';
 import { API, showError } from '../../helpers';
 import CardPro from '../../components/common/ui/CardPro';
 import BillingFilters from './components/BillingFilters';
@@ -13,6 +13,7 @@ const MyPlanBilling = () => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('model');
   const [loading, setLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   const [modelData, setModelData] = useState({ total: 0, total_request_count: 0, items: [] });
   const [tokenData, setTokenData] = useState({ total: 0, total_request_count: 0, items: [] });
   
@@ -72,6 +73,60 @@ const MyPlanBilling = () => {
     setFilters(newFilters);
   };
 
+  // 导出功能
+  const handleExport = async () => {
+    // 验证日期范围（最大半年）
+    const startDate = new Date(filters.startDate);
+    const endDate = new Date(filters.endDate);
+    const diffDays = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24));
+    if (diffDays > 180) {
+      Toast.error({ content: t('导出时间范围不能超过半年（180天）') });
+      return;
+    }
+
+    setExportLoading(true);
+    try {
+      const endpoint = activeTab === 'model' 
+        ? '/api/billing/self/model-summary/export' 
+        : '/api/billing/self/token-summary/export';
+
+      const params = new URLSearchParams();
+      params.append('start_date', filters.startDate);
+      params.append('end_date', filters.endDate);
+
+      const res = await API.get(`${endpoint}?${params.toString()}`, {
+        responseType: 'blob',
+      });
+
+      // 检查返回的 blob 是否是 JSON 错误响应
+      const contentType = res.headers['content-type'];
+      if (contentType && contentType.includes('application/json')) {
+        const text = await res.data.text();
+        const json = JSON.parse(text);
+        Toast.error({ content: json.message || t('导出失败') });
+        return;
+      }
+
+      // 创建下载链接
+      const blob = new Blob([res.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const typeName = activeTab === 'model' ? 'model_summary' : 'token_summary';
+      a.download = `${typeName}_${filters.startDate}_${filters.endDate}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      Toast.success({ content: t('导出成功') });
+    } catch (error) {
+      Toast.error({ content: error.response?.data?.message || t('导出失败') });
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   const renderSummary = () => {
     const data = activeTab === 'model' ? modelData : tokenData;
     return (
@@ -88,7 +143,12 @@ const MyPlanBilling = () => {
     <div className='mt-[60px] px-2'>
       <CardPro
         type='type2'
-        searchArea={<BillingFilters filters={filters} onChange={handleFiltersChange} />}
+        searchArea={<BillingFilters 
+          filters={filters} 
+          onChange={handleFiltersChange}
+          onExport={handleExport}
+          exportLoading={exportLoading}
+        />}
       >
         {renderSummary()}
         <Tabs activeKey={activeTab} onChange={setActiveTab}>

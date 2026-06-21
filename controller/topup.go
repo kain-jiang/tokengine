@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Calcium-Ion/go-epay/epay"
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
@@ -15,8 +16,6 @@ import (
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/QuantumNous/new-api/setting/system_setting"
-
-	"github.com/Calcium-Ion/go-epay/epay"
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
@@ -458,6 +457,167 @@ func GetAllTopUps(c *gin.Context) {
 
 type AdminCompleteTopupRequest struct {
 	TradeNo string `json:"trade_no"`
+}
+
+// ExportUserTopUps 用户导出自己的充值记录
+func ExportUserTopUps(c *gin.Context) {
+	userId := c.GetInt("id")
+	startTimeStr := c.Query("start_time")
+	endTimeStr := c.Query("end_time")
+	keyword := c.Query("keyword")
+	status := c.Query("status")
+
+	var startTime, endTime int64 = 0, 0
+	var err error
+
+	if startTimeStr != "" {
+		startTime, err = strconv.ParseInt(startTimeStr, 10, 64)
+		if err != nil {
+			common.ApiErrorMsg(c, "无效的开始时间")
+			return
+		}
+	}
+
+	if endTimeStr != "" {
+		endTime, err = strconv.ParseInt(endTimeStr, 10, 64)
+		if err != nil {
+			common.ApiErrorMsg(c, "无效的结束时间")
+			return
+		}
+	}
+
+	// 限制最大导出范围为半年（180天）
+	maxDuration := int64(180 * 24 * 60 * 60) // 180天的秒数
+	if startTime > 0 && endTime > 0 && endTime-startTime > maxDuration {
+		common.ApiErrorMsg(c, "导出时间范围不能超过半年")
+		return
+	}
+
+	// 默认使用当前时间作为结束时间
+	if endTime == 0 {
+		endTime = time.Now().Unix()
+	}
+
+	// 默认开始时间为半年前
+	if startTime == 0 {
+		startTime = endTime - maxDuration
+	}
+
+	logger.LogInfo(c, fmt.Sprintf("导出用户充值记录: %d, %d, %s, %s, %s", userId, startTime, endTime, keyword, status))
+
+	topups, err := model.GetUserTopUpsExport(userId, startTime, endTime, keyword, status)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	// 生成 CSV
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=topup_history_%d.csv", time.Now().Unix()))
+
+	// 添加 BOM 以支持 Excel 正确识别 UTF-8
+	c.Writer.WriteString("\xef\xbb\xbf")
+
+	// 写入表头
+	c.Writer.WriteString("订单号,充值额度,支付金额,支付方式,状态,创建时间,完成时间\n")
+
+	for _, topup := range topups {
+		createTime := time.Unix(topup.CreateTime, 0).Format("2006-01-02 15:04:05")
+		completeTime := ""
+		if topup.CompleteTime > 0 {
+			completeTime = time.Unix(topup.CompleteTime, 0).Format("2006-01-02 15:04:05")
+		}
+		c.Writer.WriteString(fmt.Sprintf("%s,%d,%.2f,%s,%s,%s,%s\n",
+			topup.TradeNo,
+			topup.Amount,
+			topup.Money,
+			model.PaymentMethods[topup.PaymentMethod],
+			model.PayStatus[topup.Status],
+			createTime,
+			completeTime,
+		))
+	}
+	logger.LogInfo(c, fmt.Sprintf("导出用户充值记录完成: %d", len(topups)))
+}
+
+// ExportAllTopUps 管理员导出全平台充值记录
+func ExportAllTopUps(c *gin.Context) {
+	startTimeStr := c.Query("start_time")
+	endTimeStr := c.Query("end_time")
+	keyword := c.Query("keyword")
+	status := c.Query("status")
+
+	var startTime, endTime int64 = 0, 0
+	var err error
+
+	if startTimeStr != "" {
+		startTime, err = strconv.ParseInt(startTimeStr, 10, 64)
+		if err != nil {
+			common.ApiErrorMsg(c, "无效的开始时间")
+			return
+		}
+	}
+
+	if endTimeStr != "" {
+		endTime, err = strconv.ParseInt(endTimeStr, 10, 64)
+		if err != nil {
+			common.ApiErrorMsg(c, "无效的结束时间")
+			return
+		}
+	}
+
+	// 限制最大导出范围为半年（180天）
+	maxDuration := int64(180 * 24 * 60 * 60) // 180天的秒数
+	if startTime > 0 && endTime > 0 && endTime-startTime > maxDuration {
+		common.ApiErrorMsg(c, "导出时间范围不能超过半年")
+		return
+	}
+
+	// 默认使用当前时间作为结束时间
+	if endTime == 0 {
+		endTime = time.Now().Unix()
+	}
+
+	// 默认开始时间为半年前
+	if startTime == 0 {
+		startTime = endTime - maxDuration
+	}
+
+	logger.LogInfo(c, fmt.Sprintf("导出全平台充值记录: %d, %d, %s, %s", startTime, endTime, keyword, status))
+	topups, err := model.GetAllTopUpsExport(startTime, endTime, keyword, status)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	// 生成 CSV
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=topup_history_all_%d.csv", time.Now().Unix()))
+
+	// 添加 BOM 以支持 Excel 正确识别 UTF-8
+	c.Writer.WriteString("\xef\xbb\xbf")
+
+	// 写入表头（管理员版本包含用户名）
+	c.Writer.WriteString("用户名,订单号,充值额度,支付金额,支付方式,状态,创建时间,完成时间\n")
+
+	for _, topup := range topups {
+		createTime := time.Unix(topup.CreateTime, 0).Format("2006-01-02 15:04:05")
+		completeTime := ""
+		if topup.CompleteTime > 0 {
+			completeTime = time.Unix(topup.CompleteTime, 0).Format("2006-01-02 15:04:05")
+		}
+		c.Writer.WriteString(fmt.Sprintf("%s,%s,%d,%.2f,%s,%s,%s,%s\n",
+			topup.Username,
+			topup.TradeNo,
+			topup.Amount,
+			topup.Money,
+			model.PaymentMethods[topup.PaymentMethod],
+			model.PayStatus[topup.Status],
+			createTime,
+			completeTime,
+		))
+	}
+	logger.LogInfo(c, fmt.Sprintf("导出全平台充值记录完成: %d", len(topups)))
 }
 
 // AdminCompleteTopUp 管理员补单接口

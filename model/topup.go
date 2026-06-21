@@ -17,6 +17,24 @@ type TopUpWithUsername struct {
 	Username string `json:"username" gorm:"column:username"`
 }
 
+var PayStatus = map[string]string{
+	"success":   "成功",
+	"pending":   "待支付",
+	"failed":    "失败",
+	"cancelled": "取消",
+	"expired":   "已过期",
+}
+
+var PaymentMethods = map[string]string{
+	"alipay":  "支付宝",
+	"wxpay":   "微信",
+	"zs_pay":  "招商银行聚合支付",
+	"helipay": "合利宝支付",
+	"stripe":  "Stripe",
+	"creem":   "Creem",
+	"waffo":   "Waffo",
+}
+
 type TopUp struct {
 	Id            int     `json:"id"`
 	UserId        int     `json:"user_id" gorm:"index"`
@@ -571,6 +589,51 @@ func CancelTopUpByTradeNo(tradeNo string, userId int) error {
 	RecordLog(userId, LogTypeTopup, fmt.Sprintf("取消充值订单，订单号: %s", tradeNo))
 
 	return nil
+}
+
+// GetUserTopUpsExport 获取用户充值记录（用于导出，支持时间范围）
+func GetUserTopUpsExport(userId int, startTime, endTime int64, keyword, status string) ([]*TopUp, error) {
+	var topups []*TopUp
+	query := DB.Where("user_id = ?", userId)
+	if startTime > 0 {
+		query = query.Where("create_time >= ?", startTime)
+	}
+	if endTime > 0 {
+		query = query.Where("create_time <= ?", endTime)
+	}
+	if keyword != "" {
+		like := "%" + keyword + "%"
+		query = query.Where("trade_no LIKE ?", like)
+	}
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	err := query.Order("id desc").Find(&topups).Error
+	return topups, err
+}
+
+// GetAllTopUpsExport 获取全平台充值记录（用于导出，支持时间范围）
+func GetAllTopUpsExport(startTime, endTime int64, keyword, status string) ([]*TopUpWithUsername, error) {
+	var topups []*TopUpWithUsername
+	query := DB.Model(&TopUp{})
+	if startTime > 0 {
+		query = query.Where("create_time >= ?", startTime)
+	}
+	if endTime > 0 {
+		query = query.Where("create_time <= ?", endTime)
+	}
+	if keyword != "" {
+		like := "%" + keyword + "%"
+		query = query.Where("trade_no LIKE ?", like)
+	}
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	err := query.Select("top_ups.*, users.username").
+		Joins("LEFT JOIN users ON top_ups.user_id = users.id").
+		Order("top_ups.id desc").
+		Find(&topups).Error
+	return topups, err
 }
 
 // ExpirePendingTopUps 将超过指定时间戳的待支付订单标记为过期

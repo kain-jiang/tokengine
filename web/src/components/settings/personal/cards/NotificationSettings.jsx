@@ -433,8 +433,8 @@ const NotificationSettings = ({
                   onChange={(value) => handleFormChange('warningType', value)}
                   rules={[{ required: true, message: t('请选择通知方式') }]}
                 >
-                  <Radio value='email'>{t('邮件通知')}</Radio>
                   <Radio value='sms'>{t('短信通知')}</Radio>
+                  <Radio value='email'>{t('邮件通知')}</Radio>
                   <Radio value='webhook'>{t('Webhook通知')}</Radio>
                   <Radio value='bark'>{t('Bark通知')}</Radio>
                   <Radio value='gotify'>{t('Gotify通知')}</Radio>
@@ -484,28 +484,14 @@ const NotificationSettings = ({
                     checkedText={t('开')}
                     uncheckedText={t('关')}
                     onChange={(value) =>
-                      handleFormChange('upstreamModelUpdateNotifyEnabled', value)
+                      handleFormChange(
+                        'upstreamModelUpdateNotifyEnabled',
+                        value,
+                      )
                     }
                     extraText={t(
                       '仅管理员可用。开启后，当系统定时检测全部渠道发现上游模型变更或检测异常时，将按你选择的通知方式发送汇总通知；渠道或模型过多时会自动省略部分明细。',
                     )}
-                  />
-                )}
-
-                {/* 邮件通知设置 */}
-                {notificationSettings.warningType === 'email' && (
-                  <Form.Input
-                    field='notificationEmail'
-                    label={t('通知邮箱')}
-                    placeholder={t('留空则使用账号绑定的邮箱')}
-                    onChange={(val) =>
-                      handleFormChange('notificationEmail', val)
-                    }
-                    prefix={<IconMail />}
-                    extraText={t(
-                      '设置用于接收额度预警的邮箱地址，不填则使用账号绑定的邮箱',
-                    )}
-                    showClear
                   />
                 )}
 
@@ -521,6 +507,23 @@ const NotificationSettings = ({
                     prefix={<IconPhone />}
                     extraText={t(
                       '设置用于接收额度预警的手机号码，不填则使用账号绑定的手机号',
+                    )}
+                    showClear
+                  />
+                )}
+
+                {/* 邮件通知设置 */}
+                {notificationSettings.warningType === 'email' && (
+                  <Form.Input
+                    field='notificationEmail'
+                    label={t('通知邮箱')}
+                    placeholder={t('留空则使用账号绑定的邮箱')}
+                    onChange={(val) =>
+                      handleFormChange('notificationEmail', val)
+                    }
+                    prefix={<IconMail />}
+                    extraText={t(
+                      '设置用于接收额度预警的邮箱地址，不填则使用账号绑定的邮箱',
                     )}
                     showClear
                   />
