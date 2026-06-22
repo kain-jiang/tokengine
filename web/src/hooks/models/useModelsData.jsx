@@ -269,12 +269,12 @@ export const useModelsData = () => {
     }
   };
 
-  // Search models with keyword and vendor
+  // Search models with keyword, vendor and channel
   const searchModels = async () => {
     const { searchKeyword = '', searchVendor = '' } = getFormValues();
 
-    if (searchKeyword === '' && searchVendor === '') {
-      // If keyword is blank, load models instead
+    if (searchKeyword === '' && searchVendor === '' && channelFilter === '') {
+      // If all filters are blank, load models instead
       await loadModels(1, pageSize);
       return;
     }
@@ -282,7 +282,7 @@ export const useModelsData = () => {
     setSearching(true);
     try {
       const res = await API.get(
-        `/api/models/search?keyword=${searchKeyword}&vendor=${searchVendor}&p=1&page_size=${pageSize}`,
+        `/api/models/search?keyword=${searchKeyword}&vendor=${searchVendor}&channel=${channelFilter}&p=1&page_size=${pageSize}`,
       );
       const { success, message, data } = res.data;
       if (success) {
@@ -438,21 +438,6 @@ export const useModelsData = () => {
     }
   };
 
-  // Filter models by selected channel (client-side)
-  const filteredModels = useMemo(() => {
-    if (!channelFilter) return models;
-    return models.filter((model) => {
-      if (!model.bound_channels || model.bound_channels.length === 0) return false;
-      return model.bound_channels.some((ch) => ch.name === channelFilter);
-    });
-  }, [models, channelFilter]);
-
-  // Compute filtered count for pagination
-  const filteredModelCount = useMemo(() => {
-    if (!channelFilter) return modelCount;
-    return filteredModels.length;
-  }, [channelFilter, modelCount, filteredModels]);
-
   // Initial load
   useEffect(() => {
     (async () => {
@@ -464,12 +449,12 @@ export const useModelsData = () => {
 
   return {
     // Data state
-    models: filteredModels,
+    models,
     loading,
     searching,
     activePage,
     pageSize,
-    modelCount: filteredModelCount,
+    modelCount,
 
     // Selection state
     selectedKeys,

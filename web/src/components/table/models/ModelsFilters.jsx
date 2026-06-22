@@ -44,21 +44,29 @@ const ModelsFilters = ({
     }, 100);
   };
 
+  // Handle channel change - immediately trigger server-side search
+  const handleChannelChange = (value) => {
+    setChannelFilter(value);
+    setTimeout(() => {
+      searchModels();
+    }, 0);
+  };
+
   return (
     <div className='flex flex-col gap-2 w-full'>
-      {/* Channel filter dropdown */}
+      {/* Channel filter dropdown - independent Select for immediate response */}
       <div className='w-full md:w-56'>
         <Select
           placeholder={t('筛选渠道')}
           value={channelFilter}
-          onChange={(value) => setChannelFilter(value)}
+          onChange={handleChannelChange}
           style={{ width: '100%' }}
           size='small'
           showClear
         >
           <Select.Option value=''>{t('全部渠道')}</Select.Option>
           {channels.map((ch) => (
-            <Select.Option key={ch.id} value={ch.name}>
+            <Select.Option key={ch.id} value={String(ch.id)}>
               {ch.name}
             </Select.Option>
           ))}

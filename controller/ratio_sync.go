@@ -1058,11 +1058,11 @@ type qiniuPricingDetail struct {
 	UnitPrice float64 `json:"unit_price"`
 }
 
-type qiniuDetailsV2 struct {
-	Output qiniuPricingDetail `json:"output"`
-	Cache  qiniuPricingDetail `json:"cache"`
-	Ncache qiniuPricingDetail `json:"ncache"`
-}
+// qiniuDetailsV2 使用 map 来兼容七牛云 API 中两种不同的 details_v2 格式：
+//
+//	格式1: { "ncache": {...}, "output": {...}, "cache": {...} }
+//	格式2: { "input": {...}, "output": {...}, "bi_input": {...}, "bi_output": {...} }
+type qiniuDetailsV2 map[string]qiniuPricingDetail
 
 type qiniuPricingRuleV2 struct {
 	DetailsV2 qiniuDetailsV2 `json:"details_v2"`
@@ -1078,14 +1078,48 @@ type qiniuMarketResponse struct {
 	Data   []qiniuModelItem `json:"data"`
 }
 
+// qiniuGetInputPrice 从 details_v2 中获取输入价格。
+// 优先使用 "ncache"（非缓存输入），其次使用 "input"。
+func qiniuGetInputPrice(details qiniuDetailsV2) (float64, bool) {
+	if d, ok := details["ncache"]; ok && d.UnitPrice > 0 {
+		return d.UnitPrice, true
+	}
+	if d, ok := details["input"]; ok && d.UnitPrice > 0 {
+		return d.UnitPrice, true
+	}
+	return 0, false
+}
+
+// qiniuGetOutputPrice 从 details_v2 中获取输出价格。
+// 优先使用 "output"。
+func qiniuGetOutputPrice(details qiniuDetailsV2) (float64, bool) {
+	if d, ok := details["output"]; ok && d.UnitPrice > 0 {
+		return d.UnitPrice, true
+	}
+	return 0, false
+}
+
+// qiniuGetCachePrice 从 details_v2 中获取缓存价格。
+// 优先使用 "cache"，其次使用 "bi_input"（批量输入）作为缓存价格的近似值。
+func qiniuGetCachePrice(details qiniuDetailsV2) (float64, bool) {
+	if d, ok := details["cache"]; ok && d.UnitPrice > 0 {
+		return d.UnitPrice, true
+	}
+	return 0, false
+}
+
 // convertQiniuToRatioData 将七牛云市场模型价格 API 响应转换为本地 ratio 格式。
 //
 // 七牛云 API 返回的价格单位为 元/1K tokens。
 // 转换公式：
 //
-//	model_ratio = ncache.unit_price * RMB
-//	completion_ratio = output.unit_price / ncache.unit_price
-//	cache_ratio = cache.unit_price / ncache.unit_price
+//	model_ratio = input_price * RMB
+//	completion_ratio = output_price / input_price
+//	cache_ratio = cache_price / input_price
+//
+// 兼容两种 details_v2 格式：
+//   - 格式1: ncache(非缓存输入) / output(输出) / cache(缓存输入)
+//   - 格式2: input(输入) / output(输出) / bi_input(批量输入) / bi_output(批量输出)
 func convertQiniuToRatioData(reader io.Reader) (map[string]any, error) {
 	var resp qiniuMarketResponse
 	if err := common.DecodeJson(reader, &resp); err != nil {
@@ -1104,29 +1138,28 @@ func convertQiniuToRatioData(reader io.Reader) (map[string]any, error) {
 			continue
 		}
 		rule := m.PricingRulesV2[0]
-		ncachePrice := rule.DetailsV2.Ncache.UnitPrice
-		outputPrice := rule.DetailsV2.Output.UnitPrice
-		cachePrice := rule.DetailsV2.Cache.UnitPrice
+		details := rule.DetailsV2
 
-		// 跳过没有有效输入价格的模型
-		if ncachePrice <= 0 {
+		// 获取输入价格（兼容两种格式）
+		inputPrice, ok := qiniuGetInputPrice(details)
+		if !ok {
 			continue
 		}
 
 		// model_ratio = 输入价格(元/1K tokens) * RMB
 		// RMB = USD / 7.3 ≈ 68.493
-		modelRatio := ncachePrice * float64(ratio_setting.RMB)
+		modelRatio := inputPrice * float64(ratio_setting.RMB)
 		modelRatioMap[m.ID] = roundRatioValue(modelRatio)
 
 		// completion_ratio = 输出价格 / 输入价格
-		if outputPrice > 0 {
-			compRatio := outputPrice / ncachePrice
+		if outputPrice, ok := qiniuGetOutputPrice(details); ok {
+			compRatio := outputPrice / inputPrice
 			completionRatioMap[m.ID] = roundRatioValue(compRatio)
 		}
 
 		// cache_ratio = 缓存价格 / 输入价格
-		if cachePrice > 0 {
-			cacheRatio := cachePrice / ncachePrice
+		if cachePrice, ok := qiniuGetCachePrice(details); ok {
+			cacheRatio := cachePrice / inputPrice
 			cacheRatioMap[m.ID] = roundRatioValue(cacheRatio)
 		}
 	}
