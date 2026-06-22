@@ -28,8 +28,6 @@ const ModelsFilters = ({
   loading,
   searching,
   channels,
-  channelFilter,
-  setChannelFilter,
   t,
 }) => {
   // Handle form reset and immediate search
@@ -38,41 +36,13 @@ const ModelsFilters = ({
   const handleReset = () => {
     if (!formApiRef.current) return;
     formApiRef.current.reset();
-    setChannelFilter('');
     setTimeout(() => {
       searchModels();
     }, 100);
   };
 
-  // Handle channel change - immediately trigger server-side search
-  const handleChannelChange = (value) => {
-    setChannelFilter(value);
-    setTimeout(() => {
-      searchModels();
-    }, 0);
-  };
-
   return (
     <div className='flex flex-col gap-2 w-full'>
-      {/* Channel filter dropdown - independent Select for immediate response */}
-      <div className='w-full md:w-56'>
-        <Select
-          placeholder={t('筛选渠道')}
-          value={channelFilter}
-          onChange={handleChannelChange}
-          style={{ width: '100%' }}
-          size='small'
-          showClear
-        >
-          <Select.Option value=''>{t('全部渠道')}</Select.Option>
-          {channels.map((ch) => (
-            <Select.Option key={ch.id} value={String(ch.id)}>
-              {ch.name}
-            </Select.Option>
-          ))}
-        </Select>
-      </div>
-
       <Form
         initValues={formInitValues}
         getFormApi={(api) => {
@@ -88,6 +58,24 @@ const ModelsFilters = ({
         className='w-full md:w-auto order-1 md:order-2'
       >
         <div className='flex flex-col md:flex-row items-center gap-2 w-full md:w-auto'>
+          <div className='relative w-full md:w-56'>
+            <Form.Select
+              field='searchChannel'
+              label={null}
+              placeholder={t('筛选渠道')}
+              style={{ width: '100%' }}
+              size='small'
+              showClear
+            >
+              <Select.Option value=''>{t('全部渠道')}</Select.Option>
+              {channels.map((ch) => (
+                <Select.Option key={ch.id} value={String(ch.id)}>
+                  {ch.name}
+                </Select.Option>
+              ))}
+            </Form.Select>
+          </div>
+
           <div className='relative w-full md:w-56'>
             <Form.Input
               field='searchKeyword'
