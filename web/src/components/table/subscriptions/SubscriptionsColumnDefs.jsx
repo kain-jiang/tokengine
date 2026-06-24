@@ -168,7 +168,41 @@ const renderEnabled = (text, record, t) => {
   );
 };
 
+const renderPlanType = (text, record, t) => {
+  const planType = record?.plan?.plan_type || 'quota';
+  const isTokens = planType === 'tokens';
+  return (
+    <Tag
+      color={isTokens ? 'cyan' : 'purple'}
+      shape='circle'
+      size='small'
+    >
+      {isTokens ? t('Tokens') : t('额度')}
+    </Tag>
+  );
+};
+
 const renderTotalAmount = (text, record, t) => {
+  const planType = record?.plan?.plan_type || 'quota';
+  const isTokens = planType === 'tokens';
+  
+  // Tokens 类型显示 tokens_limit
+  if (isTokens) {
+    const tokensLimit = Number(record?.plan?.tokens_limit || 0);
+    return (
+      <Text type={tokensLimit > 0 ? 'secondary' : 'tertiary'}>
+        {tokensLimit > 0 ? (
+          <Tooltip content={`${t('Tokens上限')}：${tokensLimit}`}>
+            <span>{tokensLimit.toLocaleString()}</span>
+          </Tooltip>
+        ) : (
+          t('不限')
+        )}
+      </Text>
+    );
+  }
+  
+  // 额度类型显示 total_amount
   const total = Number(record?.plan?.total_amount || 0);
   return (
     <Text type={total > 0 ? 'secondary' : 'tertiary'}>
@@ -306,6 +340,12 @@ export const getSubscriptionsColumns = ({
       title: t('购买上限'),
       width: 90,
       render: (text, record) => renderPurchaseLimit(text, record, t),
+    },
+    {
+      title: t('类型'),
+      dataIndex: ['plan', 'plan_type'],
+      width: 90,
+      render: (text, record) => renderPlanType(text, record, t),
     },
     {
       title: t('优先级'),

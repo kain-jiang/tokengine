@@ -176,6 +176,15 @@ type SubscriptionPlan struct {
 	QuotaResetPeriod        string `json:"quota_reset_period" gorm:"type:varchar(16);default:'never'"`
 	QuotaResetCustomSeconds int64  `json:"quota_reset_custom_seconds" gorm:"type:bigint;default:0"`
 
+	// Plan type: "quota" for quota-based plans, "tokens" for tokens-based plans
+	PlanType string `json:"plan_type" gorm:"type:varchar(16);default:'quota'"`
+
+	// ApplicableModels is a JSON array of model names, used when plan_type is "tokens"
+	ApplicableModels string `json:"applicable_models" gorm:"type:text;default:''"`
+
+	// TokensLimit is the tokens上限 for tokens-type plans (0 = unlimited)
+	TokensLimit int64 `json:"tokens_limit" gorm:"type:bigint;default:0"`
+
 	CreatedAt int64 `json:"created_at" gorm:"bigint"`
 	UpdatedAt int64 `json:"updated_at" gorm:"bigint"`
 }
@@ -250,6 +259,11 @@ type UserSubscription struct {
 
 	UpgradeGroup  string `json:"upgrade_group" gorm:"type:varchar(64);default:''"`
 	PrevUserGroup string `json:"prev_user_group" gorm:"type:varchar(64);default:''"`
+
+	// Tokens-related fields (for tokens-type plans)
+	TokensUsed       int64  `json:"tokens_used" gorm:"type:bigint;default:0"`
+	TokensLimit      int64  `json:"tokens_limit" gorm:"type:bigint;default:0"`
+	ApplicableModels string `json:"applicable_models" gorm:"type:text;default:''"`
 
 	CreatedAt int64 `json:"created_at" gorm:"bigint"`
 	UpdatedAt int64 `json:"updated_at" gorm:"bigint"`
@@ -484,20 +498,23 @@ func CreateUserSubscriptionFromPlanTx(tx *gorm.DB, userId int, plan *Subscriptio
 		}
 	}
 	sub := &UserSubscription{
-		UserId:        userId,
-		PlanId:        plan.Id,
-		AmountTotal:   plan.TotalAmount,
-		AmountUsed:    0,
-		StartTime:     now.Unix(),
-		EndTime:       endUnix,
-		Status:        "active",
-		Source:        source,
-		LastResetTime: lastReset,
-		NextResetTime: nextReset,
-		UpgradeGroup:  upgradeGroup,
-		PrevUserGroup: prevGroup,
-		CreatedAt:     common.GetTimestamp(),
-		UpdatedAt:     common.GetTimestamp(),
+		UserId:           userId,
+		PlanId:           plan.Id,
+		AmountTotal:      plan.TotalAmount,
+		AmountUsed:       0,
+		StartTime:        now.Unix(),
+		EndTime:          endUnix,
+		Status:           "active",
+		Source:           source,
+		LastResetTime:    lastReset,
+		NextResetTime:    nextReset,
+		UpgradeGroup:     upgradeGroup,
+		PrevUserGroup:    prevGroup,
+		TokensUsed:       0,
+		TokensLimit:      plan.TokensLimit,
+		ApplicableModels: plan.ApplicableModels,
+		CreatedAt:        common.GetTimestamp(),
+		UpdatedAt:        common.GetTimestamp(),
 	}
 	if err := tx.Create(sub).Error; err != nil {
 		return nil, err
