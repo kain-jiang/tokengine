@@ -58,6 +58,12 @@ export function getLogo() {
   return logo;
 }
 
+export function getIcpVersion() {
+  let icpVersion = localStorage.getItem('icp_version');
+  if (!icpVersion) return '';
+  return icpVersion;
+}
+
 export function getUserIdFromLocalStorage() {
   let user = localStorage.getItem('user');
   if (!user) return -1;
