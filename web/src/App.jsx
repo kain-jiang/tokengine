@@ -35,6 +35,7 @@ import PasswordResetForm from './components/auth/PasswordResetForm';
 import PasswordResetConfirm from './components/auth/PasswordResetConfirm';
 import Channel from './pages/Channel';
 import Token from './pages/Token';
+import TokenPlan from './pages/TokenPlan';
 import Redemption from './pages/Redemption';
 import TopUp from './pages/TopUp';
 import MyPlanBilling from './pages/MyPlanBilling';
@@ -133,6 +134,14 @@ function App() {
             <AdminRoute>
               <Channel />
             </AdminRoute>
+          }
+        />
+        <Route
+          path='/console/token-plan'
+          element={
+            <PrivateRoute>
+              <TokenPlan />
+            </PrivateRoute>
           }
         />
         <Route

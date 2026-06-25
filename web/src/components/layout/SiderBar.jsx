@@ -33,6 +33,7 @@ import { Nav, Divider, Button } from '@douyinfe/semi-ui';
 const routerMap = {
   home: '/',
   channel: '/console/channel',
+  tokenPlan: '/console/token-plan',
   token: '/console/token',
   redemption: '/console/redemption',
   topup: '/console/topup',
@@ -81,6 +82,11 @@ const SiderBar = ({ onNavigate = () => {} }) => {
           localStorage.getItem('enable_data_export') === 'true'
             ? ''
             : 'tableHiddle',
+      },
+      {
+        text: t('Token Plan'),
+        itemKey: 'tokenPlan',
+        to: '/token-plan',
       },
       {
         text: t('令牌管理'),
