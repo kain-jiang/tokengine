@@ -110,6 +110,8 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/waffo/pay", middleware.CriticalRateLimit(), controller.RequestWaffoPay)
 				selfRoute.POST("/aff_transfer", controller.TransferAffQuota)
 				selfRoute.PUT("/setting", controller.UpdateUserSetting)
+				selfRoute.POST("/upload", controller.UploadMedia)
+				selfRoute.GET("/media/:id", controller.GetMedia)
 
 				// 2FA routes
 				selfRoute.GET("/2fa/status", controller.Get2FAStatus)
@@ -117,6 +119,10 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/2fa/enable", controller.Enable2FA)
 				selfRoute.POST("/2fa/disable", controller.Disable2FA)
 				selfRoute.POST("/2fa/backup_codes", controller.RegenerateBackupCodes)
+
+				// Real-name authentication routes
+				selfRoute.GET("/realname/auth", controller.GetRealNameAuth)
+				selfRoute.POST("/realname/auth", controller.SubmitRealNameAuth)
 
 				// Check-in routes
 				selfRoute.GET("/checkin", controller.GetCheckinStatus)

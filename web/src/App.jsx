@@ -52,6 +52,7 @@ import TextToVideo from './pages/TextToVideo';
 import Subscription from './pages/Subscription';
 import OAuth2Callback from './components/auth/OAuth2Callback';
 import PersonalSetting from './components/settings/PersonalSetting';
+import RealNameAuthForm from './components/settings/personal/RealNameAuthForm';
 import Setup from './pages/Setup';
 import SetupCheck from './components/layout/SetupCheck';
 
@@ -297,6 +298,14 @@ function App() {
               <Suspense fallback={<Loading></Loading>} key={location.pathname}>
                 <PersonalSetting />
               </Suspense>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='/console/realname-auth'
+          element={
+            <PrivateRoute>
+              <RealNameAuthForm />
             </PrivateRoute>
           }
         />

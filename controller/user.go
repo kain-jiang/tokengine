@@ -205,6 +205,10 @@ func Register(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgUserInputInvalid, map[string]any{"Error": err.Error()})
 		return
 	}
+	if user.TelePhone == "" || len(user.TelePhone) != 11 {
+		common.ApiErrorMsg(c, "请填写11位的手机号")
+		return
+	}
 	if common.EmailVerificationEnabled {
 		if user.Email == "" || user.VerificationCode == "" {
 			common.ApiErrorI18n(c, i18n.MsgUserEmailVerificationRequired)
@@ -221,7 +225,7 @@ func Register(c *gin.Context) {
 		return
 	}
 	common.DeleteSMSCode(user.TelePhone)
-	exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email)
+	exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email, user.TelePhone)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgDatabaseError)
 		common.SysLog(fmt.Sprintf("CheckUserExistOrDeleted error: %v", err))
