@@ -57,6 +57,11 @@ const durationUnitOptions = [
   { value: 'custom', label: '自定义(秒)' },
 ];
 
+const planTypeOptions = [
+  { value: 'quota', label: '额度套餐' },
+  { value: 'tokens', label: 'Tokens套餐' },
+];
+
 const resetPeriodOptions = [
   { value: 'never', label: '不重置' },
   { value: 'daily', label: '每天' },
@@ -87,6 +92,7 @@ const AddEditSubscriptionModal = ({
     title: '',
     subtitle: '',
     description: '',
+    plan_type: 'quota',
     price_amount: 0,
     currency: currency,
     duration_unit: 'month',
@@ -98,6 +104,8 @@ const AddEditSubscriptionModal = ({
     sort_order: 0,
     max_purchase_per_user: 0,
     total_amount: 0,
+    tokens_limit: 0,
+    applicable_models: '',
     upgrade_group: '',
     stripe_price_id: '',
     creem_product_id: '',
@@ -112,6 +120,7 @@ const AddEditSubscriptionModal = ({
       title: p.title || '',
       subtitle: p.subtitle || '',
       description: p.description || '',
+      plan_type: p.plan_type || 'quota',
       price_amount: Number(p.price_amount || 0),
       currency: currency,
       duration_unit: p.duration_unit || 'month',
@@ -125,6 +134,8 @@ const AddEditSubscriptionModal = ({
       total_amount: Number(
         quotaToDisplayAmount(p.total_amount || 0).toFixed(2),
       ),
+      tokens_limit: Number(p.tokens_limit || 0),
+      applicable_models: p.applicable_models || '',
       upgrade_group: p.upgrade_group || '',
       stripe_price_id: p.stripe_price_id || '',
       creem_product_id: p.creem_product_id || '',
@@ -151,11 +162,23 @@ const AddEditSubscriptionModal = ({
       showError(t('套餐标题不能为空'));
       return;
     }
+    // For tokens type, validate applicable_models and tokens_limit
+    if (values.plan_type === 'tokens') {
+      if (!values.applicable_models || values.applicable_models.trim() === '') {
+        showError(t('Tokens套餐必须指定适用模型'));
+        return;
+      }
+      if (values.tokens_limit < 0) {
+        showError(t('Tokens上限不能为负数'));
+        return;
+      }
+    }
     setLoading(true);
     try {
       const payload = {
         plan: {
           ...values,
+          plan_type: values.plan_type || 'quota',
           price_amount: Number(values.price_amount || 0),
           currency: currency,
           duration_value: Number(values.duration_value || 0),
@@ -167,7 +190,9 @@ const AddEditSubscriptionModal = ({
               : 0,
           sort_order: Number(values.sort_order || 0),
           max_purchase_per_user: Number(values.max_purchase_per_user || 0),
-          total_amount: displayAmountToQuota(values.total_amount),
+          total_amount: values.plan_type === 'quota' ? displayAmountToQuota(values.total_amount) : 0,
+          tokens_limit: values.plan_type === 'tokens' ? Number(values.tokens_limit || 0) : 0,
+          applicable_models: values.plan_type === 'tokens' ? values.applicable_models : '',
           upgrade_group: values.upgrade_group || '',
         },
       };
@@ -323,25 +348,73 @@ const AddEditSubscriptionModal = ({
                     </Col>
 
                     <Col span={12}>
-                      {(() => {
-                        const { symbol } = getCurrencyConfig();
-                        return (
+                      <Form.Select
+                        field='plan_type'
+                        label={t('套餐类型')}
+                        required
+                        rules={[{ required: true, message: t('请选择套餐类型') }]}
+                      >
+                        {planTypeOptions.map((o) => (
+                          <Select.Option key={o.value} value={o.value}>
+                            {o.label}
+                          </Select.Option>
+                        ))}
+                      </Form.Select>
+                    </Col>
+
+                    {/* 额度套餐 - 总额度 */}
+                    {values.plan_type === 'quota' && (
+                      <Col span={12}>
+                        {(() => {
+                          const { symbol } = getCurrencyConfig();
+                          return (
+                            <Form.InputNumber
+                              field='total_amount'
+                              label={t('总额度')}
+                              prefix={symbol}
+                              required
+                              min={0}
+                              precision={2}
+                              rules={[{ required: true, message: t('请输入总额度') }]}
+                              extraText={`${t('0 表示不限')} · ${t('原生额度')}：${displayAmountToQuota(
+                                values.total_amount,
+                              )}`}
+                              style={{ width: '100%' }}
+                            />
+                          );
+                        })()}
+                      </Col>
+                    )}
+
+                    {/* Tokens套餐 - Tokens上限 */}
+                    {values.plan_type === 'tokens' && (
+                      <>
+                        <Col span={12}>
                           <Form.InputNumber
-                            field='total_amount'
-                            label={t('总额度')}
-                            prefix={symbol}
+                            field='tokens_limit'
+                            label={t('Tokens数')}
                             required
                             min={0}
-                            precision={2}
-                            rules={[{ required: true, message: t('请输入总额度') }]}
-                            extraText={`${t('0 表示不限')} · ${t('原生额度')}：${displayAmountToQuota(
-                              values.total_amount,
-                            )}`}
+                            precision={0}
+                            rules={[{ required: true, message: t('请输入Tokens数') }]}
+                            extraText={`${t('0 表示不限')}`}
                             style={{ width: '100%' }}
                           />
-                        );
-                      })()}
-                    </Col>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Input
+                            field='applicable_models'
+                            label={t('适用模型')}
+                            placeholder={t('多个模型用逗号分隔，如：gpt-4,gpt-3.5')}
+                            required
+                            rules={[{ required: true, message: t('请输入适用模型') }]}
+                            extraText={t('此套餐仅适用于指定的模型')}
+                            showClear
+                            style={{ width: '100%' }}
+                          />
+                        </Col>
+                      </>
+                    )}
 
                     <Col span={12}>
                       <Form.Select
@@ -464,7 +537,8 @@ const AddEditSubscriptionModal = ({
                   </Row>
                 </Card>
 
-                {/* 额度重置 */}
+                {/* 额度重置 - 仅额度套餐显示 */}
+                {values.plan_type === 'quota' && (
                 <Card className='!rounded-2xl shadow-sm border-0 mb-4'>
                   <div className='flex items-center mb-2'>
                     <Avatar
@@ -521,6 +595,7 @@ const AddEditSubscriptionModal = ({
                     </Col>
                   </Row>
                 </Card>
+                )}
 
                 {/* 第三方支付配置 */}
                 <Card className='!rounded-2xl shadow-sm border-0 mb-4'>

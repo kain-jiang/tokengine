@@ -30,7 +30,7 @@ import {
   getQuotaPerUnit,
 } from '../../helpers';
 import { getCurrencyConfig } from '../../helpers/render';
-import { Modal, Toast } from '@douyinfe/semi-ui';
+import { Modal, Toast, Tabs, TabPane } from '@douyinfe/semi-ui';
 import { useTranslation } from 'react-i18next';
 import { UserContext } from '../../context/User';
 import { StatusContext } from '../../context/Status';
@@ -42,6 +42,7 @@ import QRCodeModal from './QRCodeModal';
 import TopupHistoryModal from './modals/TopupHistoryModal';
 import EarIcon from './EarIcon';
 import InvitationPanel from './InvitationPanel';
+import QuotaPlanSection from './QuotaPlanSection';
 
 const TopUp = () => {
   const { t } = useTranslation();
@@ -976,134 +977,169 @@ const TopUp = () => {
     }));
   };
 
+  // Tab 状态管理
+  const [activeTabKey, setActiveTabKey] = useState('topup');
+
   return (
     <div className='w-full max-w-7xl mx-auto relative min-h-screen lg:min-h-0 mt-[60px] px-2'>
-      <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
-        {/* 邀请好友弹出面板 */}
-        <InvitationPanel
-          visible={showInvitation}
-          onClose={() => setShowInvitation(false)}
-          t={t}
-          userState={userState}
-          renderQuota={renderQuota}
-          setOpenTransfer={setOpenTransfer}
-          affLink={affLink}
-          handleAffLinkClick={handleAffLinkClick}
-        />
+      {/* 邀请好友弹出面板 */}
+      <InvitationPanel
+        visible={showInvitation}
+        onClose={() => setShowInvitation(false)}
+        t={t}
+        userState={userState}
+        renderQuota={renderQuota}
+        setOpenTransfer={setOpenTransfer}
+        affLink={affLink}
+        handleAffLinkClick={handleAffLinkClick}
+      />
 
-        {/* 划转模态框 */}
-        <TransferModal
-          t={t}
-          openTransfer={openTransfer}
-          transfer={transfer}
-          handleTransferCancel={handleTransferCancel}
-          userState={userState}
-          renderQuota={renderQuota}
-          getQuotaPerUnit={getQuotaPerUnit}
-          transferAmount={transferAmount}
-          setTransferAmount={setTransferAmount}
-        />
+      {/* 划转模态框 */}
+      <TransferModal
+        t={t}
+        openTransfer={openTransfer}
+        transfer={transfer}
+        handleTransferCancel={handleTransferCancel}
+        userState={userState}
+        renderQuota={renderQuota}
+        getQuotaPerUnit={getQuotaPerUnit}
+        transferAmount={transferAmount}
+        setTransferAmount={setTransferAmount}
+      />
 
-        {/* 充值确认模态框 */}
-        <PaymentConfirmModal
-          t={t}
-          open={open}
-          onlineTopUp={onlineTopUp}
-          handleCancel={handleCancel}
-          confirmLoading={confirmLoading}
-          topUpCount={topUpCount}
-          renderQuotaWithAmount={renderQuotaWithAmount}
-          amountLoading={amountLoading}
-          renderAmount={renderAmount}
-          payWay={payWay}
-          payMethods={payMethods}
-          amountNumber={amount}
-          discountRate={topupInfo?.discount?.[topUpCount] || 1.0}
-          // 充值数量文本框显示的就是全局币种（CNY），不需要再进行汇率转换
-          isCustomCurrencyAmount={true}
-        />
+      {/* 充值确认模态框 */}
+      <PaymentConfirmModal
+        t={t}
+        open={open}
+        onlineTopUp={onlineTopUp}
+        handleCancel={handleCancel}
+        confirmLoading={confirmLoading}
+        topUpCount={topUpCount}
+        renderQuotaWithAmount={renderQuotaWithAmount}
+        amountLoading={amountLoading}
+        renderAmount={renderAmount}
+        payWay={payWay}
+        payMethods={payMethods}
+        amountNumber={amount}
+        discountRate={topupInfo?.discount?.[topUpCount] || 1.0}
+        // 充值数量文本框显示的就是全局币种（CNY），不需要再进行汇率转换
+        isCustomCurrencyAmount={true}
+      />
 
-        {/* 充值账单模态框 */}
-        <TopupHistoryModal
-          visible={openHistory}
-          onCancel={handleHistoryCancel}
-          t={t}
-        />
+      {/* 充值账单模态框 */}
+      <TopupHistoryModal
+        visible={openHistory}
+        onCancel={handleHistoryCancel}
+        t={t}
+      />
 
-        {/* Creem 充值确认模态框 */}
-        <Modal
-          title={t('确定要充值 $')}
-          visible={creemOpen}
-          onOk={onlineCreemTopUp}
-          onCancel={handleCreemCancel}
-          maskClosable={false}
-          size='small'
-          centered
-          confirmLoading={confirmLoading}
+      {/* Creem 充值确认模态框 */}
+      <Modal
+        title={t('确定要充值 $')}
+        visible={creemOpen}
+        onOk={onlineCreemTopUp}
+        onCancel={handleCreemCancel}
+        maskClosable={false}
+        size='small'
+        centered
+        confirmLoading={confirmLoading}
+      >
+        {selectedCreemProduct && (
+          <>
+            <p>
+              {t('产品名称')}：{selectedCreemProduct.name}
+            </p>
+            <p>
+              {t('价格')}：{selectedCreemProduct.currency === 'EUR' ? '€' : '$'}
+              {selectedCreemProduct.price}
+            </p>
+            <p>
+              {t('充值额度')}：{selectedCreemProduct.quota}
+            </p>
+            <p>{t('是否确认充值？')}</p>
+          </>
+        )}
+      </Modal>
+
+      {/* Tab 导航 */}
+      <Tabs
+        type="card"
+        activeKey={activeTabKey}
+        onChange={(key) => setActiveTabKey(key)}
+      >
+        <TabPane
+          tab={t('额度充值')}
+          itemKey="topup"
         >
-          {selectedCreemProduct && (
-            <>
-              <p>
-                {t('产品名称')}：{selectedCreemProduct.name}
-              </p>
-              <p>
-                {t('价格')}：{selectedCreemProduct.currency === 'EUR' ? '€' : '$'}
-                {selectedCreemProduct.price}
-              </p>
-              <p>
-                {t('充值额度')}：{selectedCreemProduct.quota}
-              </p>
-              <p>{t('是否确认充值？')}</p>
-            </>
-          )}
-        </Modal>
-
-        {/* 账户充值 - 跨两列占据全部宽度 */}
-        <div className='lg:col-span-2'>
-          <RechargeCard
+          <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+            {/* 账户充值 */}
+            <div className='lg:col-span-2'>
+              <RechargeCard
+                t={t}
+                enableOnlineTopUp={enableOnlineTopUp}
+                enableStripeTopUp={enableStripeTopUp}
+                enableCreemTopUp={enableCreemTopUp}
+                creemProducts={creemProducts}
+                creemPreTopUp={creemPreTopUp}
+                enableWaffoTopUp={enableWaffoTopUp}
+                waffoTopUp={waffoTopUp}
+                waffoPayMethods={waffoPayMethods}
+                enableZsPayTopUp={enableZsPayTopUp}
+                presetAmounts={presetAmounts}
+                selectedPreset={selectedPreset}
+                selectPresetAmount={selectPresetAmount}
+                formatLargeNumber={formatLargeNumber}
+                priceRatio={priceRatio}
+                topUpCount={topUpCount}
+                minTopUp={minTopUp}
+                renderQuotaWithAmount={renderQuotaWithAmount}
+                getAmount={getAmount}
+                setTopUpCount={setTopUpCount}
+                setSelectedPreset={setSelectedPreset}
+                renderAmount={renderAmount}
+                amountLoading={amountLoading}
+                payMethods={payMethods}
+                preTopUp={preTopUp}
+                paymentLoading={paymentLoading}
+                payWay={payWay}
+                redemptionCode={redemptionCode}
+                setRedemptionCode={setRedemptionCode}
+                topUp={topUp}
+                isSubmitting={isSubmitting}
+                topUpLink={topUpLink}
+                openTopUpLink={openTopUpLink}
+                userState={userState}
+                renderQuota={renderQuota}
+                statusLoading={statusLoading}
+                topupInfo={topupInfo}
+                onOpenHistory={handleOpenHistory}
+                onOpenInvitation={() => setShowInvitation(true)}
+                enableHelipayTopUp={enableHelipayTopUp}
+              />
+            </div>
+          </div>
+        </TabPane>
+        <TabPane
+          tab={t('额度套餐')}
+          itemKey="quotaPlan"
+        >
+          <QuotaPlanSection
             t={t}
+            loading={subscriptionLoading}
+            plans={subscriptionPlans}
+            payMethods={payMethods}
             enableOnlineTopUp={enableOnlineTopUp}
             enableStripeTopUp={enableStripeTopUp}
             enableCreemTopUp={enableCreemTopUp}
-            creemProducts={creemProducts}
-            creemPreTopUp={creemPreTopUp}
-            enableWaffoTopUp={enableWaffoTopUp}
-            waffoTopUp={waffoTopUp}
-            waffoPayMethods={waffoPayMethods}
-            enableZsPayTopUp={enableZsPayTopUp}
-            presetAmounts={presetAmounts}
-            selectedPreset={selectedPreset}
-            selectPresetAmount={selectPresetAmount}
-            formatLargeNumber={formatLargeNumber}
-            priceRatio={priceRatio}
-            topUpCount={topUpCount}
-            minTopUp={minTopUp}
-            renderQuotaWithAmount={renderQuotaWithAmount}
-            getAmount={getAmount}
-            setTopUpCount={setTopUpCount}
-            setSelectedPreset={setSelectedPreset}
-            renderAmount={renderAmount}
-            amountLoading={amountLoading}
-            payMethods={payMethods}
-            preTopUp={preTopUp}
-            paymentLoading={paymentLoading}
-            payWay={payWay}
-            redemptionCode={redemptionCode}
-            setRedemptionCode={setRedemptionCode}
-            topUp={topUp}
-            isSubmitting={isSubmitting}
-            topUpLink={topUpLink}
-            openTopUpLink={openTopUpLink}
-            userState={userState}
-            renderQuota={renderQuota}
-            statusLoading={statusLoading}
-            topupInfo={topupInfo}
-            onOpenHistory={handleOpenHistory}
-            onOpenInvitation={() => setShowInvitation(true)}
-            enableHelipayTopUp={enableHelipayTopUp}
+            billingPreference={billingPreference}
+            onChangeBillingPreference={updateBillingPreference}
+            activeSubscriptions={activeSubscriptions}
+            allSubscriptions={allSubscriptions}
+            reloadSubscriptionSelf={getSubscriptionSelf}
+            userQuota={userState?.user?.quota || 0}
           />
-        </div>
-      </div>
+        </TabPane>
+      </Tabs>
 
       {/* 招商银行聚合支付二维码弹窗 */}
       {showQRCode && (

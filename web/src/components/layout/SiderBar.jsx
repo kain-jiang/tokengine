@@ -33,10 +33,10 @@ import { Nav, Divider, Button } from '@douyinfe/semi-ui';
 const routerMap = {
   home: '/',
   channel: '/console/channel',
+  tokenPlan: '/console/token-plan',
   token: '/console/token',
   redemption: '/console/redemption',
   topup: '/console/topup',
-  myPlan: '/console/my-plan',
   billing: '/console/billing',
   user: '/console/user',
   subscription: '/console/subscription',
@@ -82,6 +82,11 @@ const SiderBar = ({ onNavigate = () => {} }) => {
           localStorage.getItem('enable_data_export') === 'true'
             ? ''
             : 'tableHiddle',
+      },
+      {
+        text: t('Token Plan'),
+        itemKey: 'tokenPlan',
+        to: '/token-plan',
       },
       {
         text: t('令牌管理'),
@@ -132,11 +137,6 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         text: t('钱包管理'),
         itemKey: 'topup',
         to: '/topup',
-      },
-      {
-        text: t('我的套餐'),
-        itemKey: 'myPlan',
-        to: '/my-plan',
       },
       {
         text: t('用户账单'),

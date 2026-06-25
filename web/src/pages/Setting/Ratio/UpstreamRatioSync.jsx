@@ -62,6 +62,7 @@ const MODELS_DEV_PRESET_ID = -101;
 const MODELS_DEV_PRESET_NAME = 'models.dev 价格预设';
 const MODELS_DEV_PRESET_BASE_URL = 'https://models.dev';
 const MODELS_DEV_PRESET_ENDPOINT = 'https://models.dev/api.json';
+const QINIU_ENDPOINT = 'https://api.qnaigc.com/v1/market/models';
 
 function ConflictConfirmModal({ t, visible, items, onOk, onCancel }) {
   const isMobile = useIsMobile();
@@ -174,6 +175,7 @@ export default function UpstreamRatioSync(props) {
               base === MODELS_DEV_PRESET_BASE_URL ||
               name === MODELS_DEV_PRESET_NAME;
             const isOpenRouter = channelType === 20;
+            const isQiniu = base.includes('qnaigc.com');
             if (!merged[id]) {
               if (isModelsDevPreset) {
                 merged[id] = MODELS_DEV_PRESET_ENDPOINT;
@@ -181,6 +183,8 @@ export default function UpstreamRatioSync(props) {
                 merged[id] = OFFICIAL_RATIO_PRESET_ENDPOINT;
               } else if (isOpenRouter) {
                 merged[id] = 'openrouter';
+              } else if (isQiniu) {
+                merged[id] = QINIU_ENDPOINT;
               } else {
                 merged[id] = DEFAULT_ENDPOINT;
               }

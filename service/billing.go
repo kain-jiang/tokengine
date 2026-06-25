@@ -76,3 +76,43 @@ func SettleBilling(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, actualQuo
 	}
 	return nil
 }
+
+// SettleBillingWithTokens 执行 tokens 计费结算。用于 tokens 类型的订阅套餐。
+// actualTokens 是实际消耗的 tokens 数量。
+func SettleBillingWithTokens(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, actualTokens int64, actualQuota int) error {
+	if relayInfo.Billing == nil {
+		// 无 BillingSession，回退到 quota 结算
+		return SettleBilling(ctx, relayInfo, actualQuota)
+	}
+
+	// 检查是否是 tokens 计费模式
+	billingMode := relayInfo.Billing.GetBillingMode()
+	if billingMode != "tokens" {
+		// 非 tokens 模式，使用 quota 结算
+		return SettleBilling(ctx, relayInfo, actualQuota)
+	}
+
+	// tokens 模式结算
+	preConsumedTokens := relayInfo.Billing.GetPreConsumedTokens()
+	delta := actualTokens - preConsumedTokens
+
+	if delta > 0 {
+		logger.LogInfo(ctx, fmt.Sprintf("tokens预扣费后补扣费：%d tokens（实际消耗：%d，预扣费：%d）",
+			delta, actualTokens, preConsumedTokens))
+	} else if delta < 0 {
+		logger.LogInfo(ctx, fmt.Sprintf("tokens预扣费后返还扣费：%d tokens（实际消耗：%d，预扣费：%d）",
+			-delta, actualTokens, preConsumedTokens))
+	} else {
+		logger.LogInfo(ctx, fmt.Sprintf("tokens预扣费与实际消耗一致，无需调整：%d tokens", actualTokens))
+	}
+
+	if err := relayInfo.Billing.SettleTokens(actualTokens); err != nil {
+		return err
+	}
+
+	// 发送额度通知
+	if actualTokens != 0 {
+		checkAndSendSubscriptionQuotaNotify(relayInfo)
+	}
+	return nil
+}

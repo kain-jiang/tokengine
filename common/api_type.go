@@ -75,7 +75,7 @@ func ChannelType2APIType(channelType int) (int, bool) {
 		apiType = constant.APITypeReplicate
 	case constant.ChannelTypeCodex:
 		apiType = constant.APITypeCodex
-	case constant.ChannelTypeZL:
+	case constant.ChannelTypeZLHub:
 		apiType = constant.APITypeOpenAI // ZL 渠道使用OpenAI兼容API
 	case constant.ChannelTypeAgnesAI:
 		apiType = constant.APITypeAgnesAI // Agnes AI 使用专用适配器处理模型名称大小写转换
