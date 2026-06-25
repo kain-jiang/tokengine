@@ -29,6 +29,7 @@ type Token struct {
 	Group              string         `json:"group" gorm:"default:''"`
 	CrossGroupRetry    bool           `json:"cross_group_retry"` // 跨分组重试，仅auto分组有效
 	DeletedAt          gorm.DeletedAt `gorm:"index"`
+	SubscriptionId     int            `json:"subscription_id" gorm:"index;default:0"` // 关联的订阅ID，0表示普通Token
 }
 
 func (token *Token) Clean() {
@@ -479,4 +480,45 @@ func GetTokenKeysByIds(ids []int, userId int) ([]Token, error) {
 		Where("user_id = ? AND id IN (?)", userId, ids).
 		Find(&tokens).Error
 	return tokens, err
+}
+
+func CreateSubscriptionToken(tx *gorm.DB, userId int, subscriptionId int, expireTime int64) (*Token, error) {
+	if err := tx.Model(&Token{}).
+		Where("user_id = ? AND subscription_id > 0 AND status = ?", userId, common.TokenStatusEnabled).
+		Update("status", common.TokenStatusDisabled).Error; err != nil {
+		return nil, err
+	}
+
+	key, err := common.GenerateKey()
+	if err != nil {
+		return nil, err
+	}
+
+	token := &Token{
+		UserId:         userId,
+		Key:            key,
+		Name:           fmt.Sprintf("TokenPlan-%d", subscriptionId),
+		Status:         common.TokenStatusEnabled,
+		CreatedTime:    common.GetTimestamp(),
+		AccessedTime:   common.GetTimestamp(),
+		ExpiredTime:    expireTime,
+		UnlimitedQuota: true,
+		SubscriptionId: subscriptionId,
+	}
+
+	if err := tx.Create(token).Error; err != nil {
+		return nil, err
+	}
+
+	return token, nil
+}
+
+func GetSubscriptionToken(userId int) (*Token, error) {
+	var token Token
+	err := DB.Where("user_id = ? AND subscription_id > 0 AND status = ?", userId, common.TokenStatusEnabled).
+		Order("id desc").First(&token).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	return &token, err
 }
