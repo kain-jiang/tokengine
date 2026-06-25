@@ -25,6 +25,9 @@ type PriceData struct {
 	Quota                int // 按次计费的最终额度（MJ / Task）
 	QuotaToPreConsume    int // 按量计费的预消耗额度
 	GroupRatioInfo       GroupRatioInfo
+	// Tokens 计费相关字段
+	TokensToPreConsume int64  // 预消耗的 tokens 数量（tokens 计费模式）
+	BillingMode        string // "quota" 或 "tokens"
 }
 
 func (p *PriceData) AddOtherRatio(key string, ratio float64) {

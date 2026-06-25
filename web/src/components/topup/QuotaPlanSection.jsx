@@ -207,9 +207,34 @@ const MySubscriptionSection = ({
     return map;
   }, [plans]);
 
-  // 构建表格数据
+  // 构建表格数据 - 只展示 quota 类型的套餐，过滤掉 tokens 类型
+  const quotaSubscriptions = useMemo(() => {
+    return (allSubscriptions || [])
+      .map((sub) => {
+        const subscription = sub.subscription;
+        const planFromMap = planMap.get(subscription?.plan_id);
+        // 过滤掉 tokens 类型的套餐
+        if (planFromMap?.plan_type === 'tokens') {
+          return null;
+        }
+        return sub;
+      })
+      .filter(Boolean);
+  }, [allSubscriptions, planMap]);
+
+  const quotaActiveSubscriptions = useMemo(() => {
+    const now = Date.now() / 1000;
+    return quotaSubscriptions.filter((sub) => {
+      const subscription = sub?.subscription;
+      if (!subscription) return false;
+      const isExpired = (subscription?.end_time || 0) < now;
+      const isCancelled = subscription?.status === 'cancelled';
+      return subscription?.status === 'active' && !isExpired;
+    });
+  }, [quotaSubscriptions]);
+
   const tableData = useMemo(() => {
-    return allSubscriptions.map((sub) => {
+    return quotaSubscriptions.map((sub) => {
       const subscription = sub.subscription;
       const planFromMap = planMap.get(subscription?.plan_id);
       const totalAmount = Number(planFromMap?.total_amount || subscription?.amount_total || 0);
@@ -248,7 +273,7 @@ const MySubscriptionSection = ({
         remainDays: isActive ? `${remainDays} ${t('天')}` : '-',
       };
     });
-  }, [allSubscriptions, planMap, planTitleMap, t]);
+  }, [quotaSubscriptions, planMap, planTitleMap, t]);
 
   const columns = [
     {
@@ -298,23 +323,23 @@ const MySubscriptionSection = ({
       <div className='flex items-center justify-between mb-2 gap-3'>
         <div className='flex items-center gap-2 flex-1 min-w-0'>
           <Text strong>{t('我的订阅')}</Text>
-          {hasActiveSubscription ? (
+          {quotaActiveSubscriptions.length > 0 ? (
             <Tag
               color='white'
               size='small'
               shape='circle'
               prefixIcon={<Badge dot type='success' />}
             >
-              {activeSubscriptions.length} {t('个生效中')}
+              {quotaActiveSubscriptions.length} {t('个生效中')}
             </Tag>
           ) : (
             <Tag color='white' size='small' shape='circle'>
               {t('无生效')}
             </Tag>
           )}
-          {allSubscriptions.length > activeSubscriptions.length && (
+          {quotaSubscriptions.length > quotaActiveSubscriptions.length && (
             <Tag color='white' size='small' shape='circle'>
-              {allSubscriptions.length - activeSubscriptions.length}{' '}
+              {quotaSubscriptions.length - quotaActiveSubscriptions.length}{' '}
               {t('个已过期')}
             </Tag>
           )}

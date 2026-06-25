@@ -327,8 +327,17 @@ func PostTextConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, us
 		model.UpdateChannelUsedQuota(relayInfo.ChannelId, summary.Quota)
 	}
 
-	if err := SettleBilling(ctx, relayInfo, summary.Quota); err != nil {
-		logger.LogError(ctx, "error settling billing: "+err.Error())
+	// 根据计费模式选择结算方式
+	if relayInfo.PriceData.BillingMode == "tokens" {
+		// tokens 计费模式：使用实际消耗的 tokens 数量结算
+		if err := SettleBillingWithTokens(ctx, relayInfo, int64(summary.TotalTokens), summary.Quota); err != nil {
+			logger.LogError(ctx, "error settling billing with tokens: "+err.Error())
+		}
+	} else {
+		// quota 计费模式：使用额度结算
+		if err := SettleBilling(ctx, relayInfo, summary.Quota); err != nil {
+			logger.LogError(ctx, "error settling billing: "+err.Error())
+		}
 	}
 
 	logModel := summary.ModelName

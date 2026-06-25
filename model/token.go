@@ -79,10 +79,12 @@ func (token *Token) GetIpLimits() []string {
 	return ipLimits
 }
 
+// GetAllUserTokens retrieves regular tokens (subscription_id = 0) for the given user.
+// TokenPlan subscription tokens (subscription_id > 0) are excluded from management.
 func GetAllUserTokens(userId int, startIdx int, num int) ([]*Token, error) {
 	var tokens []*Token
 	var err error
-	err = DB.Where("user_id = ?", userId).Order("id desc").Limit(num).Offset(startIdx).Find(&tokens).Error
+	err = DB.Where("user_id = ? AND subscription_id = 0", userId).Order("id desc").Limit(num).Offset(startIdx).Find(&tokens).Error
 	return tokens, err
 }
 
@@ -152,7 +154,7 @@ func SearchUserTokens(userId int, keyword string, token string, offset int, limi
 		}
 	}
 
-	baseQuery := DB.Model(&Token{}).Where("user_id = ?", userId)
+	baseQuery := DB.Model(&Token{}).Where("user_id = ? AND subscription_id = 0", userId)
 
 	// 非空才加 LIKE 条件，空则跳过（不过滤该字段）
 	if keyword != "" {
@@ -433,14 +435,16 @@ func decreaseTokenQuota(id int, quota int) (err error) {
 	return err
 }
 
-// CountUserTokens returns total number of tokens for the given user, used for pagination
+// CountUserTokens returns total number of regular tokens (subscription_id = 0) for the given user, used for pagination.
+// TokenPlan subscription tokens (subscription_id > 0) are excluded from management.
 func CountUserTokens(userId int) (int64, error) {
 	var total int64
-	err := DB.Model(&Token{}).Where("user_id = ?", userId).Count(&total).Error
+	err := DB.Model(&Token{}).Where("user_id = ? AND subscription_id = 0", userId).Count(&total).Error
 	return total, err
 }
 
-// BatchDeleteTokens 删除指定用户的一组令牌，返回成功删除数量
+// BatchDeleteTokens 删除指定用户的一组常规令牌，返回成功删除数量。
+// TokenPlan 专属令牌 (subscription_id > 0) 不会被删除。
 func BatchDeleteTokens(ids []int, userId int) (int, error) {
 	if len(ids) == 0 {
 		return 0, errors.New("ids 不能为空！")
@@ -449,12 +453,12 @@ func BatchDeleteTokens(ids []int, userId int) (int, error) {
 	tx := DB.Begin()
 
 	var tokens []Token
-	if err := tx.Where("user_id = ? AND id IN (?)", userId, ids).Find(&tokens).Error; err != nil {
+	if err := tx.Where("user_id = ? AND subscription_id = 0 AND id IN (?)", userId, ids).Find(&tokens).Error; err != nil {
 		tx.Rollback()
 		return 0, err
 	}
 
-	if err := tx.Where("user_id = ? AND id IN (?)", userId, ids).Delete(&Token{}).Error; err != nil {
+	if err := tx.Where("user_id = ? AND subscription_id = 0 AND id IN (?)", userId, ids).Delete(&Token{}).Error; err != nil {
 		tx.Rollback()
 		return 0, err
 	}
@@ -474,10 +478,12 @@ func BatchDeleteTokens(ids []int, userId int) (int, error) {
 	return len(tokens), nil
 }
 
+// GetTokenKeysByIds retrieves full keys for regular tokens (subscription_id = 0).
+// TokenPlan subscription tokens (subscription_id > 0) are excluded from management.
 func GetTokenKeysByIds(ids []int, userId int) ([]Token, error) {
 	var tokens []Token
 	err := DB.Select("id", commonKeyCol).
-		Where("user_id = ? AND id IN (?)", userId, ids).
+		Where("user_id = ? AND subscription_id = 0 AND id IN (?)", userId, ids).
 		Find(&tokens).Error
 	return tokens, err
 }

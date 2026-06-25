@@ -1212,3 +1212,253 @@ func PostConsumeUserSubscriptionDelta(userSubscriptionId int, delta int64) error
 		return tx.Save(&sub).Error
 	})
 }
+
+// ---------------------------------------------------------------------------
+// Tokens-based subscription functions (for plan_type == "tokens")
+// ---------------------------------------------------------------------------
+
+// SubscriptionTokensPreConsumeResult stores the result of tokens pre-consume operation.
+type SubscriptionTokensPreConsumeResult struct {
+	UserSubscriptionId int
+	PreConsumed        int64  // tokens pre-consumed
+	TokensTotal        int64  // tokens_limit from subscription
+	TokensUsedBefore   int64  // tokens_used before pre-consume
+	TokensUsedAfter    int64  // tokens_used after pre-consume
+	PlanType           string // "quota" or "tokens"
+	ApplicableModels   string // comma-separated model names
+}
+
+// PreConsumeUserSubscriptionTokens pre-consumes tokens from a tokens-type subscription.
+// For tokens-type plans, we track tokens_used directly instead of amount_used.
+// Returns error if subscription is not tokens-type or tokens insufficient.
+func PreConsumeUserSubscriptionTokens(requestId string, userId int, modelName string, tokensToConsume int64) (*SubscriptionTokensPreConsumeResult, error) {
+	if userId <= 0 {
+		return nil, errors.New("invalid userId")
+	}
+	if strings.TrimSpace(requestId) == "" {
+		return nil, errors.New("requestId is empty")
+	}
+	if tokensToConsume <= 0 {
+		return nil, errors.New("tokensToConsume must be > 0")
+	}
+	now := GetDBTimestamp()
+
+	returnValue := &SubscriptionTokensPreConsumeResult{}
+
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		// Check for existing pre-consume record (idempotency)
+		var existing SubscriptionPreConsumeRecord
+		query := tx.Where("request_id = ?", requestId).Limit(1).Find(&existing)
+		if query.Error != nil {
+			return query.Error
+		}
+		if query.RowsAffected > 0 {
+			if existing.Status == "refunded" {
+				return errors.New("subscription pre-consume already refunded")
+			}
+			var sub UserSubscription
+			if err := tx.Where("id = ?", existing.UserSubscriptionId).First(&sub).Error; err != nil {
+				return err
+			}
+			returnValue.UserSubscriptionId = sub.Id
+			returnValue.PreConsumed = existing.PreConsumed
+			returnValue.TokensTotal = sub.TokensLimit
+			returnValue.TokensUsedBefore = sub.TokensUsed
+			returnValue.TokensUsedAfter = sub.TokensUsed
+			returnValue.PlanType = "tokens"
+			returnValue.ApplicableModels = sub.ApplicableModels
+			return nil
+		}
+
+		// Find active tokens-type subscriptions
+		var subs []UserSubscription
+		if err := tx.Set("gorm:query_option", "FOR UPDATE").
+			Where("user_id = ? AND status = ? AND end_time > ?", userId, "active", now).
+			Order("end_time asc, id asc").
+			Find(&subs).Error; err != nil {
+			return errors.New("no active subscription")
+		}
+		if len(subs) == 0 {
+			return errors.New("no active subscription")
+		}
+
+		for _, candidate := range subs {
+			sub := candidate
+			plan, err := getSubscriptionPlanByIdTx(tx, sub.PlanId)
+			if err != nil {
+				return err
+			}
+
+			// Only process tokens-type plans
+			if plan.PlanType != "tokens" {
+				continue
+			}
+
+			// Check if model is applicable
+			if sub.ApplicableModels != "" {
+				applicableModels := strings.Split(sub.ApplicableModels, ",")
+				modelAllowed := false
+				for _, m := range applicableModels {
+					if strings.TrimSpace(m) == modelName {
+						modelAllowed = true
+						break
+					}
+				}
+				if !modelAllowed {
+					continue
+				}
+			}
+
+			// Check tokens limit
+			tokensUsedBefore := sub.TokensUsed
+			if sub.TokensLimit > 0 {
+				tokensRemaining := sub.TokensLimit - tokensUsedBefore
+				if tokensRemaining < tokensToConsume {
+					continue // Not enough tokens, try next subscription
+				}
+			}
+
+			// Create pre-consume record
+			record := &SubscriptionPreConsumeRecord{
+				RequestId:          requestId,
+				UserId:             userId,
+				UserSubscriptionId: sub.Id,
+				PreConsumed:        tokensToConsume,
+				Status:             "consumed",
+			}
+			if err := tx.Create(record).Error; err != nil {
+				var dup SubscriptionPreConsumeRecord
+				if err2 := tx.Where("request_id = ?", requestId).First(&dup).Error; err2 == nil {
+					if dup.Status == "refunded" {
+						return errors.New("subscription pre-consume already refunded")
+					}
+					returnValue.UserSubscriptionId = sub.Id
+					returnValue.PreConsumed = dup.PreConsumed
+					returnValue.TokensTotal = sub.TokensLimit
+					returnValue.TokensUsedBefore = sub.TokensUsed
+					returnValue.TokensUsedAfter = sub.TokensUsed
+					returnValue.PlanType = "tokens"
+					returnValue.ApplicableModels = sub.ApplicableModels
+					return nil
+				}
+				return err
+			}
+
+			// Update tokens_used
+			sub.TokensUsed += tokensToConsume
+			if err := tx.Save(&sub).Error; err != nil {
+				return err
+			}
+
+			returnValue.UserSubscriptionId = sub.Id
+			returnValue.PreConsumed = tokensToConsume
+			returnValue.TokensTotal = sub.TokensLimit
+			returnValue.TokensUsedBefore = tokensUsedBefore
+			returnValue.TokensUsedAfter = sub.TokensUsed
+			returnValue.PlanType = "tokens"
+			returnValue.ApplicableModels = sub.ApplicableModels
+			return nil
+		}
+		return fmt.Errorf("tokens subscription quota insufficient or model not applicable, need=%d tokens", tokensToConsume)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return returnValue, nil
+}
+
+// PostConsumeUserSubscriptionTokensDelta adjusts tokens_used by delta (positive consume more, negative refund).
+func PostConsumeUserSubscriptionTokensDelta(userSubscriptionId int, delta int64) error {
+	if userSubscriptionId <= 0 {
+		return errors.New("invalid userSubscriptionId")
+	}
+	if delta == 0 {
+		return nil
+	}
+	return DB.Transaction(func(tx *gorm.DB) error {
+		var sub UserSubscription
+		if err := tx.Set("gorm:query_option", "FOR UPDATE").
+			Where("id = ?", userSubscriptionId).
+			First(&sub).Error; err != nil {
+			return err
+		}
+		newUsed := sub.TokensUsed + delta
+		if newUsed < 0 {
+			newUsed = 0
+		}
+		if sub.TokensLimit > 0 && newUsed > sub.TokensLimit {
+			return fmt.Errorf("tokens used exceeds limit, used=%d limit=%d", newUsed, sub.TokensLimit)
+		}
+		sub.TokensUsed = newUsed
+		return tx.Save(&sub).Error
+	})
+}
+
+// RefundSubscriptionTokensPreConsume refunds pre-consumed tokens by requestId.
+func RefundSubscriptionTokensPreConsume(requestId string) error {
+	if strings.TrimSpace(requestId) == "" {
+		return errors.New("requestId is empty")
+	}
+	return DB.Transaction(func(tx *gorm.DB) error {
+		var record SubscriptionPreConsumeRecord
+		if err := tx.Set("gorm:query_option", "FOR UPDATE").
+			Where("request_id = ?", requestId).First(&record).Error; err != nil {
+			return err
+		}
+		if record.Status == "refunded" {
+			return nil
+		}
+		if record.PreConsumed <= 0 {
+			record.Status = "refunded"
+			return tx.Save(&record).Error
+		}
+		if err := PostConsumeUserSubscriptionTokensDelta(record.UserSubscriptionId, -record.PreConsumed); err != nil {
+			return err
+		}
+		record.Status = "refunded"
+		return tx.Save(&record).Error
+	})
+}
+
+// HasActiveTokensSubscription checks if user has an active tokens-type subscription.
+func HasActiveTokensSubscription(userId int) (bool, *UserSubscription, error) {
+	now := GetDBTimestamp()
+	var sub UserSubscription
+	err := DB.Where("user_id = ? AND status = ? AND end_time > ?", userId, "active", now).
+		Order("end_time asc, id asc").
+		First(&sub).Error
+	if err == gorm.ErrRecordNotFound {
+		return false, nil, nil
+	}
+	if err != nil {
+		return false, nil, err
+	}
+
+	// Check if it's a tokens-type plan
+	plan, err := GetSubscriptionPlanById(sub.PlanId)
+	if err != nil {
+		return false, nil, err
+	}
+	if plan.PlanType != "tokens" {
+		return false, nil, nil
+	}
+
+	return true, &sub, nil
+}
+
+// IsModelApplicableForTokensSubscription checks if the model is applicable for the tokens subscription.
+func IsModelApplicableForTokensSubscription(sub *UserSubscription, modelName string) bool {
+	if sub == nil {
+		return false
+	}
+	if sub.ApplicableModels == "" {
+		return true // Empty means all models allowed
+	}
+	applicableModels := strings.Split(sub.ApplicableModels, ",")
+	for _, m := range applicableModels {
+		if strings.TrimSpace(m) == modelName {
+			return true
+		}
+	}
+	return false
+}

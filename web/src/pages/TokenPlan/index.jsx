@@ -410,7 +410,7 @@ const TokenPlan = () => {
     
     setPaying(true);
     try {
-      const res = await API.post('/api/subscription/wallet', {
+      const res = await API.post('/api/subscription/wallet/pay', {
         plan_id: selectedPlan.plan.id,
       });
       if (res.data?.success) {
@@ -665,9 +665,11 @@ const TokenPlan = () => {
             </div>
             
             <div className='mt-6 flex gap-3'>
+              {/* TODO: 实现续订功能
               <Button theme='solid' type='primary' size='small' className='flex-1'>
                 {t('续订')}
               </Button>
+              */}
               <Tooltip content={t('每个用户同时只能购买一个套餐，您已存在生效中的套餐。如需更换套餐，请等待当前套餐到期或联系客服。')}>
                 <Button theme='outline' size='small' className='flex-1' disabled>{t('重新选购')}</Button>
               </Tooltip>
