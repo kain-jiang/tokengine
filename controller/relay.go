@@ -157,6 +157,20 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 
 	// common.SetContextKey(c, constant.ContextKeyTokenCountMeta, meta)
 
+	// TokenPlan 专属令牌模型权限检查：如果 token 关联了 subscription_id，检查模型是否被允许
+	if tokenSubscriptionId := common.GetContextKeyInt(c, constant.ContextKeyTokenSubscriptionId); tokenSubscriptionId > 0 {
+		sub, err := model.GetUserSubscriptionById(tokenSubscriptionId)
+		if err == nil && sub != nil {
+			if !model.IsModelApplicableForTokensSubscription(sub, relayInfo.OriginModelName) {
+				newAPIError = types.NewErrorWithStatusCode(
+					fmt.Errorf("令牌套餐 %s 不允许使用模型 %s", sub.ApplicableModels, relayInfo.OriginModelName),
+					types.ErrorCodeInsufficientUserQuota, http.StatusForbidden,
+					types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
+				return
+			}
+		}
+	}
+
 	if priceData.FreeModel {
 		logger.LogInfo(c, fmt.Sprintf("模型 %s 免费，跳过预扣费", relayInfo.OriginModelName))
 	} else {
