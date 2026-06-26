@@ -163,7 +163,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		if err == nil && sub != nil {
 			if !model.IsModelApplicableForTokensSubscription(sub, relayInfo.OriginModelName) {
 				newAPIError = types.NewErrorWithStatusCode(
-					fmt.Errorf("令牌套餐 %s 不允许使用模型 %s", sub.ApplicableModels, relayInfo.OriginModelName),
+					fmt.Errorf("当前TokenPlan令牌不允许使用模型 %s", relayInfo.OriginModelName),
 					types.ErrorCodeInsufficientUserQuota, http.StatusForbidden,
 					types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
 				return
