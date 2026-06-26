@@ -31,14 +31,64 @@ import {
 import { Crown, CalendarClock, Package } from 'lucide-react';
 import { SiStripe } from 'react-icons/si';
 import { IconCreditCard } from '@douyinfe/semi-icons';
-import { renderQuota } from '../../../helpers';
+import { renderQuota, getQuotaPerUnit } from '../../../helpers';
 import { getCurrencyConfig } from '../../../helpers/render';
 import {
   formatSubscriptionDuration,
   formatSubscriptionResetPeriod,
 } from '../../../helpers/subscriptionFormat';
+import i18next from 'i18next';
 
 const { Text } = Typography;
+
+// 格式化额度值为带单位的显示格式
+function formatQuotaAmount(quota) {
+  if (quota <= 0) return '0 Tokens';
+  
+  const locale = localStorage.getItem('locale') || i18next?.language || 'zh-CN';
+  const isChinese = locale.includes('zh') || locale.includes('ZH');
+  
+  let value = Math.abs(quota);
+  let suffix = '';
+  
+  if (isChinese) {
+    // 中文格式：使用万、亿等单位
+    if (value >= 100000000) {
+      // 亿
+      value = value / 100000000;
+      suffix = '亿 Tokens';
+    } else if (value >= 10000) {
+      // 万
+      value = value / 10000;
+      suffix = '万 Tokens';
+    } else {
+      suffix = ' Tokens';
+    }
+  } else {
+    // 英文格式：使用 K、M、B 等单位
+    const units = ['', 'K', 'M', 'B', 'T'];
+    let unitIndex = 0;
+    
+    while (value >= 1000 && unitIndex < units.length - 1) {
+      value /= 1000;
+      unitIndex++;
+    }
+    
+    suffix = units[unitIndex] + ' Tokens';
+  }
+  
+  // 根据数值大小决定小数位数
+  let formattedValue;
+  if (value >= 100) {
+    formattedValue = value.toFixed(0);
+  } else if (value >= 10) {
+    formattedValue = value.toFixed(1);
+  } else {
+    formattedValue = value.toFixed(2);
+  }
+  
+  return formattedValue + suffix;
+}
 
 const SubscriptionPurchaseModal = ({
   t,
@@ -63,6 +113,13 @@ const SubscriptionPurchaseModal = ({
   const totalAmount = Number(plan?.total_amount || 0);
   const { symbol, rate } = getCurrencyConfig();
   const price = plan ? Number(plan.price_amount || 0) : 0;
+  
+  // 计算实得价值（将额度转换为美元价值）
+  const quotaPerUnit = getQuotaPerUnit();
+  const actualValueUSD = quotaPerUnit > 0 ? totalAmount / quotaPerUnit : 0;
+  const actualValueDisplay = actualValueUSD > 0
+    ? `${symbol}${(actualValueUSD * rate).toFixed(2)}`
+    : t('不限');
   const convertedPrice = price * rate;
   const displayPrice = convertedPrice.toFixed(
     Number.isInteger(convertedPrice) ? 0 : 2,
@@ -134,14 +191,14 @@ const SubscriptionPurchaseModal = ({
               )}
               <div className='flex justify-between items-center'>
                 <Text strong className='text-slate-700 dark:text-slate-200'>
-                  {t('总额度')}：
+                  {t('实得价值')}：
                 </Text>
                 <div className='flex items-center'>
                   <Package size={14} className='mr-1 text-slate-500' />
                   {totalAmount > 0 ? (
                     <Tooltip content={`${t('原生额度')}：${totalAmount}`}>
                       <Text className='text-slate-900 dark:text-slate-100'>
-                        {renderQuota(totalAmount)}
+                        {actualValueDisplay}
                       </Text>
                     </Tooltip>
                   ) : (

@@ -37,6 +37,7 @@ import {
   IconKey,
   IconLock,
   IconDelete,
+  IconPhone,
 } from '@douyinfe/semi-icons';
 import { SiTelegram, SiWechat, SiLinux, SiDiscord } from 'react-icons/si';
 import { UserPlus, ShieldCheck } from 'lucide-react';
@@ -60,6 +61,7 @@ const AccountManagement = ({
   status,
   systemToken,
   setShowEmailBindModal,
+  setShowPhoneBindModal,
   setShowWeChatBindModal,
   generateAccessToken,
   handleSystemTokenClick,
@@ -198,6 +200,43 @@ const AccountManagement = ({
         >
           <div className='py-4'>
             <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
+              {/* 手机号绑定 */}
+              <Card className='!rounded-xl'>
+                <div className='flex items-center justify-between gap-3'>
+                  <div className='flex items-center flex-1 min-w-0'>
+                    <div className='w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mr-3 flex-shrink-0'>
+                      <IconPhone
+                        size='default'
+                        className='text-slate-600 dark:text-slate-300'
+                      />
+                    </div>
+                    <div className='flex-1 min-w-0'>
+                      <div className='font-medium text-gray-900'>
+                        {t('手机号')}
+                      </div>
+                      <div className='text-sm text-gray-500 truncate'>
+                        {renderAccountInfo(
+                          userState.user?.telephone,
+                          t('手机号码'),
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className='flex-shrink-0'>
+                    <Button
+                      type='primary'
+                      theme='outline'
+                      size='small'
+                      onClick={() => setShowPhoneBindModal(true)}
+                    >
+                      {isBound(userState.user?.telephone)
+                        ? t('修改绑定')
+                        : t('绑定')}
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+
               {/* 邮箱绑定 */}
               <Card className='!rounded-xl'>
                 <div className='flex items-center justify-between gap-3'>
@@ -554,7 +593,10 @@ const AccountManagement = ({
                               size='small'
                               loading={customOAuthLoading[provider.id]}
                               onClick={() =>
-                                handleUnbindCustomOAuth(provider.id, provider.name)
+                                handleUnbindCustomOAuth(
+                                  provider.id,
+                                  provider.name,
+                                )
                               }
                             >
                               {t('解绑')}

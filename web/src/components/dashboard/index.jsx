@@ -29,6 +29,7 @@ import ApiInfoPanel from './ApiInfoPanel';
 import AnnouncementsPanel from './AnnouncementsPanel';
 import FaqPanel from './FaqPanel';
 import UptimePanel from './UptimePanel';
+import UserStatsCarousel from './UserStatsCarousel';
 import SearchModal from './modals/SearchModal';
 
 import { useDashboardData } from '../../hooks/dashboard/useDashboardData';
@@ -173,6 +174,9 @@ const Dashboard = () => {
         handleInputChange={dashboardData.handleInputChange}
         t={dashboardData.t}
       />
+
+      {/* 用户统计轮播 */}
+      <UserStatsCarousel />
 
       <StatsCards
         groupedStatsData={groupedStatsData}

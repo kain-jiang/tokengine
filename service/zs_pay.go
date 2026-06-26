@@ -238,24 +238,24 @@ type ZSCloseOrderResp struct {
 }
 
 type ZSPaymentNotifyData struct {
-	Version      string `json:"version"`
-	Encoding     string `json:"encoding"`
-	SignMethod   string `json:"signMethod"`
-	Sign         string `json:"sign"`
-	MerID        string `json:"merId"`
-	OrderID      string `json:"orderId"`
-	CmbOrderID   string `json:"cmbOrderId"`
-	UserID       string `json:"userId,omitempty"`
-	TxnAmt       string `json:"txnAmt"`
-	DscAmt       string `json:"dscAmt"`
-	PayType      string `json:"payType"`
-	OpenID       string `json:"openId,omitempty"`
-	PayBank      string `json:"payBank,omitempty"`
-	ThirdOrderID string `json:"thirdOrderId,omitempty"`
-	TxnTime      string `json:"txnTime"`
-	EndDate      string `json:"endDate,omitempty"`
-	EndTime      string `json:"endTime,omitempty"`
-	MchReserved  string `json:"mchReserved,omitempty"`
+	Version      string `json:"version" form:"version"`
+	Encoding     string `json:"encoding" form:"encoding"`
+	SignMethod   string `json:"signMethod" form:"signMethod"`
+	Sign         string `json:"sign" form:"sign"`
+	MerID        string `json:"merId" form:"merId"`
+	OrderID      string `json:"orderId" form:"orderId"`
+	CmbOrderID   string `json:"cmbOrderId" form:"cmbOrderId"`
+	UserID       string `json:"userId,omitempty" form:"userId"`
+	TxnAmt       string `json:"txnAmt" form:"txnAmt"`
+	DscAmt       string `json:"dscAmt" form:"dscAmt"`
+	PayType      string `json:"payType" form:"payType"`
+	OpenID       string `json:"openId,omitempty" form:"openId"`
+	PayBank      string `json:"payBank,omitempty" form:"payBank"`
+	ThirdOrderID string `json:"thirdOrderId,omitempty" form:"thirdOrderId"`
+	TxnTime      string `json:"txnTime" form:"txnTime"`
+	EndDate      string `json:"endDate,omitempty" form:"endDate"`
+	EndTime      string `json:"endTime,omitempty" form:"endTime"`
+	MchReserved  string `json:"mchReserved,omitempty" form:"mchReserved"`
 }
 
 type ZSQRCodeResult struct {

@@ -35,6 +35,10 @@ export const useModelsData = () => {
   const [searching, setSearching] = useState(false);
   const [modelCount, setModelCount] = useState(0);
 
+  // Channel filter state
+  const [channels, setChannels] = useState([]);
+  const [channelFilter, setChannelFilter] = useState('');
+
   // Modal states
   const [showEdit, setShowEdit] = useState(false);
   const [editingModel, setEditingModel] = useState({
@@ -113,6 +117,21 @@ export const useModelsData = () => {
       if (res.data.success) {
         const items = res.data.data.items || res.data.data || [];
         setVendors(Array.isArray(items) ? items : []);
+      }
+    } catch (_) {
+      // ignore
+    }
+  };
+
+  // Load channels list for filter dropdown (only enabled channels)
+  const loadChannels = async () => {
+    try {
+      const res = await API.get('/api/channel/?page_size=1000');
+      if (res.data.success) {
+        const items = res.data.data.items || res.data.data || [];
+        const allChannels = Array.isArray(items) ? items : [];
+        // Only show enabled channels (status === 1)
+        setChannels(allChannels.filter((ch) => ch.status === 1));
       }
     } catch (_) {
       // ignore
@@ -419,22 +438,38 @@ export const useModelsData = () => {
     }
   };
 
+  // Filter models by selected channel (client-side)
+  const filteredModels = useMemo(() => {
+    if (!channelFilter) return models;
+    return models.filter((model) => {
+      if (!model.bound_channels || model.bound_channels.length === 0) return false;
+      return model.bound_channels.some((ch) => ch.name === channelFilter);
+    });
+  }, [models, channelFilter]);
+
+  // Compute filtered count for pagination
+  const filteredModelCount = useMemo(() => {
+    if (!channelFilter) return modelCount;
+    return filteredModels.length;
+  }, [channelFilter, modelCount, filteredModels]);
+
   // Initial load
   useEffect(() => {
     (async () => {
       await loadVendors();
+      await loadChannels();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return {
     // Data state
-    models,
+    models: filteredModels,
     loading,
     searching,
     activePage,
     pageSize,
-    modelCount,
+    modelCount: filteredModelCount,
 
     // Selection state
     selectedKeys,
@@ -483,6 +518,11 @@ export const useModelsData = () => {
     editingVendor,
     setEditingVendor,
     loadVendors,
+
+    // Channel data
+    channels,
+    channelFilter,
+    setChannelFilter,
 
     // Translation
     t,

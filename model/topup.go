@@ -11,16 +11,44 @@ import (
 	"gorm.io/gorm"
 )
 
+// TopUpWithUsername 充值记录（包含用户名，用于管理员查询）
+type TopUpWithUsername struct {
+	TopUp
+	Username string `json:"username" gorm:"column:username"`
+}
+
+var PayStatus = map[string]string{
+	"success":   "成功",
+	"pending":   "待支付",
+	"failed":    "失败",
+	"cancelled": "取消",
+	"expired":   "已过期",
+}
+
+var PaymentMethods = map[string]string{
+	"alipay":  "支付宝",
+	"wxpay":   "微信",
+	"zs_pay":  "招商银行聚合支付",
+	"helipay": "合利宝支付",
+	"stripe":  "Stripe",
+	"creem":   "Creem",
+	"waffo":   "Waffo",
+}
+
 type TopUp struct {
-	Id               int     `json:"id"`
-	UserId           int     `json:"user_id" gorm:"index"`
-	Amount           int64   `json:"amount"`
-	Money            float64 `json:"money"`
-	TradeNo          string  `json:"trade_no" gorm:"unique;type:varchar(255);index"`
-	PaymentMethod    string  `json:"payment_method" gorm:"type:varchar(50)"`
-	CreateTime       int64   `json:"create_time"`
-	CompleteTime     int64   `json:"complete_time"`
-	Status           string  `json:"status"`
+	Id            int     `json:"id"`
+	UserId        int     `json:"user_id" gorm:"index"`
+	Amount        int64   `json:"amount"`
+	Money         float64 `json:"money"`
+	TradeNo       string  `json:"trade_no" gorm:"unique;type:varchar(255);index"`
+	PaymentMethod string  `json:"payment_method" gorm:"type:varchar(50)"`
+	CreateTime    int64   `json:"create_time"`
+	CompleteTime  int64   `json:"complete_time"`
+	Status        string  `json:"status"`
+}
+
+func (TopUp) TableName() string {
+	return "top_ups"
 }
 
 func (topUp *TopUp) Insert() error {
@@ -167,8 +195,87 @@ func GetAllTopUps(pageInfo *common.PageInfo) (topups []*TopUp, total int64, err 
 	return topups, total, nil
 }
 
-// SearchUserTopUps 按订单号搜索某用户的充值记录
-func SearchUserTopUps(userId int, keyword string, pageInfo *common.PageInfo) (topups []*TopUp, total int64, err error) {
+// GetAllTopUpsWithUsername 获取全平台的充值记录（管理员使用，包含用户名）
+func GetAllTopUpsWithUsername(pageInfo *common.PageInfo) (topups []*TopUpWithUsername, total int64, err error) {
+	tx := DB.Begin()
+	if tx.Error != nil {
+		return nil, 0, tx.Error
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 统计总数
+	if err = tx.Model(&TopUp{}).Count(&total).Error; err != nil {
+		tx.Rollback()
+		return nil, 0, err
+	}
+
+	// 连表查询获取用户名
+	topups = make([]*TopUpWithUsername, 0)
+	if err = tx.Model(&TopUp{}).Select("top_ups.*, users.username").
+		Joins("LEFT JOIN users ON top_ups.user_id = users.id").
+		Order("top_ups.id desc").
+		Limit(pageInfo.GetPageSize()).
+		Offset(pageInfo.GetStartIdx()).
+		Find(&topups).Error; err != nil {
+		tx.Rollback()
+		return nil, 0, err
+	}
+
+	if err = tx.Commit().Error; err != nil {
+		return nil, 0, err
+	}
+
+	return topups, total, nil
+}
+
+// SearchAllTopUpsWithUsername 按订单号和状态搜索全平台充值记录（管理员使用，包含用户名）
+func SearchAllTopUpsWithUsername(keyword string, status string, pageInfo *common.PageInfo) (topups []*TopUpWithUsername, total int64, err error) {
+	tx := DB.Begin()
+	if tx.Error != nil {
+		return nil, 0, tx.Error
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	query := tx.Model(&TopUp{})
+	if keyword != "" {
+		query = query.Where("trade_no LIKE ?", "%%"+keyword+"%%")
+	}
+	if status != "" {
+		query = query.Where("top_ups.status = ?", status)
+	}
+
+	if err = query.Count(&total).Error; err != nil {
+		tx.Rollback()
+		return nil, 0, err
+	}
+
+	topups = make([]*TopUpWithUsername, 0)
+	if err = query.Select("top_ups.*, users.username").
+		Joins("LEFT JOIN users ON top_ups.user_id = users.id").
+		Order("top_ups.id desc").
+		Limit(pageInfo.GetPageSize()).
+		Offset(pageInfo.GetStartIdx()).
+		Find(&topups).Error; err != nil {
+		tx.Rollback()
+		return nil, 0, err
+	}
+
+	if err = tx.Commit().Error; err != nil {
+		return nil, 0, err
+	}
+	return topups, total, nil
+}
+
+// SearchUserTopUps 按订单号和状态搜索某用户的充值记录
+func SearchUserTopUps(userId int, keyword string, status string, pageInfo *common.PageInfo) (topups []*TopUp, total int64, err error) {
 	tx := DB.Begin()
 	if tx.Error != nil {
 		return nil, 0, tx.Error
@@ -183,6 +290,9 @@ func SearchUserTopUps(userId int, keyword string, pageInfo *common.PageInfo) (to
 	if keyword != "" {
 		like := "%%" + keyword + "%%"
 		query = query.Where("trade_no LIKE ?", like)
+	}
+	if status != "" {
+		query = query.Where("status = ?", status)
 	}
 
 	if err = query.Count(&total).Error; err != nil {
@@ -438,7 +548,7 @@ func RechargeWaffo(tradeNo string) (err error) {
 
 // CancelTopUpByTradeNo 取消充值订单
 func CancelTopUpByTradeNo(tradeNo string, userId int) error {
-	var topUp TopUp  // 使用值类型，确保能正确接收查询结果
+	var topUp TopUp // 使用值类型，确保能正确接收查询结果
 	var err error
 
 	refCol := "`trade_no`"
@@ -483,4 +593,61 @@ func CancelTopUpByTradeNo(tradeNo string, userId int) error {
 	RecordLog(userId, LogTypeTopup, fmt.Sprintf("取消充值订单，订单号: %s", tradeNo))
 
 	return nil
+}
+
+// GetUserTopUpsExport 获取用户充值记录（用于导出，支持时间范围）
+func GetUserTopUpsExport(userId int, startTime, endTime int64, keyword, status string) ([]*TopUp, error) {
+	var topups []*TopUp
+	query := DB.Where("user_id = ?", userId)
+	if startTime > 0 {
+		query = query.Where("create_time >= ?", startTime)
+	}
+	if endTime > 0 {
+		query = query.Where("create_time <= ?", endTime)
+	}
+	if keyword != "" {
+		like := "%" + keyword + "%"
+		query = query.Where("trade_no LIKE ?", like)
+	}
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	err := query.Order("id desc").Find(&topups).Error
+	return topups, err
+}
+
+// GetAllTopUpsExport 获取全平台充值记录（用于导出，支持时间范围）
+func GetAllTopUpsExport(startTime, endTime int64, keyword, status string) ([]*TopUpWithUsername, error) {
+	var topups []*TopUpWithUsername
+	query := DB.Model(&TopUp{})
+	if startTime > 0 {
+		query = query.Where("create_time >= ?", startTime)
+	}
+	if endTime > 0 {
+		query = query.Where("create_time <= ?", endTime)
+	}
+	if keyword != "" {
+		like := "%" + keyword + "%"
+		query = query.Where("trade_no LIKE ?", like)
+	}
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	err := query.Select("top_ups.*, users.username").
+		Joins("LEFT JOIN users ON top_ups.user_id = users.id").
+		Order("top_ups.id desc").
+		Find(&topups).Error
+	return topups, err
+}
+
+// ExpirePendingTopUps 将超过指定时间戳的待支付订单标记为过期
+// cutoff: Unix时间戳，超过此时间的待支付订单将被标记为过期
+// 返回: 被标记过期的订单数量
+func ExpirePendingTopUps(cutoff int64) (int64, error) {
+	result := DB.Model(&TopUp{}).
+		Where("status = ? AND create_time < ?", common.TopUpStatusPending, cutoff).
+		Updates(map[string]interface{}{
+			"status": common.TopUpStatusExpired,
+		})
+	return result.RowsAffected, result.Error
 }

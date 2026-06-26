@@ -42,6 +42,7 @@ import NotificationSettings from './personal/cards/NotificationSettings';
 import PreferencesSettings from './personal/cards/PreferencesSettings';
 import CheckinCalendar from './personal/cards/CheckinCalendar';
 import EmailBindModal from './personal/modals/EmailBindModal';
+import PhoneBindModal from './personal/modals/PhoneBindModal';
 import WeChatBindModal from './personal/modals/WeChatBindModal';
 import AccountDeleteModal from './personal/modals/AccountDeleteModal';
 import ChangePasswordModal from './personal/modals/ChangePasswordModal';
@@ -59,18 +60,21 @@ const PersonalSetting = () => {
     original_password: '',
     set_new_password: '',
     set_new_password_confirmation: '',
+    telephone: '',
+    phone_verification_code: '',
   });
   const [status, setStatus] = useState({});
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
   const [showWeChatBindModal, setShowWeChatBindModal] = useState(false);
   const [showEmailBindModal, setShowEmailBindModal] = useState(false);
+  const [showPhoneBindModal, setShowPhoneBindModal] = useState(false);
   const [showAccountDeleteModal, setShowAccountDeleteModal] = useState(false);
   const [turnstileEnabled, setTurnstileEnabled] = useState(false);
   const [turnstileSiteKey, setTurnstileSiteKey] = useState('');
   const [turnstileToken, setTurnstileToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [disableButton, setDisableButton] = useState(false);
-  const [countdown, setCountdown] = useState(30);
+  const [countdown, setCountdown] = useState(60);
   const [systemToken, setSystemToken] = useState('');
   const [passkeyStatus, setPasskeyStatus] = useState({ enabled: false });
   const [passkeyRegisterLoading, setPasskeyRegisterLoading] = useState(false);
@@ -82,6 +86,7 @@ const PersonalSetting = () => {
     webhookUrl: '',
     webhookSecret: '',
     notificationEmail: '',
+    notificationPhone: '',
     barkUrl: '',
     gotifyUrl: '',
     gotifyToken: '',
@@ -140,7 +145,7 @@ const PersonalSetting = () => {
       }, 1000);
     } else if (countdown === 0) {
       setDisableButton(false);
-      setCountdown(30);
+      setCountdown(60);
     }
     return () => clearInterval(countdownInterval); // Clean up on unmount
   }, [disableButton, countdown]);
@@ -273,6 +278,7 @@ const PersonalSetting = () => {
       userDispatch({ type: 'login', payload: data });
       setUserData(data);
       await loadPasskeyStatus();
+      inputs.telephone = userState.user?.telephone;
     } else {
       showError(message);
     }
@@ -393,6 +399,66 @@ const PersonalSetting = () => {
     setLoading(false);
   };
 
+  const sendPhoneVerificationCode = async () => {
+    const phoneRegex = /^1[3-9]\d{9}$/;
+    if (!phoneRegex.test(inputs.telephone)) {
+      showError(t('请输入正确的手机号格式'));
+      return;
+    }
+    if (turnstileEnabled && turnstileToken === '') {
+      showInfo(t('请稍后几秒重试，Turnstile 正在检查用户环境！'));
+      return;
+    }
+    setLoading(true);
+    setDisableButton(true);
+    const res = await API.post(`/api/verify/code?turnstile=${turnstileToken}`, {
+      telephone: inputs.telephone,
+    });
+    const { success, message } = res.data;
+    if (success) {
+      showSuccess(t('短信验证码发送成功，请检查你的手机！'));
+    } else {
+      showError(message);
+      setDisableButton(false);
+    }
+    setLoading(false);
+  };
+
+  const bindPhone = async () => {
+    const phoneRegex = /^1[3-9]\d{9}$/;
+    if (!phoneRegex.test(inputs.telephone)) {
+      showError(t('请输入正确的手机号格式'));
+      return;
+    }
+    if (inputs.phone_verification_code === '') {
+      showError(t('请输入短信验证码！'));
+      return;
+    }
+    if (!/^\d{6}$/.test(inputs.phone_verification_code)) {
+      showError(t('请输入6位数字验证码'));
+      return;
+    }
+    setLoading(true);
+    const res = await API.post('/api/oauth/phone/bind', {
+      telephone: inputs.telephone,
+      verification_code: inputs.phone_verification_code,
+    });
+    const { success, message } = res.data;
+    if (success) {
+      showSuccess(t('手机号绑定成功！'));
+      setShowPhoneBindModal(false);
+      userState.user.telephone = inputs.telephone;
+    } else {
+      showError(message);
+    }
+    setInputs({
+      ...inputs,
+      phone_verification_code: '',
+      telephone: userState.user.telephone,
+    });
+    setLoading(false);
+  };
+
   const copyText = async (text) => {
     if (await copy(text)) {
       showSuccess(t('已复制：') + text);
@@ -423,6 +489,7 @@ const PersonalSetting = () => {
         webhook_url: notificationSettings.webhookUrl,
         webhook_secret: notificationSettings.webhookSecret,
         notification_email: notificationSettings.notificationEmail,
+        notification_phone: notificationSettings.notificationPhone,
         bark_url: notificationSettings.barkUrl,
         gotify_url: notificationSettings.gotifyUrl,
         gotify_token: notificationSettings.gotifyToken,
@@ -477,6 +544,7 @@ const PersonalSetting = () => {
                 status={status}
                 systemToken={systemToken}
                 setShowEmailBindModal={setShowEmailBindModal}
+                setShowPhoneBindModal={setShowPhoneBindModal}
                 setShowWeChatBindModal={setShowWeChatBindModal}
                 generateAccessToken={generateAccessToken}
                 handleSystemTokenClick={handleSystemTokenClick}
@@ -514,6 +582,22 @@ const PersonalSetting = () => {
         handleInputChange={handleInputChange}
         sendVerificationCode={sendVerificationCode}
         bindEmail={bindEmail}
+        disableButton={disableButton}
+        loading={loading}
+        countdown={countdown}
+        turnstileEnabled={turnstileEnabled}
+        turnstileSiteKey={turnstileSiteKey}
+        setTurnstileToken={setTurnstileToken}
+      />
+
+      <PhoneBindModal
+        t={t}
+        showPhoneBindModal={showPhoneBindModal}
+        setShowPhoneBindModal={setShowPhoneBindModal}
+        inputs={inputs}
+        handleInputChange={handleInputChange}
+        sendPhoneVerificationCode={sendPhoneVerificationCode}
+        bindPhone={bindPhone}
         disableButton={disableButton}
         loading={loading}
         countdown={countdown}

@@ -416,14 +416,28 @@ export const getTaskLogsColumns = ({
           record.action === TASK_ACTION_REMIX_GENERATE;
         const isSuccess = record.status === 'SUCCESS';
         const resultUrl = record.result_url;
-        const hasResultUrl = typeof resultUrl === 'string' && /^https?:\/\//.test(resultUrl);
+        
+        // For AgnesAI channel (platform=59), try to get direct CDN URL from task data
+        let videoUrlToUse = resultUrl;
+        if (isSuccess && isVideoTask && (record.platform === '59') && record.data) {
+          try {
+            const taskData = typeof record.data === 'string' ? JSON.parse(record.data) : record.data;
+            if (taskData?.remixed_from_video_id && /^https?:\/\//.test(taskData.remixed_from_video_id)) {
+              videoUrlToUse = taskData.remixed_from_video_id;
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+        
+        const hasResultUrl = typeof videoUrlToUse === 'string' && /^https?:\/\//.test(videoUrlToUse);
         if (isSuccess && isVideoTask && hasResultUrl) {
           return (
             <a
               href='#'
               onClick={(e) => {
                 e.preventDefault();
-                openVideoModal(resultUrl);
+                openVideoModal(videoUrlToUse);
               }}
             >
               {t('点击预览视频')}

@@ -3496,7 +3496,7 @@
     "谨慎": "Thận trọng",
     "豆包": "Doubao",
     "财务": "Tài chính",
-    "账单": "Hóa đơn",
+    "充值账单": "Hóa đơn nạp tiền",
     "账号": "Tài khoản",
     "账号设置": "Cài đặt tài khoản",
     "账户": "Tài khoản",
@@ -3867,6 +3867,7 @@
     "金额": "Số tiền",
     "钱包": "Ví",
     "钱包管理": "Quản lý ví",
+    "我的套餐": "Gói của tôi",
     "链接": "Liên kết",
     "链接中的{key}将自动替换为sk-xxxx，{address}将自动替换为系统设置的服务器地址，末尾不带/和/v1": "{key} trong liên kết sẽ tự động được thay thế bằng sk-xxxx, {address} sẽ tự động được thay thế bằng địa chỉ máy chủ trong cài đặt hệ thống, không có / và /v1 ở cuối",
     "链接地址": "Địa chỉ liên kết",
@@ -4016,6 +4017,7 @@
     "默认补全倍率": "Tỷ lệ hoàn thành mặc định",
     "，当前无生效订阅，将自动使用钱包": ", hiện không có gói đăng ký hiệu lực, sẽ tự động dùng ví.",
     "，时间：": ", thời gian:",
-    "，点击更新": ", nhấn để cập nhật"
+    "，点击更新": ", nhấn để cập nhật",
+    "企业个人灵活搭配，丰俭由人": "Kết hợp linh hoạt cho doanh nghiệp và cá nhân, tùy chọn theo nhu cầu"
   }
 }

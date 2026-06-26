@@ -1,108 +1,144 @@
 package controller
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/model"
-	"github.com/QuantumNous/new-api/setting/operation_setting"
-	"github.com/QuantumNous/new-api/types"
+	"github.com/QuantumNous/new-api/dto"
+	"github.com/QuantumNous/new-api/service"
+
 	"github.com/gin-gonic/gin"
 )
 
-func GetSubscription(c *gin.Context) {
-	var remainQuota int
-	var usedQuota int
-	var err error
-	var token *model.Token
-	var expiredTime int64
-	if common.DisplayTokenStatEnabled {
-		tokenId := c.GetInt("token_id")
-		token, err = model.GetTokenById(tokenId)
-		expiredTime = token.ExpiredTime
-		remainQuota = token.RemainQuota
-		usedQuota = token.UsedQuota
-	} else {
-		userId := c.GetInt("id")
-		remainQuota, err = model.GetUserQuota(userId, false)
-		usedQuota, err = model.GetUserUsedQuota(userId)
-	}
-	if expiredTime <= 0 {
-		expiredTime = 0
-	}
-	if err != nil {
-		openAIError := types.OpenAIError{
-			Message: err.Error(),
-			Type:    "upstream_error",
-		}
-		c.JSON(200, gin.H{
-			"error": openAIError,
-		})
+// GetModelSummary 获取模型维度汇总
+func GetModelSummary(c *gin.Context) {
+	var req dto.BillingSummaryRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		common.ApiError(c, err)
 		return
 	}
-	quota := remainQuota + usedQuota
-	amount := float64(quota)
-	// OpenAI 兼容接口中的 *_USD 字段含义保持“额度单位”对应值：
-	// 我们将其解释为以“站点展示类型”为准：
-	// - USD: 直接除以 QuotaPerUnit
-	// - CNY: 先转 USD 再乘汇率
-	// - TOKENS: 直接使用 tokens 数量
-	switch operation_setting.GetQuotaDisplayType() {
-	case operation_setting.QuotaDisplayTypeCNY:
-		amount = amount / common.QuotaPerUnit * operation_setting.USDExchangeRate
-	case operation_setting.QuotaDisplayTypeTokens:
-		// amount 保持 tokens 数值
-	default:
-		amount = amount / common.QuotaPerUnit
+
+	userId := c.GetInt("id")
+	data, err := service.GetBillingSummaryService().GetModelSummary(userId, req)
+	if err != nil {
+		common.ApiError(c, err)
+		return
 	}
-	if token != nil && token.UnlimitedQuota {
-		amount = 100000000
-	}
-	subscription := OpenAISubscriptionResponse{
-		Object:             "billing_subscription",
-		HasPaymentMethod:   true,
-		SoftLimitUSD:       amount,
-		HardLimitUSD:       amount,
-		SystemHardLimitUSD: amount,
-		AccessUntil:        expiredTime,
-	}
-	c.JSON(200, subscription)
-	return
+	common.ApiSuccess(c, data)
 }
 
-func GetUsage(c *gin.Context) {
-	var quota int
-	var err error
-	var token *model.Token
-	if common.DisplayTokenStatEnabled {
-		tokenId := c.GetInt("token_id")
-		token, err = model.GetTokenById(tokenId)
-		quota = token.UsedQuota
-	} else {
-		userId := c.GetInt("id")
-		quota, err = model.GetUserUsedQuota(userId)
-	}
-	if err != nil {
-		openAIError := types.OpenAIError{
-			Message: err.Error(),
-			Type:    "new_api_error",
-		}
-		c.JSON(200, gin.H{
-			"error": openAIError,
-		})
+// GetTokenSummary 获取令牌维度汇总
+func GetTokenSummary(c *gin.Context) {
+	var req dto.BillingSummaryRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		common.ApiError(c, err)
 		return
 	}
-	amount := float64(quota)
-	switch operation_setting.GetQuotaDisplayType() {
-	case operation_setting.QuotaDisplayTypeCNY:
-		amount = amount / common.QuotaPerUnit * operation_setting.USDExchangeRate
-	case operation_setting.QuotaDisplayTypeTokens:
-		// tokens 保持原值
-	default:
-		amount = amount / common.QuotaPerUnit
+
+	userId := c.GetInt("id")
+	data, err := service.GetBillingSummaryService().GetTokenSummary(userId, req)
+	if err != nil {
+		common.ApiError(c, err)
+		return
 	}
-	usage := OpenAIUsageResponse{
-		Object:     "list",
-		TotalUsage: amount * 100,
+	common.ApiSuccess(c, data)
+}
+
+// ExportModelSummary 导出模型维度汇总
+func ExportModelSummary(c *gin.Context) {
+	var req dto.BillingSummaryRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		common.ApiError(c, err)
+		return
 	}
-	c.JSON(200, usage)
-	return
+
+	userId := c.GetInt("id")
+
+	// 验证日期范围（最大半年）
+	if req.StartDate != "" && req.EndDate != "" {
+		startTime, _ := time.Parse("2006-01-02", req.StartDate)
+		endTime, _ := time.Parse("2006-01-02", req.EndDate)
+		diffDays := int(endTime.Sub(startTime).Hours() / 24)
+		if diffDays > 180 {
+			common.ApiErrorMsg(c, "导出时间范围不能超过半年（180天）")
+			return
+		}
+	}
+
+	items, err := service.GetBillingSummaryService().GetModelSummaryExport(userId, req)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	// 生成 CSV
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=model_summary_%d.csv", time.Now().Unix()))
+
+	// 添加 BOM 以支持 Excel 正确识别 UTF-8
+	c.Writer.WriteString("\xef\xbb\xbf")
+
+	// 写入表头
+	c.Writer.WriteString("用户名,模型名称,调用次数,Token总数,消费金额\n")
+
+	// 写入数据
+	for _, item := range items {
+		c.Writer.WriteString(fmt.Sprintf("%s,%s,%d,%d,%.6f\n",
+			item.Username,
+			item.ModelName,
+			item.RequestCount,
+			item.TotalTokens,
+			item.QuotaConsumed,
+		))
+	}
+}
+
+// ExportTokenSummary 导出令牌维度汇总
+func ExportTokenSummary(c *gin.Context) {
+	var req dto.BillingSummaryRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	userId := c.GetInt("id")
+
+	// 验证日期范围（最大半年）
+	if req.StartDate != "" && req.EndDate != "" {
+		startTime, _ := time.Parse("2006-01-02", req.StartDate)
+		endTime, _ := time.Parse("2006-01-02", req.EndDate)
+		diffDays := int(endTime.Sub(startTime).Hours() / 24)
+		if diffDays > 180 {
+			common.ApiErrorMsg(c, "导出时间范围不能超过半年（180天）")
+			return
+		}
+	}
+
+	items, err := service.GetBillingSummaryService().GetTokenSummaryExport(userId, req)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	// 生成 CSV
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=token_summary_%d.csv", time.Now().Unix()))
+
+	// 添加 BOM 以支持 Excel 正确识别 UTF-8
+	c.Writer.WriteString("\xef\xbb\xbf")
+
+	// 写入表头
+	c.Writer.WriteString("用户名,令牌名称,调用次数/用量,Token总数,消费金额\n")
+
+	// 写入数据
+	for _, item := range items {
+		c.Writer.WriteString(fmt.Sprintf("%s,%s,%d,%d,%.6f\n",
+			item.Username,
+			item.TokenName,
+			item.RequestCount,
+			item.TotalTokens,
+			item.QuotaConsumed,
+		))
+	}
 }

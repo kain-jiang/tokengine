@@ -36,6 +36,8 @@ const routerMap = {
   token: '/console/token',
   redemption: '/console/redemption',
   topup: '/console/topup',
+  myPlan: '/console/my-plan',
+  billing: '/console/billing',
   user: '/console/user',
   subscription: '/console/subscription',
   log: '/console/log',
@@ -50,6 +52,11 @@ const routerMap = {
   playground: '/console/playground',
   textToImage: '/console/text-to-image',
   personal: '/console/personal',
+  finance: '/console/finance',
+  orders: '/console/finance/orders',
+  revenue: '/console/finance/revenue',
+  invoices: '/console/finance/invoices',
+  reconciliation: '/console/finance/reconciliation',
 };
 
 const SiderBar = ({ onNavigate = () => {} }) => {
@@ -127,9 +134,57 @@ const SiderBar = ({ onNavigate = () => {} }) => {
   const financeItems = useMemo(() => {
     const items = [
       {
+        text: t('财务概览'),
+        itemKey: 'finance',
+        to: '/console/finance',
+      },
+      {
+        text: t('订单管理'),
+        itemKey: 'orders',
+        to: '/console/finance/orders',
+      },
+      {
+        text: t('营收分析'),
+        itemKey: 'revenue',
+        to: '/console/finance/revenue',
+      },
+      {
+        text: t('发票管理'),
+        itemKey: 'invoices',
+        to: '/console/finance/invoices',
+      },
+      {
+        text: t('对账管理'),
+        itemKey: 'reconciliation',
+        to: '/console/finance/reconciliation',
+      },
+    ];
+
+    // 根据配置过滤项目
+    const filteredItems = items.filter((item) => {
+      const configVisible = isModuleVisible('finance', item.itemKey);
+      return configVisible;
+    });
+
+    return filteredItems;
+  }, [t, isModuleVisible]);
+
+  const personalItems = useMemo(() => {
+    const items = [
+      {
         text: t('钱包管理'),
         itemKey: 'topup',
         to: '/topup',
+      },
+      {
+        text: t('我的套餐'),
+        itemKey: 'myPlan',
+        to: '/my-plan',
+      },
+      {
+        text: t('用户账单'),
+        itemKey: 'billing',
+        to: '/billing',
       },
       {
         text: t('个人设置'),
@@ -450,6 +505,35 @@ const SiderBar = ({ onNavigate = () => {} }) => {
               return;
             }
 
+            // 财务子路由导航
+            if (itemKey === 'orders') {
+              navigate('/console/finance/orders');
+              onNavigate();
+              setSelectedKeys([itemKey]);
+              return;
+            }
+
+            if (itemKey === 'revenue') {
+              navigate('/console/finance/revenue');
+              onNavigate();
+              setSelectedKeys([itemKey]);
+              return;
+            }
+
+            if (itemKey === 'invoices') {
+              navigate('/console/finance/invoices');
+              onNavigate();
+              setSelectedKeys([itemKey]);
+              return;
+            }
+
+            if (itemKey === 'reconciliation') {
+              navigate('/console/finance/reconciliation');
+              onNavigate();
+              setSelectedKeys([itemKey]);
+              return;
+            }
+
             // 如果点击的是已经展开的子菜单的父项，则收起子菜单
             if (openedKeys.includes(itemKey)) {
               setOpenedKeys(openedKeys.filter((k) => k !== itemKey));
@@ -485,6 +569,19 @@ const SiderBar = ({ onNavigate = () => {} }) => {
             </>
           )}
 
+          {/* 财务管理区域 */}
+          {hasSectionVisibleModules('finance') && (
+            <>
+              <Divider className='sidebar-divider' />
+              <div>
+                {!collapsed && (
+                  <div className='sidebar-group-label'>{t('财务管理')}</div>
+                )}
+                {financeItems.map((item) => renderNavItem(item))}
+              </div>
+            </>
+          )}
+
           {/* 个人中心区域 */}
           {hasSectionVisibleModules('personal') && (
             <>
@@ -493,7 +590,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
                 {!collapsed && (
                   <div className='sidebar-group-label'>{t('个人中心')}</div>
                 )}
-                {financeItems.map((item) => renderNavItem(item))}
+                {personalItems.map((item) => renderNavItem(item))}
               </div>
             </>
           )}

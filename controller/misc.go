@@ -8,6 +8,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
+	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/middleware"
 	"github.com/QuantumNous/new-api/model"
@@ -40,6 +41,45 @@ func TestStatus(c *gin.Context) {
 }
 
 func GetStatus(c *gin.Context) {
+
+	// ============================================
+	// 已注释：注册人数滚动轮播数据获取（已禁用）
+	// 禁用日期：2026-06-12
+	// ============================================
+	/*
+		// 获取用户统计数据
+		var totalUsers int64
+		model.DB.Model(&model.User{}).Count(&totalUsers)
+
+		// 获取今日新增用户数
+		now := time.Now()
+		todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		var todayUsers int64
+		model.DB.Model(&model.User{}).Where("created_at >= ?", todayStart.Unix()).Count(&todayUsers)
+
+		// 获取本周新增用户数
+		weekStart := time.Date(now.Year(), now.Month(), now.Day()-int(now.Weekday()), 0, 0, 0, 0, now.Location())
+		var weekUsers int64
+		model.DB.Model(&model.User{}).Where("created_at >= ?", weekStart.Unix()).Count(&weekUsers)
+
+		// 获取最近注册用户（最多返回10个）
+		var recentUsers []model.User
+		model.DB.Omit("password").Order("id desc").Limit(10).Find(&recentUsers)
+
+		type RecentUser struct {
+			Id          int    `json:"id"`
+			Username    string `json:"username"`
+			DisplayName string `json:"display_name"`
+		}
+		recentUserList := make([]RecentUser, 0, len(recentUsers))
+		for _, u := range recentUsers {
+			recentUserList = append(recentUserList, RecentUser{
+				Id:          u.Id,
+				Username:    u.Username,
+				DisplayName: u.DisplayName,
+			})
+		}
+	*/
 
 	cs := console_setting.GetConsoleSetting()
 	common.OptionMapRWMutex.RLock()
@@ -117,6 +157,17 @@ func GetStatus(c *gin.Context) {
 		"user_agreement_enabled":      legalSetting.UserAgreement != "",
 		"privacy_policy_enabled":      legalSetting.PrivacyPolicy != "",
 		"checkin_enabled":             operation_setting.GetCheckinSetting().Enabled,
+
+		// ============================================
+		// 已注释：注册人数滚动轮播数据（已禁用）
+		// 禁用日期：2026-06-12
+		// ============================================
+		// "user_stats": gin.H{
+		// 	"total_users":  totalUsers,
+		// 	"today_users":  todayUsers,
+		// 	"week_users":   weekUsers,
+		// 	"recent_users": recentUserList,
+		// },
 	}
 
 	// 根据启用状态注入可选内容
@@ -361,6 +412,61 @@ func ResetPassword(c *gin.Context) {
 		"success": true,
 		"message": "",
 		"data":    password,
+	})
+	return
+}
+
+type ResetPasswordWithPhoneRequest struct {
+	Telephone        string `json:"telephone" validate:"len=11"`
+	VerificationCode string `json:"verification_code" validate:"len=6"`
+	Password         string `json:"password" gorm:"not null;" validate:"min=8,max=20"`
+	ConfirmPassword  string `json:"confirmPassword" gorm:"not null;" validate:"min=8,max=20"`
+}
+
+// 密码重置
+func ResetPasswordWithPhone(c *gin.Context) {
+	var req ResetPasswordWithPhoneRequest
+	err := json.NewDecoder(c.Request.Body).Decode(&req)
+	if err != nil {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+	if err = common.Validate.Struct(&req); err != nil {
+		common.ApiErrorI18n(c, i18n.MsgUserInputInvalid, map[string]any{"Error": err.Error()})
+		return
+	}
+	// 验证短信验证码
+	if !common.VerifySMSCodeWithKey(req.Telephone, req.VerificationCode) {
+		common.ApiErrorMsg(c, i18n.MsgUserVerificationCodeError)
+		return
+	}
+	common.DeleteSMSCode(req.Telephone)
+	if req.Password != req.ConfirmPassword {
+		common.ApiErrorMsg(c, "两次输入的密码不一致，请检查")
+		return
+	}
+	exist, err := model.CheckUserExistByPhone(req.Telephone)
+	if err != nil {
+		common.ApiErrorI18n(c, i18n.MsgDatabaseError)
+		common.SysLog(fmt.Sprintf("CheckUserExistByPhone error: %v", err))
+		return
+	}
+	if !exist {
+		common.ApiErrorI18n(c, i18n.MsgUserNotExists)
+		return
+	}
+	user, _ := model.GetUserByPhone(req.Telephone)
+	user.Password = req.Password
+	if err = user.Update(true); err != nil {
+		logger.LogInfo(c, fmt.Sprintf("user[%d] reset password failed", user.Id))
+		common.ApiErrorMsg(c, "密码重置失败")
+		return
+	}
+
+	logger.LogInfo(c, fmt.Sprintf("user[%d] reset password successfully", user.Id))
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "密码重置成功",
 	})
 	return
 }

@@ -59,6 +59,7 @@ import {
   IconMail,
   IconLock,
   IconKey,
+  IconUser,
 } from '@douyinfe/semi-icons';
 import OIDCIcon from '../common/logo/OIDCIcon';
 import WeChatIcon from '../common/logo/WeChatIcon';
@@ -202,7 +203,7 @@ const LoginForm = () => {
         showSuccess('登录成功！');
         setShowWeChatLoginModal(false);
       } else {
-        showError(message);
+        showError(message || '登录失败，请重试');
       }
     } catch (error) {
       showError('登录失败，请重试');
@@ -257,7 +258,7 @@ const LoginForm = () => {
           }
           navigate('/console');
         } else {
-          showError(message);
+          showError(message || '登录失败，请重试');
         }
       } else {
         showError('请输入用户名和密码！');
@@ -302,7 +303,7 @@ const LoginForm = () => {
         updateAPI();
         navigate('/');
       } else {
-        showError(message);
+        showError(message || '登录失败，请重试');
       }
     } catch (error) {
       showError('登录失败，请重试');
@@ -474,7 +475,7 @@ const LoginForm = () => {
   // 包装的重置密码点击处理
   const handleResetPasswordClick = () => {
     setResetPasswordLoading(true);
-    navigate('/reset');
+    navigate('/resetWithPhone');
     setResetPasswordLoading(false);
   };
 
@@ -722,12 +723,17 @@ const LoginForm = () => {
         <div className='w-full max-w-md'>
           <div className='flex items-center justify-center mb-6 gap-2'>
             <img src={logo} alt='Logo' className='h-10 rounded-full' />
-            <Title heading={3} className='section-heading'>{systemName}</Title>
+            <Title heading={3} className='section-heading'>
+              {systemName}
+            </Title>
           </div>
 
           <Card className='border border-border-light !rounded-lg overflow-hidden shadow-elevated'>
             <div className='flex justify-center pt-6 pb-2'>
-              <Title heading={3} className='text-gray-800 dark:text-gray-200 section-heading'>
+              <Title
+                heading={3}
+                className='text-gray-800 dark:text-gray-200 section-heading'
+              >
                 {t('登 录')}
               </Title>
             </div>
@@ -747,11 +753,11 @@ const LoginForm = () => {
               <Form className='space-y-3'>
                 <Form.Input
                   field='username'
-                  label={t('用户名或邮箱')}
-                  placeholder={t('请输入您的用户名或邮箱地址')}
+                  label={t('用户名或手机号')}
+                  placeholder={t('请输入您的用户名或手机号')}
                   name='username'
                   onChange={(value) => handleChange('username', value)}
-                  prefix={<IconMail />}
+                  prefix={<IconUser/>}
                 />
 
                 <Form.Input
@@ -825,6 +831,15 @@ const LoginForm = () => {
                     loading={resetPasswordLoading}
                   >
                     {t('忘记密码？')}
+                  </Button>
+                  <Button
+                    theme='borderless'
+                    type='tertiary'
+                    className='w-full !rounded-md body'
+                    onClick={() => navigate('/login/phone')}
+                    loading={resetPasswordLoading}
+                  >
+                    {t('手机号验证码登录')}
                   </Button>
                 </div>
               </Form>

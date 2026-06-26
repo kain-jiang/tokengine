@@ -34,9 +34,11 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/verification", middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck(), controller.SendEmailVerification)
 		apiRouter.GET("/reset_password", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.SendPasswordResetEmail)
 		apiRouter.POST("/user/reset", middleware.CriticalRateLimit(), controller.ResetPassword)
+		apiRouter.POST("/user/reset_password", middleware.CriticalRateLimit(), controller.ResetPasswordWithPhone)
 		// OAuth routes - specific routes must come before :provider wildcard
 		apiRouter.GET("/oauth/state", middleware.CriticalRateLimit(), controller.GenerateOAuthCode)
 		apiRouter.POST("/oauth/email/bind", middleware.CriticalRateLimit(), controller.EmailBind)
+		apiRouter.POST("/oauth/phone/bind", middleware.CriticalRateLimit(), controller.PhoneBind)
 		// Non-standard OAuth (WeChat, Telegram) - keep original routes
 		apiRouter.GET("/oauth/wechat", middleware.CriticalRateLimit(), controller.WeChatAuth)
 		apiRouter.POST("/oauth/wechat/bind", middleware.CriticalRateLimit(), controller.WeChatBind)
@@ -53,10 +55,14 @@ func SetApiRouter(router *gin.Engine) {
 		// Universal secure verification routes
 		apiRouter.POST("/verify", middleware.UserAuth(), middleware.CriticalRateLimit(), controller.UniversalVerify)
 
+		// 发送短信验证码
+		apiRouter.POST("/verify/code", middleware.CriticalRateLimit(), controller.SendSmsCode)
+
 		userRoute := apiRouter.Group("/user")
 		{
 			userRoute.POST("/register", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.Register)
 			userRoute.POST("/login", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.Login)
+			userRoute.POST("/login/phone", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.LoginWithPhone)
 			userRoute.POST("/login/2fa", middleware.CriticalRateLimit(), controller.Verify2FALogin)
 			userRoute.POST("/passkey/login/begin", middleware.CriticalRateLimit(), controller.PasskeyLoginBegin)
 			userRoute.POST("/passkey/login/finish", middleware.CriticalRateLimit(), controller.PasskeyLoginFinish)
@@ -88,6 +94,7 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.GET("/aff", controller.GetAffCode)
 				selfRoute.GET("/topup/info", controller.GetTopUpInfo)
 				selfRoute.GET("/topup/self", controller.GetUserTopUps)
+				selfRoute.GET("/topup/self/export", controller.ExportUserTopUps)
 				selfRoute.POST("/topup", middleware.CriticalRateLimit(), controller.TopUp)
 				selfRoute.POST("/pay", middleware.CriticalRateLimit(), controller.RequestEpay)
 				selfRoute.POST("/zs_pay/pay", middleware.CriticalRateLimit(), controller.RequestZSPay)
@@ -125,6 +132,7 @@ func SetApiRouter(router *gin.Engine) {
 			{
 				adminRoute.GET("/", controller.GetAllUsers)
 				adminRoute.GET("/topup", controller.GetAllTopUps)
+				adminRoute.GET("/topup/export", controller.ExportAllTopUps)
 				adminRoute.POST("/topup/complete", controller.AdminCompleteTopUp)
 				adminRoute.GET("/search", controller.SearchUsers)
 				adminRoute.GET("/:id/oauth/bindings", controller.GetUserOAuthBindingsByAdmin)
@@ -236,8 +244,8 @@ func SetApiRouter(router *gin.Engine) {
 			channelRoute.POST("/", controller.AddChannel)
 			channelRoute.PUT("/", controller.UpdateChannel)
 			channelRoute.DELETE("/disabled", controller.DeleteDisabledChannel)
-			channelRoute.POST("/tag/disabled", controller.DisableTagChannels)
 			channelRoute.POST("/tag/enabled", controller.EnableTagChannels)
+			channelRoute.POST("/tag/disabled", controller.DisableTagChannels)
 			channelRoute.PUT("/tag", controller.EditTagChannels)
 			channelRoute.DELETE("/:id", controller.DeleteChannel)
 			channelRoute.POST("/batch", controller.DeleteChannelBatch)
@@ -312,6 +320,33 @@ func SetApiRouter(router *gin.Engine) {
 		dataRoute.GET("/", middleware.AdminAuth(), controller.GetAllQuotaDates)
 		dataRoute.GET("/users", middleware.AdminAuth(), controller.GetQuotaDatesByUser)
 		dataRoute.GET("/self", middleware.UserAuth(), controller.GetUserQuotaDates)
+
+		// Billing summary routes (user账单)
+		billingRoute := apiRouter.Group("/billing")
+		billingRoute.Use(middleware.UserAuth())
+		{
+			billingRoute.GET("/self/model-summary", controller.GetModelSummary)
+			billingRoute.GET("/self/model-summary/export", controller.ExportModelSummary)
+			billingRoute.GET("/self/token-summary", controller.GetTokenSummary)
+			billingRoute.GET("/self/token-summary/export", controller.ExportTokenSummary)
+		}
+
+		// Finance routes
+		financeRoute := apiRouter.Group("/finance")
+		financeRoute.Use(middleware.UserAuth())
+		{
+			financeRoute.GET("/dashboard", controller.GetFinanceDashboard)
+			financeRoute.GET("/orders", controller.GetOrders)
+			financeRoute.GET("/orders/export", controller.ExportOrders)
+			financeRoute.GET("/reports", controller.GetRevenueReports)
+			financeRoute.GET("/trend", controller.GetRevenueTrend)
+			financeRoute.POST("/invoice", controller.ApplyInvoice)
+			financeRoute.GET("/invoices", controller.GetInvoices)
+			financeRoute.PUT("/invoice/:id", controller.ApproveInvoice)
+			financeRoute.GET("/reconciliations", controller.GetReconciliations)
+			financeRoute.POST("/reconcile", controller.AutoReconcile)
+			financeRoute.POST("/report/daily", controller.GenerateDailyReport)
+		}
 
 		logRoute.Use(middleware.CORS(), middleware.CriticalRateLimit())
 		{

@@ -27,13 +27,12 @@ import {
   Banner,
   Skeleton,
   Form,
+  Input,
   Space,
   Row,
   Col,
   Spin,
   Tooltip,
-  Tabs,
-  TabPane,
 } from '@douyinfe/semi-ui';
 import { SiAlipay, SiWechat, SiStripe } from 'react-icons/si';
 import {
@@ -43,12 +42,11 @@ import {
   BarChart2,
   TrendingUp,
   Receipt,
-  Sparkles,
+  Gift,
 } from 'lucide-react';
 import { IconGift } from '@douyinfe/semi-icons';
 import { useMinimumLoadingTime } from '../../hooks/common/useMinimumLoadingTime';
 import { getCurrencyConfig } from '../../helpers/render';
-import SubscriptionPlansCard from './SubscriptionPlansCard';
 
 const { Text } = Typography;
 
@@ -87,39 +85,17 @@ const RechargeCard = ({
   statusLoading,
   topupInfo,
   onOpenHistory,
+  onOpenInvitation,
   enableWaffoTopUp,
   waffoTopUp,
   waffoPayMethods,
   enableZsPayTopUp,
   enableHelipayTopUp,
-  subscriptionLoading = false,
-  subscriptionPlans = [],
-  billingPreference,
-  onChangeBillingPreference,
-  activeSubscriptions = [],
-  allSubscriptions = [],
-  reloadSubscriptionSelf,
 }) => {
   const onlineFormApiRef = useRef(null);
   const redeemFormApiRef = useRef(null);
-  const initialTabSetRef = useRef(false);
   const showAmountSkeleton = useMinimumLoadingTime(amountLoading);
-  const [activeTab, setActiveTab] = useState('topup');
-  const shouldShowSubscription =
-    !subscriptionLoading && subscriptionPlans.length > 0;
-
-  useEffect(() => {
-    if (initialTabSetRef.current) return;
-    if (subscriptionLoading) return;
-    setActiveTab(shouldShowSubscription ? 'subscription' : 'topup');
-    initialTabSetRef.current = true;
-  }, [shouldShowSubscription, subscriptionLoading]);
-
-  useEffect(() => {
-    if (!shouldShowSubscription && activeTab !== 'topup') {
-      setActiveTab('topup');
-    }
-  }, [shouldShowSubscription, activeTab]);
+  const [isTopUpInputFocused, setIsTopUpInputFocused] = useState(false);
 
   // 判断是否只启用了招行支付（是的话隐藏充值数量输入和支付方式选择）
   const onlyZsPayEnabled = enableZsPayTopUp && !enableOnlineTopUp && !enableStripeTopUp && !enableWaffoTopUp && !enableHelipayTopUp;
@@ -285,64 +261,43 @@ const RechargeCard = ({
             initValues={{ topUpCount: topUpCount }}
           >
             <div className='space-y-6'>
-              {/* 当只启用招行支付时，隐藏充值数量输入和支付方式选择 */}
-              {!onlyZsPayEnabled && (enableOnlineTopUp || enableStripeTopUp || enableWaffoTopUp) && (
+              {/* 充值数量输入框 - 在启用任何充值方式时显示 */}
+              {(enableOnlineTopUp || enableStripeTopUp || enableWaffoTopUp || enableZsPayTopUp || enableHelipayTopUp) && (
                 <Row gutter={12}>
                   <Col xs={24} sm={24} md={24} lg={10} xl={10}>
-                    <Form.InputNumber
-                      field='topUpCount'
+                    <Form.Slot
                       label={t('充值数量')}
-                      disabled={!enableOnlineTopUp && !enableStripeTopUp && !enableWaffoTopUp}
-                      placeholder={
-                        t('充值数量，最低 ') + renderQuotaWithAmount(minTopUp)
-                      }
-                      value={topUpCount}
-                      min={minTopUp}
-                      max={999999999}
-                      step={1}
-                      precision={0}
-                      onChange={async (value) => {
-                        if (value && value >= 1) {
-                          setTopUpCount(value);
-                          setSelectedPreset(null);
-                          await getAmount(value);
+                    >
+                      <Input
+                        disabled={!enableOnlineTopUp && !enableStripeTopUp && !enableWaffoTopUp && !enableZsPayTopUp && !enableHelipayTopUp}
+                        placeholder={
+                          t('充值数量，最低 ') + renderQuotaWithAmount(minTopUp, true)
                         }
-                      }}
-                      onBlur={(e) => {
-                        const value = parseInt(e.target.value);
-                        if (!value || value < 1) {
-                          setTopUpCount(1);
-                          getAmount(1);
-                        }
-                      }}
-                      formatter={(value) => (value ? `${value}` : '')}
-                      parser={(value) =>
-                        value ? parseInt(value.replace(/[^\d]/g, '')) : 0
-                      }
-                      extraText={
-                        <Skeleton
-                          loading={showAmountSkeleton}
-                          active
-                          placeholder={
-                            <Skeleton.Title
-                              style={{
-                                width: 120,
-                                height: 20,
-                                borderRadius: 6,
-                              }}
-                            />
+                        value={topUpCount?.toString() || ''}
+                        onFocus={() => setIsTopUpInputFocused(true)}
+                        onBlur={() => setIsTopUpInputFocused(false)}
+                        onChange={(value) => {
+                          // 允许空字符串（用户删除所有字符）
+                          if (value === '' || value === '-' || value === '.') {
+                            setTopUpCount(0);
+                            setSelectedPreset(null);
+                            return;
                           }
-                        >
-                          <Text type='secondary' className='text-red-600'>
-                            {t('实付金额：')}
-                            <span style={{ color: 'red' }}>
-                              {renderAmount()}
-                            </span>
-                          </Text>
-                        </Skeleton>
-                      }
-                      style={{ width: '100%' }}
-                    />
+                          const numValue = parseInt(value);
+                          // 允许有效数字或 0
+                          if (!isNaN(numValue) && numValue >= 0) {
+                            setTopUpCount(numValue);
+                            setSelectedPreset(null);
+                            // 只有易支付和 Stripe 才需要调用后端 API 获取金额
+                            // 招行支付、合利宝等使用本地计算
+                            if (enableOnlineTopUp || enableStripeTopUp) {
+                              getAmount(numValue);
+                            }
+                          }
+                        }}
+                        style={{ width: '100%' }}
+                      />
+                    </Form.Slot>
                   </Col>
                   {/* 当只启用招行支付时，隐藏支付方式选择 */}
                   {!onlyZsPayEnabled && (enableOnlineTopUp || enableStripeTopUp) && payMethods && payMethods.filter(m => m.type !== 'waffo' && m.type !== 'zs_pay').length > 0 && (
@@ -421,7 +376,7 @@ const RechargeCard = ({
                 <Form.Slot
                   label={
                     <div className='flex items-center gap-2'>
-                      <span>{t('选择充值额度')}</span>
+                      <span>{t('快捷充值')}</span>
                     </div>
                   }
                 >
@@ -490,16 +445,18 @@ const RechargeCard = ({
                           }}
                           bodyStyle={{ padding: '12px' }}
                           onClick={() => {
+                            // 如果充值数量文本框聚焦中，点击套餐应该取消选择而不是填充金额
+                            if (isTopUpInputFocused) {
+                              setSelectedPreset(null);
+                              return;
+                            }
                             // 如果点击已选中的套餐，则取消选择
                             if (selectedPreset === preset.value) {
                               setSelectedPreset(null);
-                              onlineFormApiRef.current?.setValue('topUpCount', '');
+                              setTopUpCount(0);
                             } else {
+                              // selectPresetAmount 内部已经处理了 setTopUpCount，无需重复调用
                               selectPresetAmount(preset);
-                              onlineFormApiRef.current?.setValue(
-                                'topUpCount',
-                                preset.value,
-                              );
                             }
                           }}
                         >
@@ -607,8 +564,8 @@ const RechargeCard = ({
                 </Form.Slot>
               )}
 
-              {/* 招商银行聚合支付区域 - 当只启用招行支付且未选择套餐时隐藏 */}
-              {enableZsPayTopUp && !(onlyZsPayEnabled && !selectedPreset) && (
+              {/* 招商银行聚合支付区域 - 招行支付启用时始终显示 */}
+              {enableZsPayTopUp && (
                 <Form.Slot label={t('招商银行聚合支付')}>
                   <div className='flex items-center gap-3'>
                     <Button
@@ -732,60 +689,28 @@ const RechargeCard = ({
             <div className='text-xs'>{t('多种充值方式，安全便捷')}</div>
           </div>
         </div>
-        <Button
-          icon={<Receipt size={16} />}
-          theme='solid'
-          onClick={onOpenHistory}
-        >
-          {t('账单')}
-        </Button>
+        <div className='flex items-center gap-2'>
+          {onOpenInvitation && (
+            <Tooltip content={t('邀请奖励')}>
+              <button
+                onClick={onOpenInvitation}
+                className='p-2 rounded-full hover:bg-green-50 transition-colors'
+              >
+                <Gift className='w-5 h-5 text-green-500' />
+              </button>
+            </Tooltip>
+          )}
+          <Button
+            icon={<Receipt size={16} />}
+            theme='solid'
+            onClick={onOpenHistory}
+          >
+            {t('充值账单')}
+          </Button>
+        </div>
       </div>
 
-      {shouldShowSubscription ? (
-        <Tabs type='card' activeKey={activeTab} onChange={setActiveTab}>
-          <TabPane
-            tab={
-              <div className='flex items-center gap-2'>
-                <Sparkles size={16} />
-                {t('订阅套餐')}
-              </div>
-            }
-            itemKey='subscription'
-          >
-            <div className='py-2'>
-              <SubscriptionPlansCard
-                t={t}
-                loading={subscriptionLoading}
-                plans={subscriptionPlans}
-                payMethods={payMethods}
-                enableOnlineTopUp={enableOnlineTopUp}
-                enableStripeTopUp={enableStripeTopUp}
-                enableCreemTopUp={enableCreemTopUp}
-                billingPreference={billingPreference}
-                onChangeBillingPreference={onChangeBillingPreference}
-                activeSubscriptions={activeSubscriptions}
-                allSubscriptions={allSubscriptions}
-                reloadSubscriptionSelf={reloadSubscriptionSelf}
-                withCard={false}
-                userQuota={userState?.user?.quota || 0}
-              />
-            </div>
-          </TabPane>
-          <TabPane
-            tab={
-              <div className='flex items-center gap-2'>
-                <Wallet size={16} />
-                {t('额度充值')}
-              </div>
-            }
-            itemKey='topup'
-          >
-            <div className='py-2'>{topupContent}</div>
-          </TabPane>
-        </Tabs>
-      ) : (
-        topupContent
-      )}
+      {topupContent}
     </Card>
   );
 };

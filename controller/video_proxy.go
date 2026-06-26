@@ -37,7 +37,18 @@ func VideoProxy(c *gin.Context) {
 		return
 	}
 
+	// Get user ID: from context (authenticated) or URL parameter (direct access)
 	userID := c.GetInt("id")
+	if userID == 0 {
+		// Try to get user_id from URL parameter for direct browser access
+		if uidParam := c.Query("user_id"); uidParam != "" {
+			fmt.Sscanf(uidParam, "%d", &userID)
+		}
+	}
+	if userID == 0 {
+		videoProxyError(c, http.StatusBadRequest, "invalid_request_error", "user_id is required")
+		return
+	}
 	task, exists, err := model.GetByTaskId(userID, taskID)
 	if err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("Failed to query task %s: %s", taskID, err.Error()))
@@ -108,6 +119,20 @@ func VideoProxy(c *gin.Context) {
 		}
 	case constant.ChannelTypeOpenAI, constant.ChannelTypeSora:
 		videoURL = fmt.Sprintf("%s/v1/videos/%s/content", baseURL, task.GetUpstreamTaskID())
+		req.Header.Set("Authorization", "Bearer "+channel.Key)
+	case constant.ChannelTypeAgnesAI:
+		// AgnesAI uses video_id from task.Data instead of task ID
+		var taskData map[string]interface{}
+		if err := common.Unmarshal(task.Data, &taskData); err == nil {
+			if videoID, ok := taskData["video_id"].(string); ok && videoID != "" {
+				videoURL = fmt.Sprintf("%s/v1/videos/%s/content", baseURL, videoID)
+			} else {
+				// Fallback to upstream task ID or public task ID
+				videoURL = fmt.Sprintf("%s/v1/videos/%s/content", baseURL, task.GetUpstreamTaskID())
+			}
+		} else {
+			videoURL = fmt.Sprintf("%s/v1/videos/%s/content", baseURL, task.GetUpstreamTaskID())
+		}
 		req.Header.Set("Authorization", "Bearer "+channel.Key)
 	default:
 		// Video URL is stored in PrivateData.ResultURL (fallback to FailReason for old data)

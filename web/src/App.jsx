@@ -24,9 +24,12 @@ import User from './pages/User';
 import { AuthRedirect, PrivateRoute, AdminRoute } from './helpers';
 import RegisterForm from './components/auth/RegisterForm';
 import LoginForm from './components/auth/LoginForm';
+import PhoneLoginForm from './components/auth/PhoneLoginForm';
+import PasswordResetWithPhone from './components/auth/PasswordResetWithPhone';
 import NotFound from './pages/NotFound';
 import Forbidden from './pages/Forbidden';
 import Setting from './pages/Setting';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import { StatusContext } from './context/Status';
 
 import PasswordResetForm from './components/auth/PasswordResetForm';
@@ -35,6 +38,24 @@ import Channel from './pages/Channel';
 import Token from './pages/Token';
 import Redemption from './pages/Redemption';
 import TopUp from './pages/TopUp';
+import MyPlan from './pages/MyPlan';
+import MyPlanBilling from './pages/MyPlanBilling';
+import Finance from './pages/Finance';
+import FinanceLayout from './pages/Finance/FinanceLayout';
+import FinanceDashboard from './pages/Finance/Dashboard';
+import FinanceOrders from './pages/Finance/Orders';
+import FinanceRevenue from './pages/Finance/Revenue';
+import FinanceInvoices from './pages/Finance/Invoices';
+import FinanceReconciliation from './pages/Finance/Reconciliation';
+
+// Debug: Test if all finance imports are valid
+console.log('[App.jsx] FinanceReconciliation:', typeof FinanceReconciliation, FinanceReconciliation?.name);
+console.log('[App.jsx] FinanceDashboard:', typeof FinanceDashboard, FinanceDashboard?.name);
+console.log('[App.jsx] FinanceOrders:', typeof FinanceOrders, FinanceOrders?.name);
+console.log('[App.jsx] FinanceRevenue:', typeof FinanceRevenue, FinanceRevenue?.name);
+console.log('[App.jsx] FinanceInvoices:', typeof FinanceInvoices, FinanceInvoices?.name);
+console.log('[App.jsx] PrivateRoute:', typeof PrivateRoute);
+console.log('[App.jsx] Loading:', typeof Loading);
 import Log from './pages/Log';
 import Chat from './pages/Chat';
 import Chat2Link from './pages/Chat2Link';
@@ -199,6 +220,16 @@ function App() {
           }
         />
         <Route
+          path='/login/phone'
+          element={
+            <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+              <AuthRedirect>
+                <PhoneLoginForm />
+              </AuthRedirect>
+            </Suspense>
+          }
+        />
+        <Route
           path='/register'
           element={
             <Suspense fallback={<Loading></Loading>} key={location.pathname}>
@@ -213,6 +244,16 @@ function App() {
           element={
             <Suspense fallback={<Loading></Loading>} key={location.pathname}>
               <PasswordResetForm />
+            </Suspense>
+          }
+        />
+        <Route
+          path='/resetWithPhone'
+          element={
+            <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+              <AuthRedirect>
+                <PasswordResetWithPhone />
+              </AuthRedirect>
             </Suspense>
           }
         />
@@ -286,6 +327,65 @@ function App() {
             </PrivateRoute>
           }
         />
+        <Route
+          path='/console/my-plan'
+          element={
+            <PrivateRoute>
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <MyPlan />
+              </Suspense>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='/console/billing'
+          element={
+            <PrivateRoute>
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <MyPlanBilling />
+              </Suspense>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='/console/finance'
+          element={
+            <PrivateRoute>
+              <ErrorBoundary key='finance-layout'><FinanceLayout /></ErrorBoundary>
+            </PrivateRoute>
+          }
+        >
+          <Route
+            index
+            element={
+              <ErrorBoundary key='finance-dashboard'><FinanceDashboard /></ErrorBoundary>
+            }
+          />
+          <Route
+            path='orders'
+            element={
+              <ErrorBoundary key='finance-orders'><FinanceOrders /></ErrorBoundary>
+            }
+          />
+          <Route
+            path='revenue'
+            element={
+              <ErrorBoundary key='finance-revenue'><FinanceRevenue /></ErrorBoundary>
+            }
+          />
+          <Route
+            path='invoices'
+            element={
+              <ErrorBoundary key='finance-invoices'><FinanceInvoices /></ErrorBoundary>
+            }
+          />
+          <Route
+            path='reconciliation'
+            element={
+              <ErrorBoundary key='finance-reconciliation'><FinanceReconciliation /></ErrorBoundary>
+            }
+          />
+        </Route>
         <Route
           path='/console/log'
           element={

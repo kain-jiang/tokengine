@@ -389,6 +389,10 @@ func updateVideoSingleTask(ctx context.Context, adaptor TaskPollingAdaptor, ch *
 	logger.LogDebug(ctx, fmt.Sprintf("updateVideoSingleTask: channel #%d, baseURL=%s, upstreamTaskID=%s, channelType=%d",
 		ch.Id, baseURL, task.GetUpstreamTaskID(), ch.Type))
 
+	// Agnes AI 使用标准的 OpenAI-compatible API 端点 GET /v1/videos/{task_id}
+	// 官方文档：https://agnes-ai.com/doc/agnes-video-v20
+	// 不需要特殊的 video_id 提取逻辑
+
 	resp, err := adaptor.FetchTask(baseURL, key, map[string]any{
 		"task_id": task.GetUpstreamTaskID(),
 		"action":  task.Action,
@@ -468,6 +472,9 @@ func updateVideoSingleTask(ctx context.Context, adaptor TaskPollingAdaptor, ch *
 
 	now := time.Now().Unix()
 	if taskResult.Status == "" {
+		// Log the raw response for debugging
+		logger.LogError(ctx, fmt.Sprintf("Task %s returned empty status, raw response: %s", taskId, string(responseBody)))
+
 		//taskResult = relaycommon.FailTaskInfo("upstream returned empty status")
 		errorResult := &dto.GeneralErrorResponse{}
 		if err = common.Unmarshal(responseBody, &errorResult); err == nil {
@@ -486,6 +493,10 @@ func updateVideoSingleTask(ctx context.Context, adaptor TaskPollingAdaptor, ch *
 				logger.LogError(ctx, fmt.Sprintf("Task %s returned empty status with unrecognized error format, response: %s", taskId, string(responseBody)))
 				taskResult = relaycommon.FailTaskInfo("upstream returned unrecognized message")
 			}
+		} else {
+			// Response body is not valid JSON at all
+			logger.LogError(ctx, fmt.Sprintf("Task %s returned non-JSON response: %s", taskId, string(responseBody)))
+			taskResult = relaycommon.FailTaskInfo("upstream returned invalid JSON")
 		}
 	}
 

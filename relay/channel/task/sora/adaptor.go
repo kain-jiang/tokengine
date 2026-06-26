@@ -2,6 +2,7 @@ package sora
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -13,6 +14,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/dto"
+	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/relay/channel"
 	taskcommon "github.com/QuantumNous/new-api/relay/channel/task/taskcommon"
@@ -91,7 +93,23 @@ func (a *TaskAdaptor) ValidateRequestAndSetAction(c *gin.Context, info *relaycom
 	if info.Action == constant.TaskActionRemix {
 		return validateRemixRequest(c)
 	}
-	return relaycommon.ValidateMultipartDirect(c, info)
+	taskErr = relaycommon.ValidateMultipartDirect(c, info)
+	if taskErr != nil {
+		return
+	}
+	// Agnes AI requires lowercase model names for channel matching
+	// Convert model name to lowercase so it matches channel-configured models
+	if info.OriginModelName != "" && strings.Contains(info.OriginModelName, "Agnes") {
+		lowerModel := strings.ToLower(info.OriginModelName)
+		if lowerModel != info.OriginModelName {
+			logger.LogInfo(c, fmt.Sprintf("[AGNESAI] Converting model name for channel matching: %s -> %s", info.OriginModelName, lowerModel))
+			info.OriginModelName = lowerModel
+			info.UpstreamModelName = lowerModel
+			// Update context for distributor to use the converted model name
+			common.SetContextKey(c, constant.ContextKeyOriginalModel, lowerModel)
+		}
+	}
+	return nil
 }
 
 // EstimateBilling 根据用户请求的 seconds 和 size 计算 OtherRatios。
@@ -154,10 +172,20 @@ func (a *TaskAdaptor) BuildRequestBody(c *gin.Context, info *relaycommon.RelayIn
 	}
 	contentType := c.GetHeader("Content-Type")
 
+	logger.LogInfo(c, fmt.Sprintf("[AGNESAI_DEBUG] BuildRequestBody: contentType=%s, upstreamModel=%s, cachedBody=%s", contentType, info.UpstreamModelName, string(cachedBody)))
+
 	if strings.HasPrefix(contentType, "application/json") {
 		var bodyMap map[string]interface{}
 		if err := common.Unmarshal(cachedBody, &bodyMap); err == nil {
-			bodyMap["model"] = info.UpstreamModelName
+			// Agnes AI requires lowercase model names
+			modelName := info.UpstreamModelName
+			if strings.Contains(info.UpstreamModelName, "Agnes") || strings.Contains(info.UpstreamModelName, "agnes") {
+				modelName = strings.ToLower(info.UpstreamModelName)
+			}
+			bodyMap["model"] = modelName
+			// Agnes AI video API doesn't need 'group' field in the request body
+			delete(bodyMap, "group")
+			logger.LogInfo(c, fmt.Sprintf("[AGNESAI_DEBUG] BuildRequestBody: originalModel=%s, convertedModel=%s, body=%v", info.UpstreamModelName, modelName, bodyMap))
 			if newBody, err := common.Marshal(bodyMap); err == nil {
 				return bytes.NewReader(newBody), nil
 			}
@@ -257,12 +285,16 @@ func (a *TaskAdaptor) DoResponse(c *gin.Context, resp *http.Response, info *rela
 }
 
 // FetchTask fetch task status
+// Agnes AI Video V2.0 官方文档：使用 GET /v1/videos/{task_id} 查询任务状态
+// 参考：https://agnes-ai.com/doc/agnes-video-v20
 func (a *TaskAdaptor) FetchTask(baseUrl, key string, body map[string]any, proxy string) (*http.Response, error) {
 	taskID, ok := body["task_id"].(string)
 	if !ok {
 		return nil, fmt.Errorf("invalid task_id")
 	}
 
+	// Agnes AI 使用标准的 OpenAI-compatible API 端点 GET /v1/videos/{task_id}
+	// 官方文档：POST /v1/videos 返回 task_id，GET /v1/videos/{task_id} 查询状态
 	uri := fmt.Sprintf("%s/v1/videos/%s", baseUrl, taskID)
 
 	req, err := http.NewRequest(http.MethodGet, uri, nil)
@@ -297,15 +329,18 @@ func (a *TaskAdaptor) ParseTaskResult(respBody []byte) (*relaycommon.TaskInfo, e
 		Code: 0,
 	}
 
-	switch resTask.Status {
-	case "queued", "pending":
+	// Normalize status: AgnesAI may return "success"/"failed" instead of "completed"/"failed"
+	status := strings.ToLower(resTask.Status)
+
+	switch status {
+	case "queued", "pending", "submitting", "submitted":
 		taskResult.Status = model.TaskStatusQueued
-	case "processing", "in_progress":
+	case "processing", "in_progress", "running", "pending_review":
 		taskResult.Status = model.TaskStatusInProgress
-	case "completed":
+	case "completed", "success":
 		taskResult.Status = model.TaskStatusSuccess
 		// Url intentionally left empty — the caller constructs the proxy URL using the public task ID
-	case "failed", "cancelled":
+	case "failed", "cancelled", "canceled", "error", "failure":
 		taskResult.Status = model.TaskStatusFailure
 		if resTask.Error != nil {
 			taskResult.Reason = resTask.Error.Message
@@ -313,6 +348,9 @@ func (a *TaskAdaptor) ParseTaskResult(respBody []byte) (*relaycommon.TaskInfo, e
 			taskResult.Reason = "task failed"
 		}
 	default:
+		logger.LogDebug(context.Background(), fmt.Sprintf("[SORA/AGNESAI] Unrecognized status: %s, keeping task in current state", resTask.Status))
+		// Return empty status to keep the task in its current state (don't force a state change)
+		taskResult.Status = ""
 	}
 	if resTask.Progress > 0 && resTask.Progress < 100 {
 		taskResult.Progress = fmt.Sprintf("%d%%", resTask.Progress)
