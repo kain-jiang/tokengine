@@ -23,6 +23,33 @@ type FundingSource interface {
 }
 
 // ---------------------------------------------------------------------------
+// FundingSourceV2 — 支持 tokens 计费的扩展接口
+// ---------------------------------------------------------------------------
+
+// FundingSourceV2 扩展接口，支持 tokens 计费模式。
+type FundingSourceV2 interface {
+	FundingSource
+	// BillingMode 返回计费模式: "quota" 或 "tokens"
+	BillingMode() string
+	// PreConsumeTokens 预扣 tokens 数量（仅 tokens 模式使用）
+	PreConsumeTokens(tokens int64) error
+	// SettleTokens 根据 tokens 差额调整（仅 tokens 模式使用）
+	SettleTokens(delta int64) error
+	// GetTokensInfo 返回 tokens 计费信息（仅 tokens 模式使用）
+	GetTokensInfo() *TokensBillingInfo
+}
+
+// TokensBillingInfo 存储 tokens 计费信息
+type TokensBillingInfo struct {
+	TokensTotal       int64  // tokens_limit
+	TokensUsedBefore  int64  // 预扣前的 tokens_used
+	TokensUsedAfter   int64  // 预扣后的 tokens_used
+	TokensPreConsumed int64  // 预扣的 tokens 数量
+	ApplicableModels  string // 适用模型
+	PlanType          string // "quota" 或 "tokens"
+}
+
+// ---------------------------------------------------------------------------
 // WalletFunding — 钱包资金来源实现
 // ---------------------------------------------------------------------------
 
@@ -31,7 +58,8 @@ type WalletFunding struct {
 	consumed int // 实际预扣的用户额度
 }
 
-func (w *WalletFunding) Source() string { return BillingSourceWallet }
+func (w *WalletFunding) Source() string      { return BillingSourceWallet }
+func (w *WalletFunding) BillingMode() string { return "quota" }
 
 func (w *WalletFunding) PreConsume(amount int) error {
 	if amount <= 0 {
@@ -63,8 +91,13 @@ func (w *WalletFunding) Refund() error {
 	return model.IncreaseUserQuota(w.userId, w.consumed, false)
 }
 
+// Tokens 模式下的空实现（钱包不支持 tokens 模式）
+func (w *WalletFunding) PreConsumeTokens(_ int64) error    { return nil }
+func (w *WalletFunding) SettleTokens(_ int64) error        { return nil }
+func (w *WalletFunding) GetTokensInfo() *TokensBillingInfo { return nil }
+
 // ---------------------------------------------------------------------------
-// SubscriptionFunding — 订阅资金来源实现
+// SubscriptionFunding — 订阅资金来源实现（quota 模式）
 // ---------------------------------------------------------------------------
 
 type SubscriptionFunding struct {
@@ -81,7 +114,8 @@ type SubscriptionFunding struct {
 	PlanTitle       string
 }
 
-func (s *SubscriptionFunding) Source() string { return BillingSourceSubscription }
+func (s *SubscriptionFunding) Source() string      { return BillingSourceSubscription }
+func (s *SubscriptionFunding) BillingMode() string { return "quota" }
 
 func (s *SubscriptionFunding) PreConsume(_ int) error {
 	// amount 参数被忽略，使用内部 s.amount（已在构造时根据 preConsumedQuota 计算）
@@ -115,6 +149,95 @@ func (s *SubscriptionFunding) Refund() error {
 	return refundWithRetry(func() error {
 		return model.RefundSubscriptionPreConsume(s.requestId)
 	})
+}
+
+// Tokens 模式下的空实现
+func (s *SubscriptionFunding) PreConsumeTokens(_ int64) error {
+	return nil // quota 模式不支持
+}
+func (s *SubscriptionFunding) SettleTokens(_ int64) error {
+	return nil // quota 模式不支持
+}
+func (s *SubscriptionFunding) GetTokensInfo() *TokensBillingInfo {
+	return nil // quota 模式不支持
+}
+
+// ---------------------------------------------------------------------------
+// TokensSubscriptionFunding — 订阅资金来源实现（tokens 模式）
+// ---------------------------------------------------------------------------
+
+type TokensSubscriptionFunding struct {
+	requestId       string
+	userId          int
+	modelName       string
+	tokensToConsume int64 // 预扣的 tokens 数量
+	subscriptionId  int
+	preConsumed     int64
+	// 以下字段在 PreConsumeTokens 成功后填充
+	tokensInfo TokensBillingInfo
+	PlanId     int
+	PlanTitle  string
+}
+
+func (s *TokensSubscriptionFunding) Source() string      { return BillingSourceSubscription }
+func (s *TokensSubscriptionFunding) BillingMode() string { return "tokens" }
+
+// PreConsume quota 模式的空实现（tokens 模式使用 PreConsumeTokens）
+func (s *TokensSubscriptionFunding) PreConsume(_ int) error {
+	return nil
+}
+
+func (s *TokensSubscriptionFunding) Settle(_ int) error {
+	return nil // tokens 模式使用 SettleTokens
+}
+
+func (s *TokensSubscriptionFunding) Refund() error {
+	if s.preConsumed <= 0 {
+		return nil
+	}
+	return refundWithRetry(func() error {
+		return model.RefundSubscriptionTokensPreConsume(s.requestId)
+	})
+}
+
+// PreConsumeTokens 预扣 tokens 数量
+func (s *TokensSubscriptionFunding) PreConsumeTokens(tokens int64) error {
+	if tokens <= 0 {
+		return nil
+	}
+	res, err := model.PreConsumeUserSubscriptionTokens(s.requestId, s.userId, s.modelName, tokens)
+	if err != nil {
+		return err
+	}
+	s.subscriptionId = res.UserSubscriptionId
+	s.preConsumed = res.PreConsumed
+	s.tokensInfo = TokensBillingInfo{
+		TokensTotal:       res.TokensTotal,
+		TokensUsedBefore:  res.TokensUsedBefore,
+		TokensUsedAfter:   res.TokensUsedAfter,
+		TokensPreConsumed: res.PreConsumed,
+		ApplicableModels:  res.ApplicableModels,
+		PlanType:          res.PlanType,
+	}
+	// 获取订阅计划信息
+	if planInfo, err := model.GetSubscriptionPlanInfoByUserSubscriptionId(res.UserSubscriptionId); err == nil && planInfo != nil {
+		s.PlanId = planInfo.PlanId
+		s.PlanTitle = planInfo.PlanTitle
+	}
+	return nil
+}
+
+// SettleTokens 根据 tokens 差额调整
+func (s *TokensSubscriptionFunding) SettleTokens(delta int64) error {
+	if delta == 0 {
+		return nil
+	}
+	return model.PostConsumeUserSubscriptionTokensDelta(s.subscriptionId, delta)
+}
+
+// GetTokensInfo 返回 tokens 计费信息
+func (s *TokensSubscriptionFunding) GetTokensInfo() *TokensBillingInfo {
+	return &s.tokensInfo
 }
 
 // refundWithRetry 尝试多次执行退款操作以提高成功率，只能用于基于事务的退款函数！！！！！！

@@ -48,6 +48,7 @@ const OtherSetting = () => {
     Footer: '',
     About: '',
     HomePageContent: '',
+    IcpVersion: '',
   });
   let [loading, setLoading] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -82,6 +83,7 @@ const OtherSetting = () => {
     About: false,
     Footer: false,
     CheckUpdate: false,
+    IcpVersion: false,
   });
   const handleInputChange = async (value, e) => {
     const name = e.target.id;
@@ -165,6 +167,24 @@ const OtherSetting = () => {
       setLoadingInput((loadingInput) => ({
         ...loadingInput,
         SystemName: false,
+      }));
+    }
+  };
+  const submitIcpVersion = async () => {
+    try {
+      setLoadingInput((loadingInput) => ({
+        ...loadingInput,
+        IcpVersion: true,
+      }));
+      await updateOption('IcpVersion', inputs.IcpVersion);
+      showSuccess(t('备案号已更新'));
+    } catch (error) {
+      console.error(t('备案号更新失败'), error);
+      showError(t('备案号更新失败'));
+    } finally {
+      setLoadingInput((loadingInput) => ({
+        ...loadingInput,
+        IcpVersion: false,
       }));
     }
   };
@@ -434,6 +454,18 @@ const OtherSetting = () => {
                 loading={loadingInput['SystemName']}
               >
                 {t('设置系统名称')}
+              </Button>
+              <Form.Input
+                label={t('备案号')}
+                placeholder={t('在此输入备案号')}
+                field={'IcpVersion'}
+                onChange={handleInputChange}
+              />
+              <Button
+                onClick={submitIcpVersion}
+                loading={loadingInput['IcpVersion']}
+              >
+                {t('设置备案号')}
               </Button>
               <Form.Input
                 label={t('Logo 图片地址')}

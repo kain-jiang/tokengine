@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 
@@ -179,6 +180,25 @@ func AdminCreateSubscriptionPlan(c *gin.Context) {
 		common.ApiErrorMsg(c, "自定义重置周期需大于0秒")
 		return
 	}
+	// Validate plan_type
+	if req.Plan.PlanType == "" {
+		req.Plan.PlanType = "quota"
+	}
+	if req.Plan.PlanType != "quota" && req.Plan.PlanType != "tokens" {
+		common.ApiErrorMsg(c, "套餐类型必须是 quota 或 tokens")
+		return
+	}
+	// For tokens type, validate applicable_models and tokens_limit
+	if req.Plan.PlanType == "tokens" {
+		if strings.TrimSpace(req.Plan.ApplicableModels) == "" {
+			common.ApiErrorMsg(c, "Tokens套餐必须指定适用模型")
+			return
+		}
+		if req.Plan.TokensLimit < 0 {
+			common.ApiErrorMsg(c, "Tokens上限不能为负数")
+			return
+		}
+	}
 	err := model.DB.Create(&req.Plan).Error
 	if err != nil {
 		common.ApiError(c, err)
@@ -244,6 +264,21 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 	}
 
 	err := model.DB.Transaction(func(tx *gorm.DB) error {
+		// validate plan_type
+		if req.Plan.PlanType == "" {
+			req.Plan.PlanType = "quota"
+		}
+		if req.Plan.PlanType != "quota" && req.Plan.PlanType != "tokens" {
+			return errors.New("套餐类型必须是 quota 或 tokens")
+		}
+		if req.Plan.PlanType == "tokens" {
+			if strings.TrimSpace(req.Plan.ApplicableModels) == "" {
+				return errors.New("Tokens套餐必须指定适用模型")
+			}
+			if req.Plan.TokensLimit < 0 {
+				return errors.New("Tokens上限不能为负数")
+			}
+		}
 		// update plan (allow zero values updates with map)
 		updateMap := map[string]interface{}{
 			"title":                      req.Plan.Title,
@@ -263,6 +298,9 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 			"upgrade_group":              req.Plan.UpgradeGroup,
 			"quota_reset_period":         req.Plan.QuotaResetPeriod,
 			"quota_reset_custom_seconds": req.Plan.QuotaResetCustomSeconds,
+			"plan_type":                  req.Plan.PlanType,
+			"applicable_models":          req.Plan.ApplicableModels,
+			"tokens_limit":               req.Plan.TokensLimit,
 			"updated_at":                 common.GetTimestamp(),
 		}
 		if err := tx.Model(&model.SubscriptionPlan{}).Where("id = ?", id).Updates(updateMap).Error; err != nil {

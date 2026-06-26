@@ -36,6 +36,7 @@ export const DEFAULT_ADMIN_CONFIG = {
   console: {
     enabled: true,
     detail: true,
+    tokenPlan: true,
     token: true,
     log: true,
     midjourney: true,
@@ -44,7 +45,10 @@ export const DEFAULT_ADMIN_CONFIG = {
   personal: {
     enabled: true,
     topup: true,
+<<<<<<< HEAD
     myPlan: true,
+=======
+>>>>>>> dev0625
     billing: true,
     personal: true,
   },

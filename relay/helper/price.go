@@ -67,6 +67,7 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 	groupRatioInfo := HandleGroupRatio(c, info)
 
 	var preConsumedQuota int
+	var preConsumedTokens int64 // tokens 预消耗数量
 	var modelRatio float64
 	var completionRatio float64
 	var cacheRatio float64
@@ -77,11 +78,21 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 	var audioRatio float64
 	var audioCompletionRatio float64
 	var freeModel bool
+	var billingMode string = "quota" // 默认 quota 模式
+
+	// 检查是否有 tokens 类型的订阅
+	hasTokensSub, _, err := model.HasActiveTokensSubscription(info.UserId)
+	if err == nil && hasTokensSub {
+		billingMode = "tokens"
+	}
+
 	if !usePrice {
-		preConsumedTokens := common.Max(promptTokens, common.PreConsumedQuota)
+		preConsumedTokensInt := common.Max(promptTokens, common.PreConsumedQuota)
 		if meta.MaxTokens != 0 {
-			preConsumedTokens += meta.MaxTokens
+			preConsumedTokensInt += meta.MaxTokens
 		}
+		preConsumedTokens = int64(preConsumedTokensInt)
+
 		var success bool
 		var matchName string
 		modelRatio, success, matchName = ratio_setting.GetModelRatio(info.OriginModelName)
@@ -104,12 +115,14 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 		audioRatio = ratio_setting.GetAudioRatio(info.OriginModelName)
 		audioCompletionRatio = ratio_setting.GetAudioCompletionRatio(info.OriginModelName)
 		ratio := modelRatio * groupRatioInfo.GroupRatio
-		preConsumedQuota = int(float64(preConsumedTokens) * ratio)
+		preConsumedQuota = int(float64(preConsumedTokensInt) * ratio)
 	} else {
 		if meta.ImagePriceRatio != 0 {
 			modelPrice = modelPrice * meta.ImagePriceRatio
 		}
 		preConsumedQuota = int(modelPrice * common.QuotaPerUnit * groupRatioInfo.GroupRatio)
+		// tokens 模式下，按次计费也使用 1 token
+		preConsumedTokens = 1
 	}
 
 	// check if free model pre-consume is disabled
@@ -146,6 +159,8 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 		CacheCreation5mRatio: cacheCreationRatio5m,
 		CacheCreation1hRatio: cacheCreationRatio1h,
 		QuotaToPreConsume:    preConsumedQuota,
+		TokensToPreConsume:   preConsumedTokens,
+		BillingMode:          billingMode,
 	}
 
 	if common.DebugEnabled {

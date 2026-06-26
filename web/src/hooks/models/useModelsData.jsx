@@ -37,7 +37,10 @@ export const useModelsData = () => {
 
   // Channel filter state
   const [channels, setChannels] = useState([]);
+<<<<<<< HEAD
   const [channelFilter, setChannelFilter] = useState('');
+=======
+>>>>>>> dev0625
 
   // Modal states
   const [showEdit, setShowEdit] = useState(false);
@@ -61,6 +64,7 @@ export const useModelsData = () => {
   const formInitValues = {
     searchKeyword: '',
     searchVendor: '',
+    searchChannel: '',
   };
 
   // ---------- helpers ----------
@@ -269,12 +273,12 @@ export const useModelsData = () => {
     }
   };
 
-  // Search models with keyword and vendor
+  // Search models with keyword, vendor and channel
   const searchModels = async () => {
-    const { searchKeyword = '', searchVendor = '' } = getFormValues();
+    const { searchKeyword = '', searchVendor = '', searchChannel = '' } = getFormValues();
 
-    if (searchKeyword === '' && searchVendor === '') {
-      // If keyword is blank, load models instead
+    if (searchKeyword === '' && searchVendor === '' && searchChannel === '') {
+      // If all filters are blank, load models instead
       await loadModels(1, pageSize);
       return;
     }
@@ -282,7 +286,7 @@ export const useModelsData = () => {
     setSearching(true);
     try {
       const res = await API.get(
-        `/api/models/search?keyword=${searchKeyword}&vendor=${searchVendor}&p=1&page_size=${pageSize}`,
+        `/api/models/search?keyword=${searchKeyword}&vendor=${searchVendor}&channel=${searchChannel}&p=1&page_size=${pageSize}`,
       );
       const { success, message, data } = res.data;
       if (success) {
@@ -521,8 +525,11 @@ export const useModelsData = () => {
 
     // Channel data
     channels,
+<<<<<<< HEAD
     channelFilter,
     setChannelFilter,
+=======
+>>>>>>> dev0625
 
     // Translation
     t,

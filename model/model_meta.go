@@ -16,8 +16,9 @@ const (
 )
 
 type BoundChannel struct {
-	Name string `json:"name"`
-	Type int    `json:"type"`
+	Name      string `json:"name"`
+	ChannelID int    `json:"id"`
+	Type      int    `json:"type"`
 }
 
 type Model struct {
@@ -122,11 +123,12 @@ func GetBoundChannelsByModelsMap(modelNames []string) (map[string][]BoundChannel
 	type row struct {
 		Model string
 		Name  string
+		Id    int
 		Type  int
 	}
 	var rows []row
 	err := DB.Table("channels").
-		Select("abilities.model as model, channels.name as name, channels.type as type").
+		Select("abilities.model as model, channels.name as name,  channels.id as id,channels.type as type").
 		Joins("JOIN abilities ON abilities.channel_id = channels.id").
 		Where("abilities.model IN ? AND abilities.enabled = ?", modelNames, true).
 		Distinct().
@@ -135,12 +137,12 @@ func GetBoundChannelsByModelsMap(modelNames []string) (map[string][]BoundChannel
 		return nil, err
 	}
 	for _, r := range rows {
-		result[r.Model] = append(result[r.Model], BoundChannel{Name: r.Name, Type: r.Type})
+		result[r.Model] = append(result[r.Model], BoundChannel{Name: r.Name, ChannelID: r.Id, Type: r.Type})
 	}
 	return result, nil
 }
 
-func SearchModels(keyword string, vendor string, offset int, limit int, modelType *int) ([]*Model, int64, error) {
+func SearchModels(keyword string, vendor string, channel string, offset int, limit int, modelType *int) ([]*Model, int64, error) {
 	var models []*Model
 	db := DB.Model(&Model{})
 	if modelType != nil {
@@ -155,6 +157,13 @@ func SearchModels(keyword string, vendor string, offset int, limit int, modelTyp
 			db = db.Where("models.vendor_id = ?", vid)
 		} else {
 			db = db.Joins("JOIN vendors ON vendors.id = models.vendor_id").Where("vendors.name LIKE ?", "%"+vendor+"%")
+		}
+	}
+	if channel != "" {
+		if chID, err := strconv.Atoi(channel); err == nil {
+			db = db.Joins("JOIN abilities ON abilities.model = models.model_name").
+				Joins("JOIN channels ON channels.id = abilities.channel_id").
+				Where("abilities.channel_id = ? AND abilities.enabled = ?", chID, true)
 		}
 	}
 	var total int64

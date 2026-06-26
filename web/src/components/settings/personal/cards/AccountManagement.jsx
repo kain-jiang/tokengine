@@ -17,7 +17,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Button,
   Card,
@@ -38,6 +39,10 @@ import {
   IconLock,
   IconDelete,
   IconPhone,
+<<<<<<< HEAD
+=======
+  IconUser,
+>>>>>>> dev0625
 } from '@douyinfe/semi-icons';
 import { SiTelegram, SiWechat, SiLinux, SiDiscord } from 'react-icons/si';
 import { UserPlus, ShieldCheck } from 'lucide-react';
@@ -54,6 +59,7 @@ import {
   getOAuthProviderIcon,
 } from '../../../../helpers';
 import TwoFASetting from '../components/TwoFASetting';
+import RealNameAuth from './RealNameAuth';
 
 const AccountManagement = ({
   t,
@@ -103,6 +109,15 @@ const AccountManagement = ({
     React.useState(false);
   const [customOAuthBindings, setCustomOAuthBindings] = React.useState([]);
   const [customOAuthLoading, setCustomOAuthLoading] = React.useState({});
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState('binding');
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   // Fetch custom OAuth bindings
   const loadCustomOAuthBindings = async () => {
@@ -187,7 +202,7 @@ const AccountManagement = ({
         </div>
       </div>
 
-      <Tabs type='card' defaultActiveKey='binding'>
+      <Tabs type='card' activeKey={activeTab} onChange={setActiveTab}>
         {/* 账户绑定 Tab */}
         <TabPane
           tab={
@@ -807,6 +822,19 @@ const AccountManagement = ({
               </Space>
             </div>
           </div>
+        </TabPane>
+
+        {/* 实名认证 Tab */}
+        <TabPane
+          tab={
+            <div className='flex items-center'>
+              <IconUser size={16} className='mr-2' />
+              {t('实名认证')}
+            </div>
+          }
+          itemKey='realname'
+        >
+          <RealNameAuth t={t} />
         </TabPane>
       </Tabs>
     </Card>

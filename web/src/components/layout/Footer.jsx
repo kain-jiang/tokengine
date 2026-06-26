@@ -20,13 +20,19 @@ For commercial licensing, please contact support@quantumnous.com
 import React, { useEffect, useState, useMemo, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '@douyinfe/semi-ui';
-import { getFooterHTML, getLogo, getSystemName } from '../../helpers';
+import {
+  getFooterHTML,
+  getIcpVersion,
+  getLogo,
+  getSystemName,
+} from '../../helpers';
 import { StatusContext } from '../../context/Status';
 
 const FooterBar = () => {
   const { t } = useTranslation();
   const [footer, setFooter] = useState(getFooterHTML());
   const systemName = getSystemName();
+  const icpVersion = getIcpVersion();
   const logo = getLogo();
   const [statusState] = useContext(StatusContext);
   const isDemoSiteMode = statusState?.status?.demo_site_enabled || false;
@@ -179,6 +185,7 @@ const FooterBar = () => {
 
         <div className='flex flex-col md:flex-row items-center justify-between w-full max-w-[1110px] gap-6'>
           <div className='flex flex-wrap items-center gap-2'>
+<<<<<<< HEAD
             <Typography.Text className='text-sm text-white/80 caption'>
                © {currentYear} {systemName}. {t('版权所有')}
             </Typography.Text>
@@ -187,11 +194,25 @@ const FooterBar = () => {
               <a href='https://beian.miit.gov.cn' target={'_blank'}>蜀ICP备2026023568号</a>
             </Typography.Text>
 
+=======
+
+            {icpVersion ? (
+              <Typography.Text className='text-sm text-white/80 caption'>
+                <a href='https://beian.miit.gov.cn' target={'_blank'}>
+                  {icpVersion}
+                </a>
+              </Typography.Text>
+            ) : (
+              <Typography.Text className='text-sm text-white/80 caption'>
+                © {currentYear} {systemName}. {t('版权所有')}
+              </Typography.Text>
+            )}
+>>>>>>> dev0625
           </div>
         </div>
       </footer>
     ),
-    [logo, systemName, t, currentYear, isDemoSiteMode],
+    [logo, systemName, t, currentYear, isDemoSiteMode, icpVersion],
   );
 
   useEffect(() => {

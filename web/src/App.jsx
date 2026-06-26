@@ -36,8 +36,10 @@ import PasswordResetForm from './components/auth/PasswordResetForm';
 import PasswordResetConfirm from './components/auth/PasswordResetConfirm';
 import Channel from './pages/Channel';
 import Token from './pages/Token';
+import TokenPlan from './pages/TokenPlan';
 import Redemption from './pages/Redemption';
 import TopUp from './pages/TopUp';
+<<<<<<< HEAD
 import MyPlan from './pages/MyPlan';
 import MyPlanBilling from './pages/MyPlanBilling';
 import Finance from './pages/Finance';
@@ -56,6 +58,9 @@ console.log('[App.jsx] FinanceRevenue:', typeof FinanceRevenue, FinanceRevenue?.
 console.log('[App.jsx] FinanceInvoices:', typeof FinanceInvoices, FinanceInvoices?.name);
 console.log('[App.jsx] PrivateRoute:', typeof PrivateRoute);
 console.log('[App.jsx] Loading:', typeof Loading);
+=======
+import MyPlanBilling from './pages/MyPlanBilling';
+>>>>>>> dev0625
 import Log from './pages/Log';
 import Chat from './pages/Chat';
 import Chat2Link from './pages/Chat2Link';
@@ -69,6 +74,7 @@ import TextToVideo from './pages/TextToVideo';
 import Subscription from './pages/Subscription';
 import OAuth2Callback from './components/auth/OAuth2Callback';
 import PersonalSetting from './components/settings/PersonalSetting';
+import RealNameAuthForm from './components/settings/personal/RealNameAuthForm';
 import Setup from './pages/Setup';
 import SetupCheck from './components/layout/SetupCheck';
 
@@ -151,6 +157,14 @@ function App() {
             <AdminRoute>
               <Channel />
             </AdminRoute>
+          }
+        />
+        <Route
+          path='/console/token-plan'
+          element={
+            <PrivateRoute>
+              <TokenPlan />
+            </PrivateRoute>
           }
         />
         <Route
@@ -318,6 +332,14 @@ function App() {
           }
         />
         <Route
+          path='/console/realname-auth'
+          element={
+            <PrivateRoute>
+              <RealNameAuthForm />
+            </PrivateRoute>
+          }
+        />
+        <Route
           path='/console/topup'
           element={
             <PrivateRoute>
@@ -328,6 +350,7 @@ function App() {
           }
         />
         <Route
+<<<<<<< HEAD
           path='/console/my-plan'
           element={
             <PrivateRoute>
@@ -338,6 +361,8 @@ function App() {
           }
         />
         <Route
+=======
+>>>>>>> dev0625
           path='/console/billing'
           element={
             <PrivateRoute>
@@ -348,6 +373,7 @@ function App() {
           }
         />
         <Route
+<<<<<<< HEAD
           path='/console/finance'
           element={
             <PrivateRoute>
@@ -387,6 +413,8 @@ function App() {
           />
         </Route>
         <Route
+=======
+>>>>>>> dev0625
           path='/console/log'
           element={
             <PrivateRoute>

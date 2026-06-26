@@ -18,4 +18,13 @@ type BillingSettler interface {
 
 	// GetPreConsumedQuota 返回实际预扣的额度值（信任用户可能为 0）。
 	GetPreConsumedQuota() int
+
+	// GetBillingMode 返回计费模式: "quota" 或 "tokens"
+	GetBillingMode() string
+
+	// GetPreConsumedTokens 返回预扣的 tokens 数量（tokens 计费模式）
+	GetPreConsumedTokens() int64
+
+	// SettleTokens 根据实际消耗的 tokens 数量进行结算（tokens 计费模式）
+	SettleTokens(actualTokens int64) error
 }

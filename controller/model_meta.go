@@ -52,6 +52,7 @@ func SearchModelsMeta(c *gin.Context) {
 
 	keyword := c.Query("keyword")
 	vendor := c.Query("vendor")
+	channel := c.Query("channel")
 	pageInfo := common.GetPageQuery(c)
 	var modelType *int
 	if mt := c.Query("model_type"); mt != "" {
@@ -60,7 +61,7 @@ func SearchModelsMeta(c *gin.Context) {
 		}
 	}
 
-	modelsMeta, total, err := model.SearchModels(keyword, vendor, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), modelType)
+	modelsMeta, total, err := model.SearchModels(keyword, vendor, channel, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), modelType)
 	if err != nil {
 		common.ApiError(c, err)
 		return

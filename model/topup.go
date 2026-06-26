@@ -49,6 +49,7 @@ type TopUp struct {
 
 func (TopUp) TableName() string {
 	return "top_ups"
+
 }
 
 func (topUp *TopUp) Insert() error {

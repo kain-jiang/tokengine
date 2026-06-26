@@ -28,8 +28,11 @@ const ModelsFilters = ({
   loading,
   searching,
   channels,
+<<<<<<< HEAD
   channelFilter,
   setChannelFilter,
+=======
+>>>>>>> dev0625
   t,
 }) => {
   // Handle form reset and immediate search
@@ -46,6 +49,7 @@ const ModelsFilters = ({
 
   return (
     <div className='flex flex-col gap-2 w-full'>
+<<<<<<< HEAD
       {/* Channel filter dropdown */}
       <div className='w-full md:w-56'>
         <Select
@@ -65,6 +69,8 @@ const ModelsFilters = ({
         </Select>
       </div>
 
+=======
+>>>>>>> dev0625
       <Form
         initValues={formInitValues}
         getFormApi={(api) => {
@@ -81,6 +87,27 @@ const ModelsFilters = ({
       >
         <div className='flex flex-col md:flex-row items-center gap-2 w-full md:w-auto'>
           <div className='relative w-full md:w-56'>
+<<<<<<< HEAD
+=======
+            <Form.Select
+              field='searchChannel'
+              label={null}
+              placeholder={t('筛选渠道')}
+              style={{ width: '100%' }}
+              size='small'
+              showClear
+            >
+              <Select.Option value=''>{t('全部渠道')}</Select.Option>
+              {channels.map((ch) => (
+                <Select.Option key={ch.id} value={String(ch.id)}>
+                  {ch.name}
+                </Select.Option>
+              ))}
+            </Form.Select>
+          </div>
+
+          <div className='relative w-full md:w-56'>
+>>>>>>> dev0625
             <Form.Input
               field='searchKeyword'
               prefix={<IconSearch />}

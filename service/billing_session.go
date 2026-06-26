@@ -30,7 +30,11 @@ type BillingSession struct {
 	fundingSettled   bool // funding.Settle 已成功，资金来源已提交
 	settled          bool // Settle 全部完成（资金 + 令牌）
 	refunded         bool // Refund 已调用
-	mu               sync.Mutex
+	// tokens 计费模式相关字段
+	billingMode       string // "quota" 或 "tokens"
+	preConsumedTokens int64  // 预扣的 tokens 数量（仅 tokens 模式）
+	tokensConsumed    int64  // 实际消耗的 tokens 数量
+	mu                sync.Mutex
 }
 
 // Settle 根据实际消耗额度进行结算。
@@ -74,6 +78,51 @@ func (s *BillingSession) Settle(actualQuota int) error {
 	}
 	s.settled = true
 	return tokenErr
+}
+
+// SettleTokens 根据实际消耗的 tokens 数量进行结算（tokens 计费模式）。
+// 仅用于 tokens 类型的订阅套餐。
+func (s *BillingSession) SettleTokens(actualTokens int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.settled {
+		return nil
+	}
+	if s.billingMode != "tokens" {
+		// 非 tokens 模式，直接标记完成
+		s.settled = true
+		return nil
+	}
+
+	delta := actualTokens - s.preConsumedTokens
+	if delta == 0 {
+		s.settled = true
+		return nil
+	}
+
+	// 调整 tokens 计费的资金来源
+	if !s.fundingSettled {
+		if v2, ok := s.funding.(FundingSourceV2); ok && v2.BillingMode() == "tokens" {
+			if err := v2.SettleTokens(delta); err != nil {
+				return err
+			}
+		}
+		s.fundingSettled = true
+	}
+
+	s.tokensConsumed = actualTokens
+	s.settled = true
+	return nil
+}
+
+// GetBillingMode 返回计费模式
+func (s *BillingSession) GetBillingMode() string {
+	return s.billingMode
+}
+
+// GetPreConsumedTokens 返回预扣的 tokens 数量
+func (s *BillingSession) GetPreConsumedTokens() int64 {
+	return s.preConsumedTokens
 }
 
 // Refund 退还所有预扣费，幂等安全，异步执行。
@@ -233,6 +282,7 @@ func (s *BillingSession) syncRelayInfo() {
 	info.FinalPreConsumedQuota = s.preConsumedQuota
 	info.BillingSource = s.funding.Source()
 
+	// 处理 quota 模式的订阅
 	if sub, ok := s.funding.(*SubscriptionFunding); ok {
 		info.SubscriptionId = sub.subscriptionId
 		info.SubscriptionPreConsumed = sub.preConsumed
@@ -241,10 +291,27 @@ func (s *BillingSession) syncRelayInfo() {
 		info.SubscriptionAmountUsedAfterPreConsume = sub.AmountUsedAfter
 		info.SubscriptionPlanId = sub.PlanId
 		info.SubscriptionPlanTitle = sub.PlanTitle
-	} else {
-		info.SubscriptionId = 0
-		info.SubscriptionPreConsumed = 0
+		return
 	}
+
+	// 处理 tokens 模式的订阅
+	if tokensSub, ok := s.funding.(*TokensSubscriptionFunding); ok {
+		info.SubscriptionId = tokensSub.subscriptionId
+		info.SubscriptionPreConsumed = tokensSub.preConsumed
+		info.SubscriptionPostDelta = 0
+		// tokens 模式使用 tokens 相关字段
+		if tokensInfo := tokensSub.GetTokensInfo(); tokensInfo != nil {
+			info.SubscriptionAmountTotal = tokensInfo.TokensTotal
+			info.SubscriptionAmountUsedAfterPreConsume = tokensInfo.TokensUsedAfter
+		}
+		info.SubscriptionPlanId = tokensSub.PlanId
+		info.SubscriptionPlanTitle = tokensSub.PlanTitle
+		return
+	}
+
+	// 非订阅模式
+	info.SubscriptionId = 0
+	info.SubscriptionPreConsumed = 0
 }
 
 // ---------------------------------------------------------------------------
@@ -294,6 +361,41 @@ func NewBillingSession(c *gin.Context, relayInfo *relaycommon.RelayInfo, preCons
 		if subConsume <= 0 {
 			subConsume = 1
 		}
+
+		// 检查是否有 tokens 类型的订阅
+		hasTokensSub, tokensSub, err := model.HasActiveTokensSubscription(relayInfo.UserId)
+		if err != nil {
+			return nil, types.NewError(err, types.ErrorCodeQueryDataError, types.ErrOptionWithSkipRetry())
+		}
+
+		if hasTokensSub && tokensSub != nil {
+			// tokens 类型订阅
+			session := &BillingSession{
+				relayInfo: relayInfo,
+				funding: &TokensSubscriptionFunding{
+					requestId:       relayInfo.RequestId,
+					userId:          relayInfo.UserId,
+					modelName:       relayInfo.OriginModelName,
+					tokensToConsume: subConsume,
+				},
+				billingMode: "tokens",
+			}
+			// tokens 模式不需要预扣 quota，直接预扣 tokens
+			if v2, ok := session.funding.(FundingSourceV2); ok {
+				if err := v2.PreConsumeTokens(subConsume); err != nil {
+					errMsg := err.Error()
+					if strings.Contains(errMsg, "tokens subscription quota insufficient") || strings.Contains(errMsg, "model not applicable") {
+						return nil, types.NewErrorWithStatusCode(fmt.Errorf("tokens订阅额度不足或模型不适用: %s", errMsg), types.ErrorCodeInsufficientUserQuota, http.StatusForbidden, types.ErrOptionWithSkipRetry(), types.ErrOptionWithNoRecordErrorLog())
+					}
+					return nil, types.NewError(err, types.ErrorCodeUpdateDataError, types.ErrOptionWithSkipRetry())
+				}
+				session.preConsumedTokens = subConsume
+				session.syncRelayInfo()
+			}
+			return session, nil
+		}
+
+		// quota 类型订阅
 		session := &BillingSession{
 			relayInfo: relayInfo,
 			funding: &SubscriptionFunding{
@@ -302,6 +404,7 @@ func NewBillingSession(c *gin.Context, relayInfo *relaycommon.RelayInfo, preCons
 				modelName: relayInfo.OriginModelName,
 				amount:    subConsume,
 			},
+			billingMode: "quota",
 		}
 		// 必须传 subConsume 而非 preConsumedQuota，保证 SubscriptionFunding.amount、
 		// preConsume 参数和 FinalPreConsumedQuota 三者一致，避免订阅多扣费。
