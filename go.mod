@@ -71,6 +71,7 @@ require (
 	github.com/DmitriyVTitov/size v1.5.0 // indirect
 	github.com/alibabacloud-go/alibabacloud-gateway-spi v0.0.5 // indirect
 	github.com/alibabacloud-go/cloudauth-20190307/v4 v4.13.3 // indirect
+	github.com/alibabacloud-go/cloudauth-20221125 v1.3.0 // indirect
 	github.com/alibabacloud-go/debug v1.0.1 // indirect
 	github.com/anknown/darts v0.0.0-20151216065714-83ff685239e6 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.8 // indirect

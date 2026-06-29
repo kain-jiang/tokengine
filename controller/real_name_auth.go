@@ -107,9 +107,12 @@ func SubmitRealNameAuth(c *gin.Context) {
 		existing.UpdatedAt = now
 
 		if err := existing.Update(); err != nil {
+
 			common.ApiError(c, err)
 			return
 		}
+		// 实名认证
+		go existing.ToAuth("update")
 	} else {
 		// 创建新的认证记录
 		auth := &model.RealNameAuth{
@@ -131,26 +134,9 @@ func SubmitRealNameAuth(c *gin.Context) {
 			common.ApiError(c, err)
 			return
 		}
+		// 实名认证
+		go auth.ToAuth("create")
 	}
-
-	// 实名认证成功，赠送100万tokens, 100万tokens=2美元
-	// todo 要改，赠送的额度要与充值的额度分级使用，赠送额度只能使用某些模型
-	//common.QuotaPerUnit
-
-	//usdExchangeRate := operation_setting.USDExchangeRate
-	//if usdExchangeRate <= 0 {
-	//	usdExchangeRate = 7.3 // 默认汇率
-	//}
-	//cnyMoney := 2 * usdExchangeRate
-	//dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-	//quotaToAdd := int(decimal.NewFromFloat(cnyMoney).Div(decimal.NewFromFloat(usdExchangeRate)).Mul(dQuotaPerUnit).IntPart())
-	//if err = model.IncreaseUserQuota(userId, quotaToAdd, true); err != nil {
-	//	common.ApiError(c, err)
-	//	return
-	//}
-	//logger.LogInfo(c, fmt.Sprintf("实名认证成功，赠送用户【%d】额度 %s", userId, logger.LogQuota(quotaToAdd)))
-	//model.RecordLog(userId, model.LogTypeManage,
-	//	fmt.Sprintf("实名认证成功，系统赠送用户【%d】额度 %s", userId, logger.LogQuota(quotaToAdd)))
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "提交成功，等待审核",
