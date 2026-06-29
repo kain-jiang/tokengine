@@ -94,11 +94,11 @@ func (auth *RealNameAuth) ToAuth(operation string) {
 	if !ok {
 		auth.Status = AuditRejected
 		auth.Update()
-		common.SysLog(fmt.Sprintf("username[%s]实名认证失败: "+err.Error(), auth.Username))
+		common.SysLog("实名认证失败: " + err.Error())
 	} else {
 		auth.Status = AuditPassed
 		auth.Update()
-		common.SysLog(fmt.Sprintf("username[%s]实名认证成功", auth.Username))
+		common.SysLog("实名认证成功: " + err.Error())
 
 		if operation != "create" {
 			return
