@@ -28,11 +28,8 @@ const ModelsFilters = ({
   loading,
   searching,
   channels,
-<<<<<<< HEAD
   channelFilter,
   setChannelFilter,
-=======
->>>>>>> dev0625
   t,
 }) => {
   // Handle form reset and immediate search
@@ -49,7 +46,6 @@ const ModelsFilters = ({
 
   return (
     <div className='flex flex-col gap-2 w-full'>
-<<<<<<< HEAD
       {/* Channel filter dropdown */}
       <div className='w-full md:w-56'>
         <Select
@@ -69,8 +65,6 @@ const ModelsFilters = ({
         </Select>
       </div>
 
-=======
->>>>>>> dev0625
       <Form
         initValues={formInitValues}
         getFormApi={(api) => {
@@ -87,8 +81,6 @@ const ModelsFilters = ({
       >
         <div className='flex flex-col md:flex-row items-center gap-2 w-full md:w-auto'>
           <div className='relative w-full md:w-56'>
-<<<<<<< HEAD
-=======
             <Form.Select
               field='searchChannel'
               label={null}
@@ -107,7 +99,6 @@ const ModelsFilters = ({
           </div>
 
           <div className='relative w-full md:w-56'>
->>>>>>> dev0625
             <Form.Input
               field='searchKeyword'
               prefix={<IconSearch />}

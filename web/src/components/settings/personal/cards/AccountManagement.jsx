@@ -39,10 +39,7 @@ import {
   IconLock,
   IconDelete,
   IconPhone,
-<<<<<<< HEAD
-=======
   IconUser,
->>>>>>> dev0625
 } from '@douyinfe/semi-icons';
 import { SiTelegram, SiWechat, SiLinux, SiDiscord } from 'react-icons/si';
 import { UserPlus, ShieldCheck } from 'lucide-react';

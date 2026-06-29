@@ -37,10 +37,7 @@ export const useModelsData = () => {
 
   // Channel filter state
   const [channels, setChannels] = useState([]);
-<<<<<<< HEAD
   const [channelFilter, setChannelFilter] = useState('');
-=======
->>>>>>> dev0625
 
   // Modal states
   const [showEdit, setShowEdit] = useState(false);
@@ -525,11 +522,8 @@ export const useModelsData = () => {
 
     // Channel data
     channels,
-<<<<<<< HEAD
     channelFilter,
     setChannelFilter,
-=======
->>>>>>> dev0625
 
     // Translation
     t,

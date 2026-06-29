@@ -3646,9 +3646,6 @@
     "Waffo 配置": "Waffo Configuration",
     "招商银行聚合支付配置": "CMB Aggregate Payment Configuration",
     "敏感配置信息（商户号、AppID、密钥等）已在 .env 文件中通过 ZS_PAYMENT_* 环境变量配置，无需在界面填写。修改后请重启服务。": "Sensitive configuration information (Merchant ID, AppID, keys, etc.) has been configured via ZS_PAYMENT_* environment variables in the .env file and does not need to be filled in the interface. Please restart the service after modification.",
-<<<<<<< HEAD
-    "企业个人灵活搭配，丰俭由人": "Flexible combinations for enterprises and individuals, choose what suits you"
-=======
     "企业个人灵活搭配，丰俭由人": "Flexible combinations for enterprises and individuals, choose what suits you",
     "额度充值": "Recharge",
     "额度套餐": "Quota Plan",
@@ -3660,6 +3657,5 @@
     "请输入Tokens上限": "Please enter Tokens limit",
     "请输入适用模型": "Please enter applicable models",
     "Tokens套餐必须指定适用模型": "Tokens plan must specify applicable models"
->>>>>>> dev0625
   }
 }

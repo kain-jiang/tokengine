@@ -39,7 +39,6 @@ import Token from './pages/Token';
 import TokenPlan from './pages/TokenPlan';
 import Redemption from './pages/Redemption';
 import TopUp from './pages/TopUp';
-<<<<<<< HEAD
 import MyPlan from './pages/MyPlan';
 import MyPlanBilling from './pages/MyPlanBilling';
 import Finance from './pages/Finance';
@@ -58,9 +57,6 @@ console.log('[App.jsx] FinanceRevenue:', typeof FinanceRevenue, FinanceRevenue?.
 console.log('[App.jsx] FinanceInvoices:', typeof FinanceInvoices, FinanceInvoices?.name);
 console.log('[App.jsx] PrivateRoute:', typeof PrivateRoute);
 console.log('[App.jsx] Loading:', typeof Loading);
-=======
-import MyPlanBilling from './pages/MyPlanBilling';
->>>>>>> dev0625
 import Log from './pages/Log';
 import Chat from './pages/Chat';
 import Chat2Link from './pages/Chat2Link';
@@ -350,20 +346,17 @@ function App() {
           }
         />
         <Route
-<<<<<<< HEAD
-          path='/console/my-plan'
-          element={
-            <PrivateRoute>
-              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
-                <MyPlan />
-              </Suspense>
-            </PrivateRoute>
-          }
-        />
-        <Route
-=======
->>>>>>> dev0625
-          path='/console/billing'
+                  path='/console/my-plan'
+                  element={
+                    <PrivateRoute>
+                      <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                        <MyPlan />
+                      </Suspense>
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path='/console/billing'
           element={
             <PrivateRoute>
               <Suspense fallback={<Loading></Loading>} key={location.pathname}>
@@ -373,7 +366,6 @@ function App() {
           }
         />
         <Route
-<<<<<<< HEAD
           path='/console/finance'
           element={
             <PrivateRoute>
@@ -413,8 +405,6 @@ function App() {
           />
         </Route>
         <Route
-=======
->>>>>>> dev0625
           path='/console/log'
           element={
             <PrivateRoute>
