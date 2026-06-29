@@ -23,7 +23,7 @@ func initRealNameAuthConfig() {
 	RealNameAuthAccessKeyId = os.Getenv("ACCESS_KEY_ID")
 	RealNameAuthAccessKeySecret = os.Getenv("ACCESS_KEY_SECRET")
 	RealNameAuthRegionId = GetEnvOrDefaultString("REGION_ID", "cn-hangzhou")
-	RealNameAuthEndpoint = GetEnvOrDefaultString("ENDPOINT", "cloudauth.aliyuncs.com")
+	RealNameAuthEndpoint = GetEnvOrDefaultString("xxx", "cloudauth.aliyuncs.com")
 }
 
 func createRealNameAuthClient() (*cloudauth20190307.Client, error) {
@@ -111,8 +111,7 @@ func VerifyIdentityCard(name, idCard string) (bool, error) {
 	if _err != nil {
 		return false, _err
 	}
-
-	if resp.Body.GetCode() != tea.String("200") {
+	if tea.StringValue(resp.Body.GetCode()) != "200" {
 		return false, fmt.Errorf("username[%s],验证失败: %s", name, tea.StringValue(resp.Body.GetMessage()))
 	}
 
@@ -170,7 +169,7 @@ func VerifyCompany(sceneCode, merchantBizId, merchantUserId, userAuthorization, 
 	if err != nil {
 		return false, _err
 	}
-	if resp.Body.GetCode() != tea.String("200") {
+	if tea.StringValue(resp.Body.GetCode()) != "Success" {
 		return false, fmt.Errorf("company[%s],验证失败: %s", companyName, tea.StringValue(resp.Body.GetMessage()))
 	}
 
@@ -182,6 +181,5 @@ func VerifyCompany(sceneCode, merchantBizId, merchantUserId, userAuthorization, 
 	if *obj.BizCode != "1" {
 		return false, fmt.Errorf("company[%s] 用户认证身份不一致", companyName)
 	}
-
 	return true, nil
 }
