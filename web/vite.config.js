@@ -58,33 +58,12 @@ export default defineConfig({
   ],
   optimizeDeps: {
     force: true,
-    include: [
-      'react',
-      'react-dom',
-      'react-router-dom',
-      'axios',
-      'i18next',
-      'react-i18next',
-    ],
-    exclude: [
-      '@douyinfe/semi-ui',
-      '@douyinfe/semi-icons',
-      '@douyinfe/semi-foundation',
-      '@douyinfe/semi-illustrations',
-    ],
     esbuildOptions: {
       loader: {
         '.js': 'jsx',
         '.json': 'json',
       },
     },
-  },
-  ssr: {
-    noExternal: [
-      '@douyinfe/semi-ui',
-      '@douyinfe/semi-icons',
-      '@douyinfe/semi-foundation',
-    ],
   },
   build: {
     rollupOptions: {
@@ -111,24 +90,17 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0',
-    hmr: {
-      overlay: {
-        errors: true,
-        warnings: false,
-      },
-    },
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:3000',
+        target: 'http://localhost:3000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/mj': {
-        target: 'http://127.0.0.1:3000',
+        target: 'http://localhost:3000',
         changeOrigin: true,
       },
       '/pg': {
-        target: 'http://127.0.0.1:3000',
+        target: 'http://localhost:3000',
         changeOrigin: true,
       },
     },
