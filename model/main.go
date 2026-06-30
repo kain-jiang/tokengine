@@ -426,6 +426,9 @@ func migrateDB() error {
 		&SubscriptionPreConsumeRecord{},
 		&CustomOAuthProvider{},
 		&UserOAuthBinding{},
+		&Invoice{},
+		&Reconciliation{},
+		&RevenueReport{},
 		&Media{},
 		&RealNameAuth{},
 	)
@@ -476,6 +479,9 @@ func migrateDBFast() error {
 		{&SubscriptionPreConsumeRecord{}, "SubscriptionPreConsumeRecord"},
 		{&CustomOAuthProvider{}, "CustomOAuthProvider"},
 		{&UserOAuthBinding{}, "UserOAuthBinding"},
+		{&Invoice{}, "Invoice"},
+		{&Reconciliation{}, "Reconciliation"},
+		{&RevenueReport{}, "RevenueReport"},
 	}
 	// 动态计算migration数量，确保errChan缓冲区足够大
 	errChan := make(chan error, len(migrations))

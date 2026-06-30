@@ -230,7 +230,7 @@ const TopUp = () => {
           setAmount(topUpCount);
         }
       } else if (payment === 'helipay') {
-        // 合利宝支付金额计算 - 支持预设套餐和自定义金额
+        // 合利宝支付金额计算 - 支持自定义金额和预设套餐
         if (selectedPreset) {
           const preset = presetAmounts.find(p => p.value === selectedPreset);
           if (preset) {

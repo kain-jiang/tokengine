@@ -127,8 +127,31 @@ if (isMobileScreen) {
 
 export function showError(error) {
   console.error(error);
-  if (error.message) {
-    if (error.name === 'AxiosError') {
+  
+  // 处理 error 为 undefined、null 或非对象的情况
+  if (!error) {
+    Toast.error('错误：未知错误');
+    return;
+  }
+  
+  // 处理 error 没有 message 属性的情况（例如字符串、数字等）
+  if (typeof error === 'string') {
+    Toast.error('错误：' + error);
+    return;
+  }
+  
+  if (typeof error !== 'object') {
+    Toast.error('错误：' + error);
+    return;
+  }
+  
+  if (!error.message) {
+    Toast.error('错误：未知错误');
+    return;
+  }
+  
+  if (error.name === 'AxiosError') {
+    if (error.response && error.response.status) {
       switch (error.response.status) {
         case 401:
           // 清除用户状态
@@ -148,11 +171,11 @@ export function showError(error) {
         default:
           Toast.error('错误：' + error.message);
       }
-      return;
+    } else {
+      Toast.error('错误：' + error.message);
     }
-    Toast.error('错误：' + error.message);
   } else {
-    Toast.error('错误：' + error);
+    Toast.error('错误：' + error.message);
   }
 }
 

@@ -78,6 +78,7 @@ import {
   ImagePlus,
   Video,
   Receipt,
+  Wallet,
 } from 'lucide-react';
 import {
   SiAtlassian,
@@ -158,6 +159,8 @@ export function getLucideIcon(key, selected = false) {
       return <Video {...commonProps} color={iconColor} />;
     case 'billing':
       return <Receipt {...commonProps} color={iconColor} />;
+    case 'finance':
+      return <Wallet {...commonProps} color={iconColor} />;
     default:
       return <CircleUser {...commonProps} color={iconColor} />;
   }
