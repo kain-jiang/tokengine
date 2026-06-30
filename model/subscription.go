@@ -1162,6 +1162,17 @@ type SubscriptionPlanInfo struct {
 	PlanTitle string
 }
 
+func GetUserSubscriptionById(id int) (*UserSubscription, error) {
+	if id <= 0 {
+		return nil, errors.New("invalid userSubscription id")
+	}
+	var sub UserSubscription
+	if err := DB.Where("id = ?", id).First(&sub).Error; err != nil {
+		return nil, err
+	}
+	return &sub, nil
+}
+
 func GetSubscriptionPlanInfoByUserSubscriptionId(userSubscriptionId int) (*SubscriptionPlanInfo, error) {
 	if userSubscriptionId <= 0 {
 		return nil, errors.New("invalid userSubscriptionId")

@@ -47,6 +47,11 @@ type TopUp struct {
 	Status        string  `json:"status"`
 }
 
+func (TopUp) TableName() string {
+	return "top_ups"
+
+}
+
 func (topUp *TopUp) Insert() error {
 	var err error
 	err = DB.Create(topUp).Error

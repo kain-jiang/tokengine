@@ -186,6 +186,8 @@ const ModelsPage = () => {
                 loading={loading}
                 searching={searching}
                 channels={modelsData.channels}
+                channelFilter={modelsData.channelFilter}
+                setChannelFilter={modelsData.setChannelFilter}
                 t={t}
               />
             </div>

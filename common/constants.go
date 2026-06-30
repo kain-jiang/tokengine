@@ -223,3 +223,12 @@ const (
 	TopUpStatusExpired   = "expired"
 	TopUpStatusCancelled = "cancelled"
 )
+
+// CostRatio 每配额单位（Token）的成本系数，用于计算成本
+// 默认值 0.001 表示每1000配额单位成本约0.001元
+var CostRatio = 0.001
+
+// GetCostRatio 获取成本系数
+func GetCostRatio() float64 {
+	return CostRatio
+}

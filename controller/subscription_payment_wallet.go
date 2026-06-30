@@ -6,7 +6,6 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
-	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/gin-gonic/gin"
 )
 
@@ -64,6 +63,7 @@ func SubscriptionRequestWalletPay(c *gin.Context) {
 	}
 
 	if currentQuota < requiredQuota {
+		// 余额不足，返回简洁的提示信息
 		common.ApiErrorMsg(c, "余额不足，请先充值")
 		return
 	}
@@ -114,10 +114,7 @@ func SubscriptionRequestWalletPay(c *gin.Context) {
 		upgradeGroup = plan.UpgradeGroup
 		_ = model.UpdateUserGroupCache(userId, upgradeGroup)
 	}
-	symbol := operation_setting.GetCurrencySymbol()
-	rate := operation_setting.GetUsdToCurrencyRate(operation_setting.USDExchangeRate)
-	convertedPrice := plan.PriceAmount * rate
-	msg := fmt.Sprintf("订阅购买成功，套餐: %s，支付金额 %s%.2f，支付方式: 钱包余额", plan.Title, symbol, convertedPrice)
+	msg := fmt.Sprintf("订阅购买成功，套餐: %s，支付金额: %.2f，支付方式: 钱包余额", plan.Title, plan.PriceAmount)
 	model.RecordLog(userId, LogTypeTopup, msg)
 
 	common.ApiSuccess(c, gin.H{

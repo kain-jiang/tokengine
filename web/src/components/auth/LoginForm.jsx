@@ -203,7 +203,7 @@ const LoginForm = () => {
         showSuccess('登录成功！');
         setShowWeChatLoginModal(false);
       } else {
-        showError(message);
+        showError(message || '登录失败，请重试');
       }
     } catch (error) {
       showError('登录失败，请重试');
@@ -258,7 +258,7 @@ const LoginForm = () => {
           }
           navigate('/console');
         } else {
-          showError(message);
+          showError(message || '登录失败，请重试');
         }
       } else {
         showError('请输入用户名和密码！');
@@ -303,7 +303,7 @@ const LoginForm = () => {
         updateAPI();
         navigate('/');
       } else {
-        showError(message);
+        showError(message || '登录失败，请重试');
       }
     } catch (error) {
       showError('登录失败，请重试');
