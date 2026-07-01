@@ -255,8 +255,8 @@ func SetApiRouter(router *gin.Engine) {
 			channelRoute.POST("/", controller.AddChannel)
 			channelRoute.PUT("/", controller.UpdateChannel)
 			channelRoute.DELETE("/disabled", controller.DeleteDisabledChannel)
-			channelRoute.POST("/tag/disabled", controller.DisableTagChannels)
 			channelRoute.POST("/tag/enabled", controller.EnableTagChannels)
+			channelRoute.POST("/tag/disabled", controller.DisableTagChannels)
 			channelRoute.PUT("/tag", controller.EditTagChannels)
 			channelRoute.DELETE("/:id", controller.DeleteChannel)
 			channelRoute.POST("/batch", controller.DeleteChannelBatch)
@@ -340,6 +340,23 @@ func SetApiRouter(router *gin.Engine) {
 			billingRoute.GET("/self/model-summary/export", controller.ExportModelSummary)
 			billingRoute.GET("/self/token-summary", controller.GetTokenSummary)
 			billingRoute.GET("/self/token-summary/export", controller.ExportTokenSummary)
+		}
+
+		// Finance routes
+		financeRoute := apiRouter.Group("/finance")
+		financeRoute.Use(middleware.UserAuth())
+		{
+			financeRoute.GET("/dashboard", controller.GetFinanceDashboard)
+			financeRoute.GET("/orders", controller.GetOrders)
+			financeRoute.GET("/orders/export", controller.ExportOrders)
+			financeRoute.GET("/reports", controller.GetRevenueReports)
+			financeRoute.GET("/trend", controller.GetRevenueTrend)
+			financeRoute.POST("/invoice", controller.ApplyInvoice)
+			financeRoute.GET("/invoices", controller.GetInvoices)
+			financeRoute.PUT("/invoice/:id", controller.ApproveInvoice)
+			financeRoute.GET("/reconciliations", controller.GetReconciliations)
+			financeRoute.POST("/reconcile", controller.AutoReconcile)
+			financeRoute.POST("/report/daily", controller.GenerateDailyReport)
 		}
 
 		logRoute.Use(middleware.CORS(), middleware.CriticalRateLimit())

@@ -37,6 +37,7 @@ export const useModelsData = () => {
 
   // Channel filter state
   const [channels, setChannels] = useState([]);
+  const [channelFilter, setChannelFilter] = useState('');
 
   // Modal states
   const [showEdit, setShowEdit] = useState(false);
@@ -438,6 +439,21 @@ export const useModelsData = () => {
     }
   };
 
+  // Filter models by selected channel (client-side)
+  const filteredModels = useMemo(() => {
+    if (!channelFilter) return models;
+    return models.filter((model) => {
+      if (!model.bound_channels || model.bound_channels.length === 0) return false;
+      return model.bound_channels.some((ch) => ch.name === channelFilter);
+    });
+  }, [models, channelFilter]);
+
+  // Compute filtered count for pagination
+  const filteredModelCount = useMemo(() => {
+    if (!channelFilter) return modelCount;
+    return filteredModels.length;
+  }, [channelFilter, modelCount, filteredModels]);
+
   // Initial load
   useEffect(() => {
     (async () => {
@@ -449,12 +465,12 @@ export const useModelsData = () => {
 
   return {
     // Data state
-    models,
+    models: filteredModels,
     loading,
     searching,
     activePage,
     pageSize,
-    modelCount,
+    modelCount: filteredModelCount,
 
     // Selection state
     selectedKeys,
@@ -506,6 +522,8 @@ export const useModelsData = () => {
 
     // Channel data
     channels,
+    channelFilter,
+    setChannelFilter,
 
     // Translation
     t,

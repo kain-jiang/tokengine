@@ -417,7 +417,7 @@ const SubscriptionPlansCard = ({
         <Space vertical style={{ width: '100%' }} spacing={8}>
           {/* 可购买套餐 - 标准定价卡片 - 移到上方 */}
           {plans.length > 0 ? (
-            <div className='w-full'>
+            <div>
               <div className='flex items-center mb-4'>
                 <Avatar size='small' color='purple' className='mr-3 shadow-md'>
                   <Package size={16} />
@@ -495,8 +495,8 @@ const SubscriptionPlansCard = ({
                       bodyStyle={{ padding: 0 }}
                     >
                       <div className='p-4 h-full flex flex-col relative'>
-                        {/* 右上角标签区域 - 横向排列 - 给标题留出空间 */}
-                        <div className='absolute top-4 right-4 z-10 flex flex-row gap-1 max-w-[50%] justify-end'>
+                        {/* 右上角标签区域 - 横向排列 */}
+                        <div className='absolute top-4 right-4 z-10 flex flex-row gap-1'>
                           {/* 折扣标签 */}
                           {isDiscounted && discountLabel && (
                             <Tag color='red' shape='circle' size='small'>
@@ -511,8 +511,8 @@ const SubscriptionPlansCard = ({
                             </Tag>
                           )}
                         </div>
-                        {/* 套餐名称 - 给右上角标签留出空间 */}
-                        <div className='mb-3 pr-20'>
+                        {/* 套餐名称 */}
+                        <div className='mb-3'>
                           <Typography.Title
                             heading={5}
                             ellipsis={{ rows: 1, showTooltip: true }}

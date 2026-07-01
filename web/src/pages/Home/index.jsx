@@ -25,6 +25,11 @@ import {
   ScrollList,
   ScrollItem,
 } from '@douyinfe/semi-ui';
+
+// DEBUG: Check ScrollList and ScrollItem
+console.log('[DEBUG Home] ScrollList:', typeof ScrollList, ScrollList);
+console.log('[DEBUG Home] ScrollItem:', typeof ScrollItem, ScrollItem);
+console.log('[DEBUG Home] ScrollList.Item:', typeof ScrollList?.Item);
 import { API, showError, copy, showSuccess } from '../../helpers';
 import { useIsMobile } from '../../hooks/common/useIsMobile';
 import { API_ENDPOINTS } from '../../constants/common.constant';

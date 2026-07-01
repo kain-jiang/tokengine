@@ -28,6 +28,8 @@ const ModelsFilters = ({
   loading,
   searching,
   channels,
+  channelFilter,
+  setChannelFilter,
   t,
 }) => {
   // Handle form reset and immediate search
@@ -36,6 +38,7 @@ const ModelsFilters = ({
   const handleReset = () => {
     if (!formApiRef.current) return;
     formApiRef.current.reset();
+    setChannelFilter('');
     setTimeout(() => {
       searchModels();
     }, 100);
@@ -43,6 +46,25 @@ const ModelsFilters = ({
 
   return (
     <div className='flex flex-col gap-2 w-full'>
+      {/* Channel filter dropdown */}
+      <div className='w-full md:w-56'>
+        <Select
+          placeholder={t('筛选渠道')}
+          value={channelFilter}
+          onChange={(value) => setChannelFilter(value)}
+          style={{ width: '100%' }}
+          size='small'
+          showClear
+        >
+          <Select.Option value=''>{t('全部渠道')}</Select.Option>
+          {channels.map((ch) => (
+            <Select.Option key={ch.id} value={ch.name}>
+              {ch.name}
+            </Select.Option>
+          ))}
+        </Select>
+      </div>
+
       <Form
         initValues={formInitValues}
         getFormApi={(api) => {
