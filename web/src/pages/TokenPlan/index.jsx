@@ -179,19 +179,41 @@ const TokenPlan = () => {
   const fetchSubscriptionSelf = async () => {
     try {
       const res = await API.get('/api/subscription/self');
+      console.log('[TokenPlan] API response:', JSON.stringify(res.data, null, 2));
       if (res.data?.success) {
         const subs = res.data.data?.subscriptions || [];
         const allSubs = res.data.data?.all_subscriptions || [];
+        console.log('[TokenPlan] Active subscriptions count:', subs.length);
+        console.log('[TokenPlan] All subscriptions count:', allSubs.length);
         setAllSubscriptions(allSubs);
         
-        const tokenSub = subs.find(s => s?.plan?.plan_type === 'tokens');
+        // 调试日志：打印每个订阅的 plan_type
+        subs.forEach((s, idx) => {
+          console.log(`[TokenPlan] Subscription ${idx}:`, {
+            id: s?.subscription?.id,
+            plan_type: s?.plan?.plan_type,
+            plan_title: s?.plan?.title,
+            tokens_limit: s?.subscription?.tokens_limit,
+            tokens_used: s?.subscription?.tokens_used,
+          });
+        });
+        
+        const tokenSub = subs.find(s => {
+          const planType = s?.plan?.plan_type;
+          console.log(`[TokenPlan] Checking plan_type:`, planType, '=== tokens?', planType === 'tokens');
+          return planType === 'tokens';
+        });
+        console.log('[TokenPlan] Found tokenSub:', tokenSub);
+        
         if (tokenSub) {
           setActiveSubscription(tokenSub);
         } else {
+          console.warn('[TokenPlan] No tokens-type subscription found, setting to null');
           setActiveSubscription(null);
         }
       }
     } catch (e) {
+      console.error('[TokenPlan] fetchSubscriptionSelf error:', e);
       // ignore
     }
   };

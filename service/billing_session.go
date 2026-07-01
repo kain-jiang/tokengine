@@ -362,8 +362,9 @@ func NewBillingSession(c *gin.Context, relayInfo *relaycommon.RelayInfo, preCons
 			subConsume = 1
 		}
 
-		// 检查是否有 tokens 类型的订阅
-		hasTokensSub, tokensSub, err := model.HasActiveTokensSubscription(relayInfo.UserId)
+		// 检查当前请求的 token 是否关联了 tokens 类型的订阅
+		// 而不是检查用户是否有 tokens 订阅（因为用户可能同时有 quota 和 tokens 订阅）
+		hasTokensSub, tokensSub, err := checkTokenHasTokensSubscription(relayInfo.TokenId)
 		if err != nil {
 			return nil, types.NewError(err, types.ErrorCodeQueryDataError, types.ErrOptionWithSkipRetry())
 		}
@@ -447,4 +448,38 @@ func NewBillingSession(c *gin.Context, relayInfo *relaycommon.RelayInfo, preCons
 		}
 		return session, nil
 	}
+}
+
+// checkTokenHasTokensSubscription checks if the token associated with the request is linked to a tokens-type subscription.
+func checkTokenHasTokensSubscription(tokenId int) (bool, *model.UserSubscription, error) {
+	if tokenId <= 0 {
+		return false, nil, nil
+	}
+
+	token, err := model.GetTokenById(tokenId)
+	if err != nil || token == nil {
+		return false, nil, err
+	}
+
+	// 如果 token 没有关联 subscription，则不是 tokens 模式
+	if token.SubscriptionId <= 0 {
+		return false, nil, nil
+	}
+
+	// 获取该 subscription 并检查 plan 类型
+	sub, err := model.GetUserSubscriptionById(token.SubscriptionId)
+	if err != nil || sub == nil {
+		return false, nil, err
+	}
+
+	plan, err := model.GetSubscriptionPlanById(sub.PlanId)
+	if err != nil || plan == nil {
+		return false, nil, err
+	}
+
+	if plan.PlanType == "tokens" {
+		return true, sub, nil
+	}
+
+	return false, nil, nil
 }
