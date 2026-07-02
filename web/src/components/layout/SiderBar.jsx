@@ -57,7 +57,7 @@ const routerMap = {
   orders: '/console/finance/orders',
   revenue: '/console/finance/revenue',
   invoices: '/console/finance/invoices',
-  reconciliation: '/console/finance/reconciliation',
+  supplier: '/console/finance/supplier',
 };
 
 const SiderBar = ({ onNavigate = () => {} }) => {
@@ -160,9 +160,9 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         to: '/console/finance/invoices',
       },
       {
-        text: t('对账管理'),
-        itemKey: 'reconciliation',
-        to: '/console/finance/reconciliation',
+        text: t('供应商结算'),
+        itemKey: 'supplier',
+        to: '/console/finance/supplier',
       },
     ];
 
@@ -528,13 +528,6 @@ const SiderBar = ({ onNavigate = () => {} }) => {
 
             if (itemKey === 'invoices') {
               navigate('/console/finance/invoices');
-              onNavigate();
-              setSelectedKeys([itemKey]);
-              return;
-            }
-
-            if (itemKey === 'reconciliation') {
-              navigate('/console/finance/reconciliation');
               onNavigate();
               setSelectedKeys([itemKey]);
               return;

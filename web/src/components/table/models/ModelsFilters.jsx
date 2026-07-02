@@ -46,7 +46,7 @@ const ModelsFilters = ({
 
   return (
     <div className='flex flex-col gap-2 w-full'>
-      {/* Channel filter dropdown */}
+      {/* Channel filter dropdown - client-side filtering */}
       <div className='w-full md:w-56'>
         <Select
           placeholder={t('筛选渠道')}

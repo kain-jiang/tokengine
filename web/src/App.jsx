@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { lazy, Suspense, useContext, useMemo } from 'react';
-import { Route, Routes, useLocation, useParams } from 'react-router-dom';
+import { Route, Routes, useLocation, useParams, Navigate } from 'react-router-dom';
 import Loading from './components/common/ui/Loading';
 import User from './pages/User';
 import { AuthRedirect, PrivateRoute, AdminRoute } from './helpers';
@@ -48,6 +48,7 @@ import FinanceOrders from './pages/Finance/Orders';
 import FinanceRevenue from './pages/Finance/Revenue';
 import FinanceInvoices from './pages/Finance/Invoices';
 import FinanceReconciliation from './pages/Finance/Reconciliation';
+import FinanceSupplier from './pages/Finance/Supplier';
 
 // Debug: Test if all finance imports are valid
 console.log('[App.jsx] FinanceReconciliation:', typeof FinanceReconciliation, FinanceReconciliation?.name);
@@ -398,9 +399,9 @@ function App() {
             }
           />
           <Route
-            path='reconciliation'
+            path='supplier'
             element={
-              <ErrorBoundary key='finance-reconciliation'><FinanceReconciliation /></ErrorBoundary>
+              <ErrorBoundary key='finance-supplier'><FinanceSupplier /></ErrorBoundary>
             }
           />
         </Route>

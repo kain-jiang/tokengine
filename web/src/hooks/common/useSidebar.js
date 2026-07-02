@@ -55,7 +55,14 @@ export const DEFAULT_ADMIN_CONFIG = {
     orders: true,
     revenue: true,
     invoices: true,
-    reconciliation: true,
+    supplier: true,
+  },
+  supplier: {
+    enabled: true,
+    'supplier-dashboard': true,
+    'supplier-pricing': true,
+    'supplier-settlement': true,
+    'supplier-account': true,
   },
   admin: {
     enabled: true,
