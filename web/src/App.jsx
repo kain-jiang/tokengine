@@ -74,6 +74,7 @@ import PersonalSetting from './components/settings/PersonalSetting';
 import RealNameAuthForm from './components/settings/personal/RealNameAuthForm';
 import Setup from './pages/Setup';
 import SetupCheck from './components/layout/SetupCheck';
+import DashboardBoard from './pages/DashboardBoard';
 
 const Home = lazy(() => import('./pages/Home'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -132,6 +133,15 @@ function App() {
           }
         />
         <Route path='/forbidden' element={<Forbidden />} />
+        {/* 大屏数据中心 - 管理员可见，无侧边栏和导航栏 */}
+        <Route
+          path='/console/dashboard'
+          element={
+            <AdminRoute>
+              <DashboardBoard />
+            </AdminRoute>
+          }
+        />
         <Route
           path='/console/models'
           element={

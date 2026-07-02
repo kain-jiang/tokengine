@@ -80,10 +80,21 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 	var freeModel bool
 	var billingMode string = "quota" // 默认 quota 模式
 
-	// 检查是否有 tokens 类型的订阅
-	hasTokensSub, _, err := model.HasActiveTokensSubscription(info.UserId)
-	if err == nil && hasTokensSub {
-		billingMode = "tokens"
+	// 检查当前请求的 token 是否关联了 tokens 类型的订阅
+	// 通过 RelayInfo 中的 TokenId 获取 token，检查其 SubscriptionId 是否 > 0
+	// 并且该 subscription 对应的 plan 是 tokens 类型
+	if info.TokenId > 0 {
+		token, err := model.GetTokenById(info.TokenId)
+		if err == nil && token != nil && token.SubscriptionId > 0 {
+			// 检查该 subscription 是否是 tokens 类型
+			sub, subErr := model.GetUserSubscriptionById(token.SubscriptionId)
+			if subErr == nil && sub != nil {
+				plan, planErr := model.GetSubscriptionPlanById(sub.PlanId)
+				if planErr == nil && plan != nil && plan.PlanType == "tokens" {
+					billingMode = "tokens"
+				}
+			}
+		}
 	}
 
 	if !usePrice {

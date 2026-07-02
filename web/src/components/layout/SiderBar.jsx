@@ -53,6 +53,7 @@ const routerMap = {
   playground: '/console/playground',
   textToImage: '/console/text-to-image',
   personal: '/console/personal',
+  dashboardBoard: '/console/dashboard',
   finance: '/console/finance',
   orders: '/console/finance/orders',
   revenue: '/console/finance/revenue',
@@ -238,6 +239,12 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         text: t('用户管理'),
         itemKey: 'user',
         to: '/user',
+        className: isAdmin() ? '' : 'tableHiddle',
+      },
+      {
+        text: t('大屏数据中心'),
+        itemKey: 'dashboardBoard',
+        to: '/console/dashboard',
         className: isAdmin() ? '' : 'tableHiddle',
       },
       {

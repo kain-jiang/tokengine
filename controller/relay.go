@@ -154,6 +154,9 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		newAPIError = types.NewError(err, types.ErrorCodeModelPriceError, types.ErrOptionWithStatusCode(http.StatusBadRequest))
 		return
 	}
+	// 调试日志：打印 PriceData.BillingMode
+	logger.LogInfo(c, fmt.Sprintf("[TOKEN_PLAN_DEBUG] After ModelPriceHelper: PriceData.BillingMode=%s, HasActiveTokensSub=%t, QuotaToPreConsume=%d",
+		priceData.BillingMode, priceData.BillingMode == "tokens", priceData.QuotaToPreConsume))
 
 	// common.SetContextKey(c, constant.ContextKeyTokenCountMeta, meta)
 

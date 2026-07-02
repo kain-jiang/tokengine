@@ -2,7 +2,12 @@ package model
 
 import (
 	"errors"
+	"fmt"
 
+	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/logger"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -72,4 +77,49 @@ type RealNameAuth struct {
 	Status                 string `json:"status" gorm:"type:varchar(20)"`                    // 审核状态
 	CreatedAt              int64  `json:"created_at" gorm:"type:bigint;default:0;index"`     // 创建时间（Unix时间戳）
 	UpdatedAt              int64  `json:"updated_at" gorm:"type:bigint;default:0;index"`
+}
+
+// operation create or update
+func (auth *RealNameAuth) ToAuth(operation string) {
+	var ok bool
+	var err error
+	if auth.AuthType == CompanyAuth {
+		sceneCode := "company_auth"
+		merchantBizId := "ciLian"
+		merchantUserId := auth.Username
+		ok, err = common.VerifyCompany(sceneCode, merchantBizId, merchantUserId, "", "", auth.CompanyName, auth.CompanyUSCC)
+	} else {
+		ok, err = common.VerifyIdentityCard(auth.Username, auth.PersonICard)
+	}
+	if !ok {
+		auth.Status = AuditRejected
+		auth.Update()
+		common.SysLog(fmt.Sprintf("username[%s]实名认证失败: "+err.Error(), auth.Username))
+	} else {
+		auth.Status = AuditPassed
+		auth.Update()
+		common.SysLog(fmt.Sprintf("username[%s]实名认证成功", auth.Username))
+
+		if operation != "create" {
+			return
+		}
+		// 实名认证成功，赠送100万tokens, 100万tokens=2美元
+		// todo 要改，赠送的额度要与充值的额度分级使用，赠送额度只能使用某些模型
+		//common.QuotaPerUnit
+
+		usdExchangeRate := operation_setting.USDExchangeRate
+		if usdExchangeRate <= 0 {
+			usdExchangeRate = 7.3 // 默认汇率
+		}
+		cnyMoney := 2 * usdExchangeRate
+		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
+		quotaToAdd := int(decimal.NewFromFloat(cnyMoney).Div(decimal.NewFromFloat(usdExchangeRate)).Mul(dQuotaPerUnit).IntPart())
+		if err = IncreaseUserQuota(auth.UserId, quotaToAdd, true); err != nil {
+			common.SysLog("实名认证成功，但赠送用户额度失败: " + err.Error())
+			return
+		}
+		common.SysLog(fmt.Sprintf("实名认证成功，赠送用户【%d】额度 %s", auth.UserId, logger.LogQuota(quotaToAdd)))
+		RecordLog(auth.UserId, LogTypeManage,
+			fmt.Sprintf("实名认证成功，系统赠送用户【%d】额度 %s", auth.UserId, logger.LogQuota(quotaToAdd)))
+	}
 }

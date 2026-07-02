@@ -205,7 +205,7 @@ func Register(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgUserInputInvalid, map[string]any{"Error": err.Error()})
 		return
 	}
-	if user.TelePhone == "" || len(user.TelePhone) != 11 {
+	if *user.TelePhone == "" || len(*user.TelePhone) != 11 {
 		common.ApiErrorMsg(c, "请填写11位的手机号")
 		return
 	}
@@ -220,12 +220,12 @@ func Register(c *gin.Context) {
 		}
 	}
 	// 验证短信验证码
-	if !common.VerifySMSCodeWithKey(user.TelePhone, user.VerificationCode) {
+	if !common.VerifySMSCodeWithKey(*user.TelePhone, user.VerificationCode) {
 		common.ApiErrorMsg(c, i18n.MsgUserVerificationCodeError)
 		return
 	}
-	common.DeleteSMSCode(user.TelePhone)
-	exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email, user.TelePhone)
+	common.DeleteSMSCode(*user.TelePhone)
+	exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email, *user.TelePhone)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgDatabaseError)
 		common.SysLog(fmt.Sprintf("CheckUserExistOrDeleted error: %v", err))
@@ -1131,7 +1131,7 @@ func PhoneBind(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	user.TelePhone = req.Telephone
+	user.TelePhone = &req.Telephone
 	// 绑定手机号
 	err = user.Update(false)
 	if err != nil {
@@ -1390,7 +1390,6 @@ func UpdateUserSetting(c *gin.Context) {
 
 	// 更新用户设置
 	user.SetSetting(settings)
-	fmt.Println(settings, "-------------")
 	if err := user.Update(false); err != nil {
 		common.ApiErrorI18n(c, i18n.MsgUpdateFailed)
 		return

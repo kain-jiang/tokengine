@@ -327,7 +327,15 @@ func PostTextConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, us
 		model.UpdateChannelUsedQuota(relayInfo.ChannelId, summary.Quota)
 	}
 
+	// 调试日志：打印计费模式
+	logger.LogInfo(ctx, fmt.Sprintf("[TOKEN_PLAN_DEBUG] BillingMode=%s, PriceData.BillingMode=%s, Billing=nil=%t, UserId=%d, Model=%s",
+		"quota", relayInfo.PriceData.BillingMode, relayInfo.Billing == nil, relayInfo.UserId, relayInfo.OriginModelName))
+	if relayInfo.Billing != nil {
+		logger.LogInfo(ctx, fmt.Sprintf("[TOKEN_PLAN_DEBUG] Billing.GetBillingMode()=%s", relayInfo.Billing.GetBillingMode()))
+	}
+
 	// 根据计费模式选择结算方式
+	logger.LogInfo(ctx, fmt.Sprintf("[TOKEN_PLAN_DEBUG] Selected billing path: PriceData.BillingMode=%s", relayInfo.PriceData.BillingMode))
 	if relayInfo.PriceData.BillingMode == "tokens" {
 		// tokens 计费模式：使用实际消耗的 tokens 数量结算
 		if err := SettleBillingWithTokens(ctx, relayInfo, int64(summary.TotalTokens), summary.Quota); err != nil {
