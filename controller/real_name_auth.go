@@ -14,7 +14,7 @@ import (
 type RealNameAuthRequest struct {
 	AuthType               string `json:"auth_type"`
 	Username               string `json:"username" validate:"max=20"`
-	PersonICard            string `json:"person_icard" validate:"max=18"`
+	PersonICard            string `json:"person_icard" validate:"max=18"` // todo 加密存储
 	CompanyName            string `json:"company_name" validate:"max=100"`
 	USCC                   string `json:"uscc" validate:"max=20"`
 	CompanyBusinessLicense string `json:"company_business_license"`

@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/url"
@@ -19,6 +20,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
 )
 
 func GetTopUpInfo(c *gin.Context) {
@@ -424,8 +426,28 @@ func GetUserTopUps(c *gin.Context) {
 		return
 	}
 
+	type TopUpWithInvoice struct {
+		*model.TopUp
+		InvoiceStatus string `json:"invoice_status"`
+	}
+
+	var topupsWithInvoice []TopUpWithInvoice
+	for _, topup := range topups {
+		invoiceStatus := ""
+		if topup.Status == "success" {
+			var invoiceRecord model.InvoiceRecord
+			err := model.DB.Where("user_id = ? AND order_ids LIKE ?", userId, "%"+fmt.Sprintf("%d", topup.Id)+"%").First(&invoiceRecord).Error
+			if err == nil {
+				invoiceStatus = invoiceRecord.Status
+			} else if errors.Is(err, gorm.ErrRecordNotFound) {
+				invoiceStatus = "uninvoiced"
+			}
+		}
+		topupsWithInvoice = append(topupsWithInvoice, TopUpWithInvoice{TopUp: topup, InvoiceStatus: invoiceStatus})
+	}
+
 	pageInfo.SetTotal(int(total))
-	pageInfo.SetItems(topups)
+	pageInfo.SetItems(topupsWithInvoice)
 	common.ApiSuccess(c, pageInfo)
 }
 

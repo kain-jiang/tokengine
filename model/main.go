@@ -431,6 +431,8 @@ func migrateDB() error {
 		&RevenueReport{},
 		&Media{},
 		&RealNameAuth{},
+		&InvoiceTitle{},
+		&InvoiceRecord{},
 	)
 	if err != nil {
 		return err

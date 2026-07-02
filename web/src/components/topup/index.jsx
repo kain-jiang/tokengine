@@ -43,6 +43,7 @@ import TopupHistoryModal from './modals/TopupHistoryModal';
 import EarIcon from './EarIcon';
 import InvitationPanel from './InvitationPanel';
 import QuotaPlanSection from './QuotaPlanSection';
+import Invoice from './Invoice';
 
 const TopUp = () => {
   const { t } = useTranslation();
@@ -1138,6 +1139,12 @@ const TopUp = () => {
             reloadSubscriptionSelf={getSubscriptionSelf}
             userQuota={userState?.user?.quota || 0}
           />
+        </TabPane>
+        <TabPane
+          tab={t('充值开票')}
+          itemKey="invoice"
+        >
+          <Invoice />
         </TabPane>
       </Tabs>
 
