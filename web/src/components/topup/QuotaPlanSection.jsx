@@ -233,6 +233,25 @@ const MySubscriptionSection = ({
     });
   }, [quotaSubscriptions]);
 
+  // 渲染适用模型
+  const renderApplicableModels = (models) => {
+    if (!models || models.trim() === '') {
+      return <Text type='tertiary'>{t('全部模型')}</Text>;
+    }
+    const modelList = models.split(',').map(m => m.trim()).filter(Boolean);
+    if (modelList.length === 0) {
+      return <Text type='tertiary'>{t('全部模型')}</Text>;
+    }
+    if (modelList.length > 3) {
+      return (
+        <Tooltip content={modelList.join(', ')}>
+          <Text type='secondary'>{modelList.slice(0, 3).join(', ')}...</Text>
+        </Tooltip>
+      );
+    }
+    return <Text type='secondary'>{modelList.join(', ')}</Text>;
+  };
+
   const tableData = useMemo(() => {
     return quotaSubscriptions.map((sub) => {
       const subscription = sub.subscription;
@@ -241,6 +260,7 @@ const MySubscriptionSection = ({
       const usedAmount = Number(subscription?.amount_used || 0);
       const remainAmount = totalAmount > 0 ? Math.max(0, totalAmount - usedAmount) : 0;
       const planTitle = planTitleMap.get(subscription?.plan_id) || '';
+      const applicableModels = planFromMap?.applicable_models || '';
       const remainDays = getRemainingDays(sub);
       const usagePercent = getUsagePercent(sub);
       const now = Date.now() / 1000;
@@ -263,6 +283,7 @@ const MySubscriptionSection = ({
         createTime: new Date((subscription?.start_time || 0) * 1000).toLocaleString(),
         endTime: new Date((subscription?.end_time || 0) * 1000).toLocaleString(),
         group: subscription?.upgrade_group || '-',
+        applicableModels: renderApplicableModels(applicableModels),
         totalQuota: totalAmount > 0 ? (
           <Tooltip content={`${t('原生额度')}：${usedAmount}/${totalAmount} · ${t('剩余')} ${remainAmount}`}>
             <span>{formatQuotaAmount(totalAmount)}</span>
@@ -300,6 +321,12 @@ const MySubscriptionSection = ({
       title: t('分组'),
       dataIndex: 'group',
       width: 120,
+    },
+    {
+      title: t('适用模型'),
+      dataIndex: 'applicableModels',
+      width: 200,
+      ellipsis: true,
     },
     {
       title: t('已用额度'),

@@ -168,6 +168,28 @@ const renderEnabled = (text, record, t) => {
   );
 };
 
+const renderVisibleToUser = (text, record, t) => {
+  return text ? (
+    <Tag
+      color='white'
+      shape='circle'
+      type='light'
+      prefixIcon={<Badge dot type='success' />}
+    >
+      {t('可见')}
+    </Tag>
+  ) : (
+    <Tag
+      color='white'
+      shape='circle'
+      type='light'
+      prefixIcon={<Badge dot type='danger' />}
+    >
+      {t('不可见')}
+    </Tag>
+  );
+};
+
 const renderPlanType = (text, record, t) => {
   const planType = record?.plan?.plan_type || 'quota';
   const isTokens = planType === 'tokens';
@@ -232,6 +254,32 @@ const renderResetPeriod = (text, record, t) => {
   return (
     <Text type={isNever ? 'tertiary' : 'secondary'}>
       {formatResetPeriod(record?.plan, t)}
+    </Text>
+  );
+};
+
+const renderApplicableModels = (text, record, t) => {
+  const models = text?.trim();
+  if (!models) {
+    return <Text type='tertiary'>{t('全部模型')}</Text>;
+  }
+  const modelList = models.split(',').map(m => m.trim()).filter(Boolean);
+  if (modelList.length === 0) {
+    return <Text type='tertiary'>{t('全部模型')}</Text>;
+  }
+  // 如果模型数量较多，只显示前几个并用Tooltip显示全部
+  if (modelList.length > 5) {
+    return (
+      <Tooltip content={modelList.join(', ')}>
+        <Text type='secondary'>
+          {modelList.slice(0, 5).join(', ')}...
+        </Text>
+      </Tooltip>
+    );
+  }
+  return (
+    <Text type='secondary'>
+      {modelList.join(', ')}
     </Text>
   );
 };
@@ -337,15 +385,21 @@ export const getSubscriptionsColumns = ({
       render: (text) => renderPrice(text),
     },
     {
-      title: t('购买上限'),
-      width: 90,
-      render: (text, record) => renderPurchaseLimit(text, record, t),
-    },
-    {
       title: t('类型'),
       dataIndex: ['plan', 'plan_type'],
       width: 90,
       render: (text, record) => renderPlanType(text, record, t),
+    },
+    {
+      title: t('总额度'),
+      width: 100,
+      render: (text, record) => renderTotalAmount(text, record, t),
+    },
+    {
+      title: t('适用模型'),
+      dataIndex: ['plan', 'applicable_models'],
+      width: 200,
+      render: (text, record) => renderApplicableModels(text, record, t),
     },
     {
       title: t('优先级'),
@@ -364,21 +418,16 @@ export const getSubscriptionsColumns = ({
       render: (text, record) => renderResetPeriod(text, record, t),
     },
     {
+      title: t('用户可见'),
+      dataIndex: ['plan', 'visible_to_user'],
+      width: 80,
+      render: (text, record) => renderVisibleToUser(text, record, t),
+    },
+    {
       title: t('状态'),
       dataIndex: ['plan', 'enabled'],
       width: 80,
       render: (text, record) => renderEnabled(text, record, t),
-    },
-    {
-      title: t('支付渠道'),
-      width: 180,
-      render: (text, record) =>
-        renderPaymentConfig(text, record, t, enableEpay),
-    },
-    {
-      title: t('总额度'),
-      width: 100,
-      render: (text, record) => renderTotalAmount(text, record, t),
     },
     {
       title: t('升级分组'),

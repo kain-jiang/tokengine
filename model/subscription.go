@@ -185,8 +185,10 @@ type SubscriptionPlan struct {
 	// TokensLimit is the tokens上限 for tokens-type plans (0 = unlimited)
 	TokensLimit int64 `json:"tokens_limit" gorm:"type:bigint;default:0"`
 
-	CreatedAt int64 `json:"created_at" gorm:"bigint"`
-	UpdatedAt int64 `json:"updated_at" gorm:"bigint"`
+	// VisibleToUser indicates whether this plan is visible to end users (default false)
+	VisibleToUser bool  `json:"visible_to_user" gorm:"default:false"`
+	CreatedAt     int64 `json:"created_at" gorm:"bigint"`
+	UpdatedAt     int64 `json:"updated_at" gorm:"bigint"`
 }
 
 func (p *SubscriptionPlan) BeforeCreate(tx *gorm.DB) error {
@@ -1029,6 +1031,20 @@ func PreConsumeUserSubscription(requestId string, userId int, modelName string, 
 			}
 			if err := maybeResetUserSubscriptionWithPlanTx(tx, &sub, plan, now); err != nil {
 				return err
+			}
+			// Check if model is applicable (both quota and tokens types support this)
+			if sub.ApplicableModels != "" {
+				applicableModels := strings.Split(sub.ApplicableModels, ",")
+				modelAllowed := false
+				for _, m := range applicableModels {
+					if strings.TrimSpace(m) == modelName {
+						modelAllowed = true
+						break
+					}
+				}
+				if !modelAllowed {
+					continue
+				}
 			}
 			usedBefore := sub.AmountUsed
 			if sub.AmountTotal > 0 {

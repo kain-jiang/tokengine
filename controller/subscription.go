@@ -188,12 +188,8 @@ func AdminCreateSubscriptionPlan(c *gin.Context) {
 		common.ApiErrorMsg(c, "套餐类型必须是 quota 或 tokens")
 		return
 	}
-	// For tokens type, validate applicable_models and tokens_limit
+	// For tokens type, validate tokens_limit (applicable_models is optional)
 	if req.Plan.PlanType == "tokens" {
-		if strings.TrimSpace(req.Plan.ApplicableModels) == "" {
-			common.ApiErrorMsg(c, "Tokens套餐必须指定适用模型")
-			return
-		}
 		if req.Plan.TokensLimit < 0 {
 			common.ApiErrorMsg(c, "Tokens上限不能为负数")
 			return
@@ -272,9 +268,6 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 			return errors.New("套餐类型必须是 quota 或 tokens")
 		}
 		if req.Plan.PlanType == "tokens" {
-			if strings.TrimSpace(req.Plan.ApplicableModels) == "" {
-				return errors.New("Tokens套餐必须指定适用模型")
-			}
 			if req.Plan.TokensLimit < 0 {
 				return errors.New("Tokens上限不能为负数")
 			}
@@ -290,6 +283,7 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 			"duration_value":             req.Plan.DurationValue,
 			"custom_seconds":             req.Plan.CustomSeconds,
 			"enabled":                    req.Plan.Enabled,
+			"visible_to_user":            req.Plan.VisibleToUser,
 			"sort_order":                 req.Plan.SortOrder,
 			"stripe_price_id":            req.Plan.StripePriceId,
 			"creem_product_id":           req.Plan.CreemProductId,

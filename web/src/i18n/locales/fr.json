@@ -196,7 +196,6 @@
     "Sonnet 模型": "Modèle Sonnet",
     "Stripe 设置": "Paramètres Stripe",
     "Stripe/Creem 商品ID（可选）": "ID produit Stripe/Creem (optionnel)",
-    "Stripe/Creem 需在第三方平台创建商品并填入 ID": "Les produits Stripe/Creem doivent être créés sur la plateforme tierce et l'ID doit être renseigné",
     "TTL（秒）": "TTL (secondes)",
     "TTL（秒，0 表示默认）": "TTL (secondes, 0 pour la valeur par défaut)",
     "Telegram": "Telegram",
