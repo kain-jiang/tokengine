@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"net/url"
@@ -20,7 +19,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
-	"gorm.io/gorm"
 )
 
 func GetTopUpInfo(c *gin.Context) {
@@ -410,14 +408,41 @@ func GetUserTopUps(c *gin.Context) {
 	pageInfo := common.GetPageQuery(c)
 	keyword := c.Query("keyword")
 	status := c.Query("status")
+	startTimeStr := c.Query("start_time")
+	endTimeStr := c.Query("end_time")
+
+	var startTime, endTime int64 = 0, 0
 
 	var (
 		topups []*model.TopUp
 		total  int64
 		err    error
 	)
-	if keyword != "" || status != "" {
-		topups, total, err = model.SearchUserTopUps(userId, keyword, status, pageInfo)
+
+	if startTimeStr != "" {
+		startTime, err = strconv.ParseInt(startTimeStr, 10, 64)
+		if err != nil {
+			common.ApiErrorMsg(c, "无效的开始时间")
+			return
+		}
+	}
+
+	if endTimeStr != "" {
+		endTime, err = strconv.ParseInt(endTimeStr, 10, 64)
+		if err != nil {
+			common.ApiErrorMsg(c, "无效的结束时间")
+			return
+		}
+	}
+	if endTime >= 0 || startTime >= 0 {
+		if endTime < startTime {
+			common.ApiErrorMsg(c, "结束时间不能早于开始时间")
+			return
+		}
+	}
+
+	if keyword != "" || status != "" || startTimeStr != "" || endTimeStr != "" {
+		topups, total, err = model.SearchUserTopUps(userId, keyword, status, pageInfo, startTime, endTime)
 	} else {
 		topups, total, err = model.GetUserTopUps(userId, pageInfo)
 	}
@@ -426,28 +451,8 @@ func GetUserTopUps(c *gin.Context) {
 		return
 	}
 
-	type TopUpWithInvoice struct {
-		*model.TopUp
-		InvoiceStatus string `json:"invoice_status"`
-	}
-
-	var topupsWithInvoice []TopUpWithInvoice
-	for _, topup := range topups {
-		invoiceStatus := ""
-		if topup.Status == "success" {
-			var invoiceRecord model.InvoiceRecord
-			err := model.DB.Where("user_id = ? AND order_ids LIKE ?", userId, "%"+fmt.Sprintf("%d", topup.Id)+"%").First(&invoiceRecord).Error
-			if err == nil {
-				invoiceStatus = invoiceRecord.Status
-			} else if errors.Is(err, gorm.ErrRecordNotFound) {
-				invoiceStatus = "uninvoiced"
-			}
-		}
-		topupsWithInvoice = append(topupsWithInvoice, TopUpWithInvoice{TopUp: topup, InvoiceStatus: invoiceStatus})
-	}
-
 	pageInfo.SetTotal(int(total))
-	pageInfo.SetItems(topupsWithInvoice)
+	pageInfo.SetItems(topups)
 	common.ApiSuccess(c, pageInfo)
 }
 
@@ -456,14 +461,41 @@ func GetAllTopUps(c *gin.Context) {
 	pageInfo := common.GetPageQuery(c)
 	keyword := c.Query("keyword")
 	status := c.Query("status")
+	startTimeStr := c.Query("start_time")
+	endTimeStr := c.Query("end_time")
 
 	var (
 		topups []*model.TopUpWithUsername
 		total  int64
 		err    error
 	)
-	if keyword != "" || status != "" {
-		topups, total, err = model.SearchAllTopUpsWithUsername(keyword, status, pageInfo)
+
+	var startTime, endTime int64 = 0, 0
+
+	if startTimeStr != "" {
+		startTime, err = strconv.ParseInt(startTimeStr, 10, 64)
+		if err != nil {
+			common.ApiErrorMsg(c, "无效的开始时间")
+			return
+		}
+	}
+
+	if endTimeStr != "" {
+		endTime, err = strconv.ParseInt(endTimeStr, 10, 64)
+		if err != nil {
+			common.ApiErrorMsg(c, "无效的结束时间")
+			return
+		}
+	}
+	if endTime >= 0 || startTime >= 0 {
+		if endTime < startTime {
+			common.ApiErrorMsg(c, "结束时间不能早于开始时间")
+			return
+		}
+	}
+
+	if keyword != "" || status != "" || startTimeStr != "" || endTimeStr != "" {
+		topups, total, err = model.SearchAllTopUpsWithUsername(keyword, status, pageInfo, startTime, endTime)
 	} else {
 		topups, total, err = model.GetAllTopUpsWithUsername(pageInfo)
 	}

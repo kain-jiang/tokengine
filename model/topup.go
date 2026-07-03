@@ -234,7 +234,7 @@ func GetAllTopUpsWithUsername(pageInfo *common.PageInfo) (topups []*TopUpWithUse
 }
 
 // SearchAllTopUpsWithUsername 按订单号和状态搜索全平台充值记录（管理员使用，包含用户名）
-func SearchAllTopUpsWithUsername(keyword string, status string, pageInfo *common.PageInfo) (topups []*TopUpWithUsername, total int64, err error) {
+func SearchAllTopUpsWithUsername(keyword string, status string, pageInfo *common.PageInfo, startTime, endTime int64) (topups []*TopUpWithUsername, total int64, err error) {
 	tx := DB.Begin()
 	if tx.Error != nil {
 		return nil, 0, tx.Error
@@ -251,6 +251,13 @@ func SearchAllTopUpsWithUsername(keyword string, status string, pageInfo *common
 	}
 	if status != "" {
 		query = query.Where("top_ups.status = ?", status)
+	}
+
+	if startTime > 0 {
+		query = query.Where("create_time >= ?", startTime)
+	}
+	if endTime > 0 {
+		query = query.Where("create_time <= ?", endTime)
 	}
 
 	if err = query.Count(&total).Error; err != nil {
@@ -276,7 +283,7 @@ func SearchAllTopUpsWithUsername(keyword string, status string, pageInfo *common
 }
 
 // SearchUserTopUps 按订单号和状态搜索某用户的充值记录
-func SearchUserTopUps(userId int, keyword string, status string, pageInfo *common.PageInfo) (topups []*TopUp, total int64, err error) {
+func SearchUserTopUps(userId int, keyword string, status string, pageInfo *common.PageInfo, startTime, endTime int64) (topups []*TopUp, total int64, err error) {
 	tx := DB.Begin()
 	if tx.Error != nil {
 		return nil, 0, tx.Error
@@ -294,6 +301,13 @@ func SearchUserTopUps(userId int, keyword string, status string, pageInfo *commo
 	}
 	if status != "" {
 		query = query.Where("status = ?", status)
+	}
+
+	if startTime > 0 {
+		query = query.Where("create_time >= ?", startTime)
+	}
+	if endTime > 0 {
+		query = query.Where("create_time <= ?", endTime)
 	}
 
 	if err = query.Count(&total).Error; err != nil {

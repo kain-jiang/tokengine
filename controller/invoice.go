@@ -25,7 +25,10 @@ type InvoiceTitleRequest struct {
 }
 
 type InvoiceApplyRequest struct {
-	OrderIds []int `json:"order_ids"`
+	OrderIds    []int  `json:"order_ids"`
+	TitleType   string `json:"title_type"`
+	InvoiceType string `json:"invoice_type"`
+	Remark      string `json:"remark"`
 }
 
 func GetInvoiceTitle(c *gin.Context) {
@@ -151,14 +154,9 @@ func GetInvoiceRecords(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data": gin.H{
-			"items": records,
-			"total": total,
-		},
-	})
+	pageInfo.SetTotal(int(total))
+	pageInfo.SetItems(records)
+	common.ApiSuccess(c, pageInfo)
 }
 
 func ApplyInvoice1(c *gin.Context) {
@@ -222,6 +220,11 @@ func ApplyInvoice1(c *gin.Context) {
 		orderIdsStr += fmt.Sprintf("%d", id)
 	}
 
+	invoiceType := model.GeneralInvoice
+	if req.InvoiceType == "special" {
+		invoiceType = model.SpecialInvoice
+	}
+
 	invoiceRecord := model.InvoiceRecord{
 		UserId:           userId,
 		InvoiceTitleId:   title.Id,
@@ -229,7 +232,8 @@ func ApplyInvoice1(c *gin.Context) {
 		OrderIds:         orderIdsStr,
 		Amount:           totalAmount,
 		Status:           model.InvoicePendingStatus,
-		InvoiceType:      model.GeneralInvoice,
+		InvoiceType:      invoiceType,
+		Remark:           req.Remark,
 	}
 
 	err = model.DB.Create(&invoiceRecord).Error
