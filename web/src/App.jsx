@@ -39,7 +39,6 @@ import Token from './pages/Token';
 import TokenPlan from './pages/TokenPlan';
 import Redemption from './pages/Redemption';
 import TopUp from './pages/TopUp';
-import MyPlan from './pages/MyPlan';
 import MyPlanBilling from './pages/MyPlanBilling';
 import Finance from './pages/Finance';
 import FinanceLayout from './pages/Finance/FinanceLayout';
@@ -357,25 +356,15 @@ function App() {
           }
         />
         <Route
-                  path='/console/my-plan'
-                  element={
-                    <PrivateRoute>
-                      <Suspense fallback={<Loading></Loading>} key={location.pathname}>
-                        <MyPlan />
-                      </Suspense>
-                    </PrivateRoute>
-                  }
-                />
-                <Route
-                  path='/console/billing'
-          element={
-            <PrivateRoute>
-              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
-                <MyPlanBilling />
-              </Suspense>
-            </PrivateRoute>
-          }
-        />
+          path='/console/billing'
+  element={
+    <PrivateRoute>
+      <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+        <MyPlanBilling />
+      </Suspense>
+    </PrivateRoute>
+  }
+/>
         <Route
           path='/console/finance'
           element={
