@@ -215,12 +215,17 @@ func Register(c *gin.Context) {
 			return
 		}
 	}
+	if *user.TelePhone == "" || len(*user.TelePhone) != 11 {
+		common.ApiErrorMsg(c, "请填写11位的手机号")
+		return
+	}
+
 	// 验证短信验证码
-	if !common.VerifySMSCodeWithKey(user.TelePhone, user.VerificationCode) {
+	if !common.VerifySMSCodeWithKey(*user.TelePhone, user.VerificationCode) {
 		common.ApiErrorMsg(c, i18n.MsgUserVerificationCodeError)
 		return
 	}
-	common.DeleteSMSCode(user.TelePhone)
+	common.DeleteSMSCode(*user.TelePhone)
 	exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgDatabaseError)
@@ -1126,7 +1131,7 @@ func PhoneBind(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	user.TelePhone = req.Telephone
+	user.TelePhone = &req.Telephone
 	// 绑定手机号
 	err = user.Update(false)
 	if err != nil {
