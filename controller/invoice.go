@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 
 	"github.com/gin-gonic/gin"
@@ -31,30 +32,28 @@ type InvoiceApplyRequest struct {
 	Remark      string `json:"remark"`
 }
 
+// 获取发票抬头
 func GetInvoiceTitle(c *gin.Context) {
 	userId := c.GetInt("id")
-
-	var title model.InvoiceTitle
-	err := model.DB.Where("user_id = ?", userId).First(&title).Error
+	titles := make([]model.InvoiceTitle, 0)
+	err := model.DB.Where("user_id = ?", userId).First(&titles).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusOK, gin.H{
-				"success": false,
-				"message": "record not found",
-				"data":    nil,
-			})
+			common.ApiErrorMsg(c, "record not found")
 			return
 		}
-		common.ApiError(c, err)
+		common.ApiErrorMsg(c, "未查询到用户开票记录")
 		return
 	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    title,
-	})
+	list := make([]map[string]any, 0)
+	for _, item := range titles {
+		titleInfo := item.ToMap()
+		list = append(list, titleInfo)
+	}
+	common.ApiSuccess(c, list)
 }
 
+// 保存发票抬头
 func SaveInvoiceTitle(c *gin.Context) {
 	userId := c.GetInt("id")
 
@@ -97,7 +96,7 @@ func SaveInvoiceTitle(c *gin.Context) {
 	}
 
 	var title model.InvoiceTitle
-	err := model.DB.Where("user_id = ?", userId).First(&title).Error
+	err := model.DB.Where("user_id = ? AND invoice_type = ?", userId, req.Type).First(&title).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		common.ApiError(c, err)
 		return
@@ -120,15 +119,11 @@ func SaveInvoiceTitle(c *gin.Context) {
 	}
 
 	if err != nil {
+		logger.LogError(c, fmt.Sprintf("create data[%v] or update data failed, error detail --> %s", title, err))
 		common.ApiError(c, err)
 		return
 	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "保存成功",
-		"data":    title,
-	})
+	common.ApiSuccess(c, title)
 }
 
 func GetInvoiceRecords(c *gin.Context) {
@@ -154,12 +149,22 @@ func GetInvoiceRecords(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	list := make([]map[string]any, 0)
+	for _, v := range records {
+		item, err := v.ToMap()
+		if err != nil {
+			common.ApiErrorMsg(c, "获取开票信息失败")
+			return
+		}
+		list = append(list, item)
+	}
 	pageInfo.SetTotal(int(total))
-	pageInfo.SetItems(records)
+	pageInfo.SetItems(list)
 	common.ApiSuccess(c, pageInfo)
 }
 
-func ApplyInvoice1(c *gin.Context) {
+// 申请开票
+func SubmitInvoiceApply(c *gin.Context) {
 	userId := c.GetInt("id")
 
 	var req InvoiceApplyRequest
@@ -169,10 +174,7 @@ func ApplyInvoice1(c *gin.Context) {
 	}
 
 	if len(req.OrderIds) == 0 {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "请选择要开票的订单",
-		})
+		common.ApiErrorMsg(c, "请选择要开票的订单")
 		return
 	}
 
@@ -184,32 +186,29 @@ func ApplyInvoice1(c *gin.Context) {
 	}
 
 	if len(topups) == 0 {
-		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "订单不存在或未完成支付",
-		})
+		common.ApiErrorMsg(c, "订单不存在或未完成支付")
 		return
 	}
 
 	var title model.InvoiceTitle
-	err = model.DB.Where("user_id = ?", userId).First(&title).Error
+	err = model.DB.Where("user_id = ? AND invoice_type = ? ", userId, req.TitleType).First(&title).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusOK, gin.H{
-				"success": false,
-				"message": "请先设置开票信息",
-			})
-			return
-		}
-		common.ApiError(c, err)
+		common.ApiErrorMsg(c, "请先设置开票抬头信息")
 		return
 	}
+	if req.TitleType == model.PersonaInvoice {
+		if req.InvoiceType != "general" {
+			common.ApiErrorMsg(c, "个人开票只能选择普票")
+			return
+		}
+	}
 
+	// todo 过滤掉已经开了票或正在开票的
 	titleInfo, _ := json.Marshal(title)
 
-	totalAmount := 0
+	totalMoney := 0.0
 	for _, topup := range topups {
-		totalAmount += int(topup.Amount)
+		totalMoney += topup.Money
 	}
 
 	orderIdsStr := ""
@@ -230,7 +229,7 @@ func ApplyInvoice1(c *gin.Context) {
 		InvoiceTitleId:   title.Id,
 		InvoiceTitleInfo: string(titleInfo),
 		OrderIds:         orderIdsStr,
-		Amount:           totalAmount,
+		Amount:           totalMoney,
 		Status:           model.InvoicePendingStatus,
 		InvoiceType:      invoiceType,
 		Remark:           req.Remark,
@@ -242,9 +241,5 @@ func ApplyInvoice1(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "开票申请成功",
-		"data":    invoiceRecord,
-	})
+	common.ApiSuccess(c, invoiceRecord)
 }

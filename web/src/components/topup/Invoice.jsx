@@ -56,9 +56,9 @@ const PAYMENT_METHOD_MAP = {
 };
 
 const INVOICE_STATUS_MAP = {
-  pending: { type: 'warning', key: '开票中' },
-  completed: { type: 'success', key: '开票完成' },
-  failed: { type: 'danger', key: '开票失败' },
+  pending: { type: 'warning', key: '开票中', color: '#FF9C01' },
+  completed: { type: 'success', key: '已开票', color: '#00B42A'},
+  failed: { type: 'danger', key: '失败', color: '#FF0000' },
 };
 
 const INVOICE_TYPE_MAP = {
@@ -90,7 +90,7 @@ const Invoice = () => {
   const [invoicePage, setInvoicePage] = useState(1);
   const [invoicePageSize, setInvoicePageSize] = useState(10);
 
-  const [invoiceTitle, setInvoiceTitle] = useState(null);
+  const [invoiceTitles, setInvoiceTitles] = useState(null);
   const [titleLoading, setTitleLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -161,20 +161,20 @@ const Invoice = () => {
       const res = await API.get('/api/user/invoice/title');
       const { success, message, data } = res.data;
       if (success) {
-        setInvoiceTitle(data);
-        if (data) {
+        setInvoiceTitles(data);
+        if (data.length > 0) {
           setFormData({
-            type: data.type || 'personal',
-            title: data.title || '',
-            uscc: data.uscc || '',
-            company_address: data.company_address || '',
-            company_phone: data.company_phone || '',
-            bank_name: data.bank_name || '',
-            bank_account: data.bank_account || '',
-            email: data.email || '',
+            type: data[0].type || 'personal',
+            title: data[0].title || '',
+            uscc: data[0].uscc || '',
+            company_address: data[0].company_address || '',
+            company_phone: data[0].company_phone || '',
+            bank_name: data[0].bank_name || '',
+            bank_account: data[0].bank_account || '',
+            email: data[0].email || '',
           });
         }
-      } else if (message !== 'record not found') {
+      } else {
         Toast.error({ content: message || t('加载失败') });
       }
     } catch (error) {
@@ -249,23 +249,6 @@ const Invoice = () => {
     setInvoicePage(1);
   };
 
-  const handleApplyInvoice = (orderId) => {
-    setSelectedOrderId(orderId);
-    setShowInvoiceTitleModal(true);
-    if (!invoiceTitle) {
-      setFormData({
-        type: 'personal',
-        title: '',
-        uscc: '',
-        company_address: '',
-        company_phone: '',
-        bank_name: '',
-        bank_account: '',
-        email: '',
-      });
-    }
-  };
-
   const handleSaveInvoiceTitle = async () => {
     if (!formData.title) {
       Toast.error({ content: t('请填写发票抬头') });
@@ -285,6 +268,7 @@ const Invoice = () => {
       const { success, message } = res.data;
       if (success) {
         Toast.success({ content: t('保存成功') });
+        setShowInvoiceTitleModal(false);
         await loadInvoiceTitle();
       } else {
         Toast.error({ content: message || t('保存失败') });
@@ -295,41 +279,38 @@ const Invoice = () => {
   };
 
   const handleSubmitInvoice = async () => {
-    if (!formData.title) {
-      Toast.error({ content: t('请填写发票抬头') });
-      return;
-    }
-    if (!formData.email) {
-      Toast.error({ content: t('请填写接收邮箱') });
-      return;
-    }
-    if (formData.type === 'company' && !formData.uscc) {
-      Toast.error({ content: t('请填写纳税人识别号') });
-      return;
-    }
 
     if (selectedOrderIds.length === 0) {
       Toast.error({ content: t('请选择要开票的订单') });
       return;
     }
+    if (!applyFormData.title_type) {
+      Toast.error({ content: t('请选择发票抬头类型') });
+      return;
+    }
+    if (!applyFormData.invoice_type) {
+      Toast.error({ content: t('请选择发票类型') });
+      return;
+    }
 
     try {
-      await API.post('/api/user/invoice/title', formData);
-
-      const res = await API.post('/api/user/invoice/apply', {
+      let reqBody = {
         order_ids: selectedOrderIds,
         title_type: applyFormData.title_type,
         invoice_type: applyFormData.invoice_type,
         remark: applyFormData.remark,
-      });
+      };
+      const res = await API.post('/api/user/invoice/apply', reqBody);
       const { success, message } = res.data;
       if (success) {
+        setShowApplyModal(false);
         Toast.success({ content: t('开票申请成功') });
         setShowInvoiceTitleModal(false);
         setSelectedOrderIds([]);
         setAllSelected(false);
         await loadInvoices(invoicePage, invoicePageSize);
         await loadTopups(topupPage, topupPageSize);
+
       } else {
         Toast.error({ content: message || t('开票申请失败') });
       }
@@ -363,8 +344,7 @@ const Invoice = () => {
   const renderInvoiceStatus = (status) => {
     const config = INVOICE_STATUS_MAP[status] || { type: 'primary', key: status };
     return (
-      <span className='flex items-center gap-2'>
-        <Badge dot type={config.type} />
+      <span className='flex items-center' style={{ color: config.color }}>
         <span>{t(config.key)}</span>
       </span>
     );
@@ -424,26 +404,11 @@ const Invoice = () => {
               return <Text type='tertiary'>{t('未开票')}</Text>;
             case 'pending':
             case 'running':
-              return (
-                <span className='flex items-center gap-2'>
-                  <Badge dot type='warning' />
-                  <span>{t('开票中')}</span>
-                </span>
-              );
+              return <span style={{ color: '#FF9C01' }}>{t('开票中')}</span>;
             case 'completed':
-              return (
-                <span className='flex items-center gap-2'>
-                  <Badge dot type='success' />
-                  <span>{t('已开票')}</span>
-                </span>
-              );
+              return <span style={{ color: '#00B42A' }}>{t('已开票')}</span>;
             case 'failed':
-              return (
-                <span className='flex items-center gap-2'>
-                  <Badge dot type='danger' />
-                  <span>{t('开票失败')}</span>
-                </span>
-              );
+              return <span style={{ color: '#FF0000' }}>{t('失败')}</span>;
             default:
               return <Text type='tertiary'>{t('未开票')}</Text>;
           }
@@ -459,75 +424,133 @@ const Invoice = () => {
     [t, selectedOrderIds, allSelected, topups],
   );
 
-  const invoiceColumns = useMemo(() => [
-    {
-      title: t('开票金额'),
-      dataIndex: 'amount',
-      key: 'amount',
-      render: (amount) => renderQuota(amount),
-    },
-    {
-      title: t('发票抬头'),
-      dataIndex: 'invoice_title_info',
-      key: 'invoice_title_info',
-      render: (info) => {
-        try {
-          const parsed = JSON.parse(info);
-          return <Text>{parsed.title || '-'}</Text>;
-        } catch {
-          return <Text>{info || '-'}</Text>;
-        }
+  const invoiceColumns = useMemo(
+    () => [
+      {
+        title: t('开票金额'),
+        dataIndex: 'amount',
+        key: 'amount',
+        render: (money) => <Text type='danger'>¥{money.toFixed(2)}</Text>,
       },
-    },
-    {
-      title: t('发票类型'),
-      dataIndex: 'invoice_type',
-      key: 'invoice_type',
-      render: renderInvoiceType,
-    },
-    {
-      title: t('状态'),
-      dataIndex: 'status',
-      key: 'status',
-      render: renderInvoiceStatus,
-    },
-    {
-      title: t('申请时间'),
-      dataIndex: 'created_at',
-      key: 'created_at',
-      render: (time) => timestamp2string(time),
-    },
-    {
-      title: t('操作'),
-      key: 'action',
-      render: (_, record) => (
-        <Space>
-          {record.status === 'completed' && record.invoice_url && (
-            <>
-              <Button
-                size='small'
-                icon={<FileText size={14} />}
-                onClick={() => handleViewInvoice(record)}
-              >
-                {t('查看')}
-              </Button>
-              <Button
-                size='small'
-                icon={<IconDownload size={14} />}
-                onClick={() => handleDownloadInvoice(record)}
-              >
-                {t('下载')}
-              </Button>
-            </>
-          )}
-        </Space>
-      ),
-    },
-  ], [t]);
+      {
+        title: t('发票抬头'),
+        dataIndex: 'invoice_title_info',
+        key: 'invoice_title_info',
+        render: (info) => {
+          try {
+            const parsed = JSON.parse(info);
+            return <Text>{parsed.title || '-'}</Text>;
+          } catch {
+            return <Text>{info || '-'}</Text>;
+          }
+        },
+      },
+      {
+        title: t('发票类型'),
+        dataIndex: 'invoice_type',
+        key: 'invoice_type',
+        render: renderInvoiceType,
+      },
+      {
+        title: t('状态'),
+        dataIndex: 'status',
+        key: 'status',
+        render: renderInvoiceStatus,
+      },
+      {
+        title: t('申请时间'),
+        dataIndex: 'created_at',
+        key: 'created_at',
+        render: (time) => <Text>{time}</Text>,
+      },
+      {
+        title: t('操作'),
+        key: 'action',
+        render: (_, record) => (
+          <Space>
+            {record.status === 'completed' && record.invoice_url && (
+              <>
+                <Button
+                  size='small'
+                  onClick={() => handleViewInvoice(record)}
+                >
+                  {t('查看')}
+                </Button>
+                <Button
+                  size='small'
+                  onClick={() => handleDownloadInvoice(record)}
+                >
+                  {t('下载')}
+                </Button>
+              </>
+            )}
+          </Space>
+        ),
+      },
+    ],
+    [t],
+  );
 
   const selectInvoiceType = (e) => {
-    console.log(e.target.value);
-    setFormData((prev) => ({ ...prev, type: e.target.value }));
+    if(invoiceTitles && invoiceTitles.length > 0) {
+      for (const item of invoiceTitles) {
+        if (item.type === e.target.value) {
+          setFormData({
+            title: item.title,
+            type: item.type,
+            uscc: item.uscc,
+            company_address: item.company_address,
+            company_phone: item.company_phone,
+            bank_name: item.bank_name,
+            bank_account: item.bank_account,
+            email: item.email,
+          })
+          break
+        } else {
+          setFormData((prev) => ({ ...prev, type: e.target.value }));
+        }
+      }
+    } else {
+      setFormData((prev) => ({ ...prev, type: e.target.value }));
+    }
+
+  };
+
+  const toSetInvoiceTitle = () => {
+
+    setShowInvoiceTitleModal(true);
+  };
+
+  const toApplyInvoice = (_type) => {
+    if(invoiceTitles &&  invoiceTitles.length > 0) {
+      // 全部开票
+      if (_type === 'all') {
+        const invoiceableIds = topups
+          .filter(
+            (item) =>
+              item.status === 'success' &&
+              (item.invoice_status === 'uninvoiced' ||
+                item.invoice_status === 'failed'),
+          )
+          .map((item) => item.id);
+        if (invoiceableIds.length === 0) {
+          Toast.warning({ content: t('无可开票的订单') });
+          return;
+        }
+        setSelectedOrderIds(invoiceableIds);
+        setAllSelected(true);
+      } else {
+        // TODO 过滤掉已经开了票的或正在开票的
+      }
+      setApplyFormData({
+        title_type: invoiceTitles[0]?.type || 'personal',
+        invoice_type: 'general',
+        remark: '',
+      });
+      setShowApplyModal(true);
+    } else {
+      Toast.warning(t('请先完善开票信息'));
+    }
   };
   return (
     <div className='w-full max-w-7xl mx-auto px-2'>
@@ -548,7 +571,7 @@ const Invoice = () => {
           style={{ fontSize: '12px', width: '100px' }}
           type='primary'
           icon={<IconEdit size={16} />}
-          onClick={() => setShowInvoiceTitleModal(true)}
+          onClick={() => toSetInvoiceTitle()}
         >
           {t('开票信息')}
         </Button>
@@ -607,44 +630,16 @@ const Invoice = () => {
                   type='primary'
                   size='small'
                   disabled={selectedOrderIds.length === 0}
-                  onClick={() => {
-                    setApplyFormData({
-                      title_type: invoiceTitle?.type || 'personal',
-                      invoice_type: 'general',
-                      remark: '',
-                    });
-                    setShowApplyModal(true);
-                  }}
+                  onClick={() => toApplyInvoice('batch')}
                 >
-                  {t('批量开票')} ({selectedOrderIds.length})
+                  {t('批量开票')}
                 </Button>
                 <Button
                   type='primary'
                   theme='solid'
                   size='small'
                   style={{ marginLeft: '10px' }}
-                  onClick={() => {
-                    const invoiceableIds = topups
-                      .filter(
-                        (item) =>
-                          item.status === 'success' &&
-                          (item.invoice_status === 'uninvoiced' ||
-                            item.invoice_status === 'failed'),
-                      )
-                      .map((item) => item.id);
-                    if (invoiceableIds.length === 0) {
-                      Toast.warning({ content: t('无可开票的订单') });
-                      return;
-                    }
-                    setSelectedOrderIds(invoiceableIds);
-                    setAllSelected(true);
-                    setApplyFormData({
-                      title_type: invoiceTitle?.type || 'personal',
-                      invoice_type: 'general',
-                      remark: '',
-                    });
-                    setShowApplyModal(true);
-                  }}
+                  onClick={() => toApplyInvoice('all')}
                 >
                   {t('全部开票')}
                 </Button>
@@ -727,7 +722,6 @@ const Invoice = () => {
         }}
         footer={null}
         width={600}
-        centered
       >
         <Form className='space-y-4'>
           <div className='flex items-center gap-2'>
@@ -739,14 +733,11 @@ const Invoice = () => {
             <Radio value='company'>{t('企业')}</Radio>
           </RadioGroup>
           <div className='space-y-3'>
-            <Form.Input
-              field='title'
-              label={
-                <span className='flex items-center gap-1'>
-                  {t('发票抬头')}
-                  <span style={{ color: '#d93026' }}>*</span>
-                </span>
-              }
+            <div className='flex items-center gap-2'>
+              <Text strong>{t('发票抬头')}</Text>
+              <span style={{ color: '#d93026' }}>*</span>
+            </div>
+            <Input
               placeholder={t('请填写发票抬头')}
               value={formData.title}
               onChange={(value) =>
@@ -756,21 +747,22 @@ const Invoice = () => {
 
             {formData.type === 'company' && (
               <>
-                <Form.Input
+                <div className='flex items-center gap-2'>
+                  <Text strong>{t('纳税人识别号')}</Text>
+                  <span style={{ color: '#d93026' }}>*</span>
+                </div>
+                <Input
                   field='uscc'
-                  label={
-                    <span className='flex items-center gap-1'>
-                      {t('纳税人识别号')}
-                      <span style={{ color: '#d93026' }}>*</span>
-                    </span>
-                  }
                   placeholder={t('请填写纳税人识别号')}
                   value={formData.uscc}
                   onChange={(value) =>
                     setFormData((prev) => ({ ...prev, uscc: value }))
                   }
                 />
-                <Form.Input
+                <div className='flex items-center gap-2'>
+                  <Text strong>{t('公司地址')}</Text>
+                </div>
+                <Input
                   field='company_address'
                   label={t('公司地址')}
                   placeholder={t('请填写公司地址')}
@@ -779,27 +771,33 @@ const Invoice = () => {
                     setFormData((prev) => ({ ...prev, company_address: value }))
                   }
                 />
-                <Form.Input
+                <div className='flex items-center gap-2'>
+                  <Text strong>{t('公司电话')}</Text>
+                </div>
+                <Input
                   field='company_phone'
-                  label={t('公司电话')}
                   placeholder={t('请填写公司电话')}
                   value={formData.company_phone}
                   onChange={(value) =>
                     setFormData((prev) => ({ ...prev, company_phone: value }))
                   }
                 />
-                <Form.Input
+                <div className='flex items-center gap-2'>
+                  <Text strong>{t('开户银行')}</Text>
+                </div>
+                <Input
                   field='bank_name'
-                  label={t('开户银行')}
                   placeholder={t('请填写开户银行')}
                   value={formData.bank_name}
                   onChange={(value) =>
                     setFormData((prev) => ({ ...prev, bank_name: value }))
                   }
                 />
-                <Form.Input
+                <div className='flex items-center gap-2'>
+                  <Text strong>{t('银行账户')}</Text>
+                </div>
+                <Input
                   field='bank_account'
-                  label={t('银行账户')}
                   placeholder={t('请填写银行账户')}
                   value={formData.bank_account}
                   onChange={(value) =>
@@ -809,14 +807,11 @@ const Invoice = () => {
               </>
             )}
 
-            <Form.Input
+            <div className='flex items-center gap-2'>
+              <Text strong>{t('接收邮箱')}</Text>
+            </div>
+            <Input
               field='email'
-              label={
-                <span className='flex items-center gap-1'>
-                  {t('接收邮箱')}
-                  <span style={{ color: '#d93026' }}>*</span>
-                </span>
-              }
               placeholder={t('请填写接收邮箱')}
               value={formData.email}
               onChange={(value) =>
@@ -932,7 +927,12 @@ const Invoice = () => {
               }
             >
               <Radio value='general'>{t('增值税普通发票')}</Radio>
-              <Radio value='special'>{t('增值税专用发票')}</Radio>
+              <Radio
+                value='special'
+                disabled={applyFormData.title_type === 'personal'}
+              >
+                {t('增值税专用发票')}
+              </Radio>
             </RadioGroup>
 
             <div>
@@ -960,7 +960,10 @@ const Invoice = () => {
             </span>
           </div>
 
-          <div className='flex justify-end gap-3 mt-6' style={{ marginBottom: '20px' }}>
+          <div
+            className='flex justify-end gap-3 mt-6'
+            style={{ marginBottom: '20px' }}
+          >
             <Button onClick={() => setShowApplyModal(false)}>
               {t('取消')}
             </Button>

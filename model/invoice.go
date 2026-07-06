@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"time"
 
 	"gorm.io/gorm"
@@ -38,6 +39,28 @@ type InvoiceTitle struct {
 	DeletedAt      gorm.DeletedAt `gorm:"index"`
 }
 
+func (o *InvoiceTitle) String() string {
+	bytes, _ := json.Marshal(o)
+	return string(bytes)
+}
+
+func (o *InvoiceTitle) ToMap() map[string]interface{} {
+	dic := map[string]interface{}{
+		"id":              o.Id,
+		"user_id":         o.UserId,
+		"type":            o.InvoiceType,
+		"title":           o.Title,
+		"uscc":            o.CompanyUSCC,
+		"company_address": o.CompanyAddress,
+		"company_phone":   o.CompanyPhone,
+		"bank_name":       o.BankName,
+		"bank_account":    o.BankAccount,
+		"email":           o.Email,
+		"created_at":      o.CreatedAt.Format("2006-01-02 15:04:05"),
+	}
+	return dic
+}
+
 func (InvoiceTitle) TableName() string {
 	return "invoice_title"
 }
@@ -55,7 +78,7 @@ type InvoiceRecord struct {
 	InvoiceTitleId   int       `json:"invoice_title_id" gorm:"index;not null"`
 	InvoiceTitleInfo string    `json:"invoice_title_info" gorm:"type:varchar(1000)"` // 发票抬头信息, 存储json数据, 防止用户发票抬头信息修改,而没有对上开票记录
 	OrderIds         string    `json:"order_ids" gorm:"type:varchar(500)"`           // 订单id列表, 逗号分割 1,2,3
-	Amount           int       `json:"amount" gorm:"index;not null"`                 // 开票金额
+	Amount           float64   `json:"amount" gorm:"index;not null"`                 // 开票金额
 	CreatedAt        time.Time `gorm:"autoCreateTime"`
 	UpdatedAt        time.Time `gorm:"autoUpdateTime"`
 	Status           string    `json:"status" gorm:"type:varchar(20)"`       // 开票状态 pending/completed/failed
@@ -67,4 +90,25 @@ type InvoiceRecord struct {
 
 func (InvoiceRecord) TableName() string {
 	return "invoice_record"
+}
+
+func (o *InvoiceRecord) ToMap() (map[string]interface{}, error) {
+	invoiceTitleInfo := make(map[string]interface{})
+	err := json.Unmarshal([]byte(o.InvoiceTitleInfo), &invoiceTitleInfo)
+	if err != nil {
+		return nil, err
+	}
+	dic := map[string]interface{}{
+		"id":                 o.Id,
+		"user_id":            o.UserId,
+		"invoice_title_id":   o.InvoiceTitleId,
+		"invoice_title_info": o.InvoiceTitleInfo,
+		"order_ids":          o.OrderIds,
+		"amount":             o.Amount,
+		"status":             o.Status,
+		"invoice_type":       o.InvoiceType,
+		"invoice_url":        o.InvoiceUrl,
+		"created_at":         o.CreatedAt.Format("2006-01-02 15:04:05"),
+	}
+	return dic, nil
 }
