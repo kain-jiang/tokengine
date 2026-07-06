@@ -21,7 +21,7 @@ import React, { lazy, Suspense, useContext, useMemo } from 'react';
 import { Route, Routes, useLocation, useParams, Navigate } from 'react-router-dom';
 import Loading from './components/common/ui/Loading';
 import User from './pages/User';
-import { AuthRedirect, PrivateRoute, AdminRoute } from './helpers';
+import { AuthRedirect, PrivateRoute, AdminRoute, isFinanceAdmin } from './helpers';
 import RegisterForm from './components/auth/RegisterForm';
 import LoginForm from './components/auth/LoginForm';
 import PhoneLoginForm from './components/auth/PhoneLoginForm';
@@ -357,53 +357,56 @@ function App() {
         />
         <Route
           path='/console/billing'
-  element={
-    <PrivateRoute>
-      <Suspense fallback={<Loading></Loading>} key={location.pathname}>
-        <MyPlanBilling />
-      </Suspense>
-    </PrivateRoute>
-  }
-/>
-        <Route
-          path='/console/finance'
           element={
             <PrivateRoute>
-              <ErrorBoundary key='finance-layout'><FinanceLayout /></ErrorBoundary>
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <MyPlanBilling />
+              </Suspense>
             </PrivateRoute>
           }
-        >
+        />
+        {/* 财务模块路由 - 仅财务运营人员可访问 */}
+        {isFinanceAdmin() && (
           <Route
-            index
+            path='/console/finance'
             element={
-              <ErrorBoundary key='finance-dashboard'><FinanceDashboard /></ErrorBoundary>
+              <PrivateRoute>
+                <ErrorBoundary key='finance-layout'><FinanceLayout /></ErrorBoundary>
+              </PrivateRoute>
             }
-          />
-          <Route
-            path='orders'
-            element={
-              <ErrorBoundary key='finance-orders'><FinanceOrders /></ErrorBoundary>
-            }
-          />
-          <Route
-            path='revenue'
-            element={
-              <ErrorBoundary key='finance-revenue'><FinanceRevenue /></ErrorBoundary>
-            }
-          />
-          <Route
-            path='invoices'
-            element={
-              <ErrorBoundary key='finance-invoices'><FinanceInvoices /></ErrorBoundary>
-            }
-          />
-          <Route
-            path='supplier'
-            element={
-              <ErrorBoundary key='finance-supplier'><FinanceSupplier /></ErrorBoundary>
-            }
-          />
-        </Route>
+          >
+            <Route
+              index
+              element={
+                <ErrorBoundary key='finance-dashboard'><FinanceDashboard /></ErrorBoundary>
+              }
+            />
+            <Route
+              path='orders'
+              element={
+                <ErrorBoundary key='finance-orders'><FinanceOrders /></ErrorBoundary>
+              }
+            />
+            <Route
+              path='revenue'
+              element={
+                <ErrorBoundary key='finance-revenue'><FinanceRevenue /></ErrorBoundary>
+              }
+            />
+            <Route
+              path='invoices'
+              element={
+                <ErrorBoundary key='finance-invoices'><FinanceInvoices /></ErrorBoundary>
+              }
+            />
+            <Route
+              path='supplier'
+              element={
+                <ErrorBoundary key='finance-supplier'><FinanceSupplier /></ErrorBoundary>
+              }
+            />
+          </Route>
+        )}
         <Route
           path='/console/log'
           element={

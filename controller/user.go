@@ -446,7 +446,7 @@ func GetSelf(c *gin.Context) {
 	user.Remark = ""
 
 	// 计算用户权限信息
-	permissions := calculateUserPermissions(userRole)
+	permissions := calculateUserPermissions(id, userRole)
 
 	// 获取用户设置并提取sidebar_modules
 	userSetting := user.GetSetting()
@@ -490,8 +490,11 @@ func GetSelf(c *gin.Context) {
 }
 
 // 计算用户权限的辅助函数
-func calculateUserPermissions(userRole int) map[string]interface{} {
+func calculateUserPermissions(userId int, userRole int) map[string]interface{} {
 	permissions := map[string]interface{}{}
+
+	// 检查是否是财务运营人员
+	isFinanceAdmin := model.IsFinanceAdmin(userId)
 
 	// 根据用户角色计算权限
 	if userRole == common.RoleRootUser {
@@ -511,6 +514,23 @@ func calculateUserPermissions(userRole int) map[string]interface{} {
 		permissions["sidebar_settings"] = true
 		permissions["sidebar_modules"] = map[string]interface{}{
 			"admin": false, // 普通用户不能访问管理员区域
+		}
+	}
+
+	// 财务模块权限：仅财务运营人员（admin用户和张籽琪）可访问
+	if isFinanceAdmin {
+		permissions["finance_modules"] = map[string]interface{}{
+			"enabled":  true,
+			"finance":  true,
+			"orders":   true,
+			"revenue":  true,
+			"invoices": true,
+			"supplier": true,
+		}
+	} else {
+		// 非财务运营人员：隐藏整个财务模块
+		permissions["finance_modules"] = map[string]interface{}{
+			"enabled": false,
 		}
 	}
 
