@@ -215,6 +215,11 @@ func Register(c *gin.Context) {
 			return
 		}
 	}
+	if *user.TelePhone == "" || len(*user.TelePhone) != 11 {
+		common.ApiErrorMsg(c, "请填写11位的手机号")
+		return
+	}
+
 	// 验证短信验证码
 	if !common.VerifySMSCodeWithKey(*user.TelePhone, user.VerificationCode) {
 		common.ApiErrorMsg(c, i18n.MsgUserVerificationCodeError)

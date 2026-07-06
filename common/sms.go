@@ -23,12 +23,12 @@ var (
 
 func initSMSConfig() {
 	SMSProvider = GetEnvOrDefaultString("SMS_PROVIDER", "aliyun")
-	SMSAccessKeyId = os.Getenv("SMS_ACCESS_KEY_ID")
-	SMSAccessKeySecret = os.Getenv("SMS_ACCESS_KEY_SECRET")
+	SMSAccessKeyId = os.Getenv("ACCESS_KEY_ID")
+	SMSAccessKeySecret = os.Getenv("ACCESS_KEY_SECRET")
 	SMSSignName = GetEnvOrDefaultString("SMS_SIGN_NAME", "")
 	SMSTemplateCode = GetEnvOrDefaultString("SMS_TEMPLATE_CODE", "")
-	SMSRegionId = GetEnvOrDefaultString("SMS_REGION_ID", "cn-hangzhou")
-	SMSEndpoint = GetEnvOrDefaultString("SMS_ENDPOINT", "dysmsapi.aliyuncs.com")
+	SMSRegionId = GetEnvOrDefaultString("REGION_ID", "cn-hangzhou")
+	SMSEndpoint = GetEnvOrDefaultString("ENDPOINT", "dysmsapi.aliyuncs.com")
 }
 
 func createAliyunSMSClient() (*dysmsapi20170525.Client, error) {
