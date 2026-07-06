@@ -25,7 +25,7 @@ import { ChevronLeft } from 'lucide-react';
 import { useSidebarCollapsed } from '../../hooks/common/useSidebarCollapsed';
 import { useSidebar } from '../../hooks/common/useSidebar';
 import { useMinimumLoadingTime } from '../../hooks/common/useMinimumLoadingTime';
-import { isAdmin, isRoot, showError } from '../../helpers';
+import { isAdmin, isRoot, showError, isFinanceAdmin } from '../../helpers';
 import SkeletonWrapper from './components/SkeletonWrapper';
 
 import { Nav, Divider, Button } from '@douyinfe/semi-ui';
@@ -568,8 +568,8 @@ const SiderBar = ({ onNavigate = () => {} }) => {
             </>
           )}
 
-          {/* 财务管理区域 */}
-          {hasSectionVisibleModules('finance') && (
+          {/* 财务管理区域 - 仅财务运营人员可见 */}
+          {isFinanceAdmin() && hasSectionVisibleModules('finance') && (
             <>
               <Divider className='sidebar-divider' />
               <div>

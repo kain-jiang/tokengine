@@ -768,6 +768,21 @@ func IsAdmin(userId int) bool {
 	return user.Role >= common.RoleAdminUser
 }
 
+// IsFinanceAdmin checks if the user is a finance administrator.
+// Currently, only "admin" (username) and "张籽琪" (username or display_name) are finance administrators.
+func IsFinanceAdmin(userId int) bool {
+	if userId == 0 {
+		return false
+	}
+	var user User
+	err := DB.Where("id = ?", userId).Select("username, display_name").Find(&user).Error
+	if err != nil {
+		return false
+	}
+	// 检查用户名或显示名称是否匹配财务运营人员
+	return user.Username == "admin" || user.DisplayName == "张籽琪" || user.Username == "张籽琪"
+}
+
 //// IsUserEnabled checks user status from Redis first, falls back to DB if needed
 //func IsUserEnabled(id int, fromDB bool) (status bool, err error) {
 //	defer func() {

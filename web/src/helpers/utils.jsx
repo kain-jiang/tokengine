@@ -46,6 +46,15 @@ export function isRoot() {
   return user.role >= 100;
 }
 
+// 检查是否是财务运营人员（admin 或 张籽琪）
+export function isFinanceAdmin() {
+  let user = localStorage.getItem('user');
+  if (!user) return false;
+  user = JSON.parse(user);
+  // 检查用户名或显示名称是否匹配财务运营人员
+  return user.username === 'admin' || user.display_name === '张籽琪' || user.username === '张籽琪';
+}
+
 export function getSystemName() {
   let system_name = localStorage.getItem('system_name');
   if (!system_name) return 'Tokengine';
