@@ -427,10 +427,9 @@ const Invoice = () => {
   const invoiceColumns = useMemo(
     () => [
       {
-        title: t('开票金额'),
-        dataIndex: 'amount',
-        key: 'amount',
-        render: (money) => <Text type='danger'>¥{money.toFixed(2)}</Text>,
+        title: t('序号'),
+        key: 'index',
+        render: (_, __, index) => <Text>{(invoicePage - 1) * invoicePageSize + index + 1}</Text>,
       },
       {
         title: t('发票抬头'),
@@ -452,6 +451,12 @@ const Invoice = () => {
         render: renderInvoiceType,
       },
       {
+        title: t('开票金额'),
+        dataIndex: 'amount',
+        key: 'amount',
+        render: (money) => <Text type='danger'>¥{money.toFixed(2)}</Text>,
+      },
+      {
         title: t('状态'),
         dataIndex: 'status',
         key: 'status',
@@ -468,22 +473,22 @@ const Invoice = () => {
         key: 'action',
         render: (_, record) => (
           <Space>
-            {record.status === 'completed' && record.invoice_url && (
-              <>
-                <Button
-                  size='small'
-                  onClick={() => handleViewInvoice(record)}
-                >
-                  {t('查看')}
-                </Button>
-                <Button
-                  size='small'
-                  onClick={() => handleDownloadInvoice(record)}
-                >
-                  {t('下载')}
-                </Button>
-              </>
-            )}
+            <>
+              <Button
+                size='small'
+                onClick={() => handleViewInvoice(record)}
+                disabled={record.status !== 'completed'}
+              >
+                {t('查看')}
+              </Button>
+              <Button
+                size='small'
+                onClick={() => handleDownloadInvoice(record)}
+                disabled={record.status !== 'completed'}
+              >
+                {t('下载')}
+              </Button>
+            </>
           </Space>
         ),
       },
@@ -541,6 +546,20 @@ const Invoice = () => {
         setAllSelected(true);
       } else {
         // TODO 过滤掉已经开了票的或正在开票的
+        const invoiceableIds = topups
+          .filter(
+            (item) =>
+              selectedOrderIds.includes(item.id) &&
+              item.status === 'success' &&
+              (item.invoice_status === 'uninvoiced' ||
+                item.invoice_status === 'failed'),
+          )
+          .map((item) => item.id);
+        if (invoiceableIds.length === 0) {
+          Toast.warning({ content: t('所选订单无可开票的订单') });
+          return;
+        }
+        setSelectedOrderIds(invoiceableIds);
       }
       setApplyFormData({
         title_type: invoiceTitles[0]?.type || 'personal',
