@@ -1,6 +1,7 @@
 -- ============================================
 -- 供应商结算体系数据库迁移脚本
 -- 创建时间: 2026-06-30
+-- 更新时间: 2026-07-07
 -- 说明: 创建供应商结算体系所需的数据库表
 -- ============================================
 
@@ -148,6 +149,51 @@ CREATE TABLE IF NOT EXISTS supplier_recharge (
 CREATE INDEX IF NOT EXISTS idx_supplier_recharge_vendor ON supplier_recharge(vendor_id);
 CREATE INDEX IF NOT EXISTS idx_supplier_recharge_status ON supplier_recharge(status);
 CREATE INDEX IF NOT EXISTS idx_supplier_recharge_create_time ON supplier_recharge(create_time);
+
+-- ============================================
+-- 6. 供应商返点记录表 (supplier_rebate)
+-- 存储供应商返点记录（token返点或金额返点）
+-- ============================================
+CREATE TABLE IF NOT EXISTS supplier_rebate (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vendor_id INTEGER NOT NULL,
+    vendor_name VARCHAR(200),
+    period VARCHAR(20),
+    rebate_type VARCHAR(50),
+    rebate_amount DECIMAL(12,4),
+    rebate_tokens BIGINT DEFAULT 0,
+    status VARCHAR(20) DEFAULT 'pending',
+    source VARCHAR(50),
+    remark VARCHAR(500),
+    create_time BIGINT,
+    update_time BIGINT
+);
+
+CREATE INDEX IF NOT EXISTS idx_supplier_rebate_vendor ON supplier_rebate(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_rebate_period ON supplier_rebate(period);
+CREATE INDEX IF NOT EXISTS idx_supplier_rebate_status ON supplier_rebate(status);
+CREATE INDEX IF NOT EXISTS idx_supplier_rebate_create_time ON supplier_rebate(create_time);
+
+-- ============================================
+-- 7. 供应商返点接口配置表 (supplier_rebate_config)
+-- 存储供应商返点数据自动同步的API配置
+-- ============================================
+CREATE TABLE IF NOT EXISTS supplier_rebate_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vendor_id INTEGER NOT NULL UNIQUE,
+    vendor_name VARCHAR(200),
+    api_url VARCHAR(500),
+    api_key VARCHAR(200),
+    api_secret VARCHAR(200),
+    sync_enabled INTEGER DEFAULT 0,
+    sync_cron VARCHAR(50),
+    status VARCHAR(20) DEFAULT 'active',
+    create_time BIGINT,
+    update_time BIGINT
+);
+
+CREATE INDEX IF NOT EXISTS idx_supplier_rebate_config_vendor ON supplier_rebate_config(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_supplier_rebate_config_status ON supplier_rebate_config(status);
 
 -- ============================================
 -- PostgreSQL 版本（如果使用 PostgreSQL）

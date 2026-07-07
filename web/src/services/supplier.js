@@ -181,3 +181,111 @@ export const exportSupplierRecharges = async (params = {}) => {
   const res = await API.get('/api/supplier/recharge/export', { params });
   return res.data;
 };
+
+// ============================================
+// 供应商结算聚合查询 API（增强功能）
+// ============================================
+
+// 获取供应商结算聚合列表
+export const fetchSupplierSettlementAggregation = async (params = {}) => {
+  const res = await API.get('/api/supplier/settlement/aggregation', { params });
+  return res.data;
+};
+
+// 手动创建结算单
+export const createManualSettlement = async (data) => {
+  const res = await API.post('/api/supplier/settlement/manual', data);
+  return res.data;
+};
+
+// 导出供应商结算列表
+export const exportSupplierSettlementList = async (params = {}) => {
+  const res = await API.get('/api/supplier/settlement/export', { params });
+  return res.data;
+};
+
+// ============================================
+// 供应商返点管理 API
+// ============================================
+
+// 获取返点列表
+export const fetchRebateList = async (params = {}) => {
+  const res = await API.get('/api/supplier/rebates', { params });
+  return res.data;
+};
+
+// 获取返点统计
+export const getRebateStatistics = async (params = {}) => {
+  const res = await API.get('/api/supplier/rebates/statistics', { params });
+  return res.data;
+};
+
+// 获取返点详情
+export const getRebateById = async (id) => {
+  const res = await API.get(`/api/supplier/rebates/${id}`);
+  return res.data;
+};
+
+// 手动创建返点记录
+export const createManualRebate = async (data) => {
+  const res = await API.post('/api/supplier/rebates', data);
+  return res.data;
+};
+
+// 更新返点记录
+export const updateRebate = async (id, data) => {
+  const res = await API.put(`/api/supplier/rebates/${id}`, data);
+  return res.data;
+};
+
+// 更新返点状态
+export const updateRebateStatus = async (id, status, remark) => {
+  const res = await API.put(`/api/supplier/rebates/${id}/status`, { status, remark });
+  return res.data;
+};
+
+// 删除返点记录
+export const deleteRebate = async (id) => {
+  const res = await API.delete(`/api/supplier/rebates/${id}`);
+  return res.data;
+};
+
+// 导出返点列表
+export const exportRebateList = async (params = {}) => {
+  const res = await API.get('/api/supplier/rebates/export', { params });
+  return res.data;
+};
+
+// ============================================
+// 返点接口配置管理 API
+// ============================================
+
+// 获取返点配置列表
+export const fetchRebateConfigList = async (params = {}) => {
+  const res = await API.get('/api/supplier/rebate-configs', { params });
+  return res.data;
+};
+
+// 创建返点配置
+export const createRebateConfig = async (data) => {
+  const res = await API.post('/api/supplier/rebate-configs', data);
+  return res.data;
+};
+
+// 更新返点配置
+export const updateRebateConfig = async (id, data) => {
+  const res = await API.put(`/api/supplier/rebate-configs/${id}`, data);
+  return res.data;
+};
+
+// 删除返点配置
+export const deleteRebateConfig = async (id) => {
+  const res = await API.delete(`/api/supplier/rebate-configs/${id}`);
+  return res.data;
+};
+
+// 切换返点配置启用状态
+export const toggleRebateConfig = async (id, syncEnabled) => {
+  const res = await API.put(`/api/supplier/rebate-configs/${id}/toggle`, { sync_enabled: syncEnabled });
+  return res.data;
+};

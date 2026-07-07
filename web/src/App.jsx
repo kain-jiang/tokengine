@@ -49,6 +49,7 @@ import FinanceRevenue from './pages/Finance/Revenue';
 import FinanceInvoices from './pages/Finance/Invoices';
 import FinanceReconciliation from './pages/Finance/Reconciliation';
 import FinanceSupplier from './pages/Finance/Supplier';
+import FinanceSupplierSettlement from './pages/Finance/SupplierSettlement';
 
 // Debug: Test if all finance imports are valid
 console.log('[App.jsx] FinanceReconciliation:', typeof FinanceReconciliation, FinanceReconciliation?.name);
@@ -401,9 +402,9 @@ function App() {
               }
             />
             <Route
-              path='supplier'
+              path='supplier-settlement'
               element={
-                <ErrorBoundary key='finance-supplier'><FinanceSupplier /></ErrorBoundary>
+                <ErrorBoundary key='finance-supplier-settlement'><FinanceSupplierSettlement /></ErrorBoundary>
               }
             />
           </Route>
