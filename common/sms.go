@@ -28,7 +28,7 @@ func initSMSConfig() {
 	SMSSignName = GetEnvOrDefaultString("SMS_SIGN_NAME", "")
 	SMSTemplateCode = GetEnvOrDefaultString("SMS_TEMPLATE_CODE", "")
 	SMSRegionId = GetEnvOrDefaultString("Ali_REGION_ID", "cn-hangzhou")
-	SMSEndpoint = GetEnvOrDefaultString("Ali_ENDPOINT", "dysmsapi.aliyuncs.com")
+	SMSEndpoint = GetEnvOrDefaultString("Ali_SMS_ENDPOINT", "dysmsapi.aliyuncs.com")
 }
 
 func createAliyunSMSClient() (*dysmsapi20170525.Client, error) {
