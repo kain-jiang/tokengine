@@ -175,7 +175,7 @@ const Invoice = () => {
           });
         }
       } else {
-        Toast.error({ content: message || t('加载失败') });
+        console.warn({ content: message || t('加载失败') });
       }
     } catch (error) {
       Toast.error({ content: t('加载开票信息失败') });

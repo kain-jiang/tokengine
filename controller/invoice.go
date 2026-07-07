@@ -38,11 +38,7 @@ func GetInvoiceTitle(c *gin.Context) {
 	titles := make([]model.InvoiceTitle, 0)
 	err := model.DB.Where("user_id = ?", userId).First(&titles).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			common.ApiErrorMsg(c, "record not found")
-			return
-		}
-		common.ApiErrorMsg(c, "未查询到用户开票记录")
+		common.ApiErrorMsg(c, "用户暂未设置发票抬头")
 		return
 	}
 	list := make([]map[string]any, 0)
