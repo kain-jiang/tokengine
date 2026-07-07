@@ -259,6 +259,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
     return filteredItems;
   }, [isAdmin(), isRoot(), t, isModuleVisible]);
 
+
   const chatMenuItems = useMemo(() => {
     const items = [
       {
@@ -544,7 +545,16 @@ const SiderBar = ({ onNavigate = () => {} }) => {
           }}
           openKeys={openedKeys}
           onOpenChange={(data) => {
-            setOpenedKeys(data.openKeys);
+            // 底部菜单手风琴效果：只允许 finance 和 admin 同时只有一个展开
+            const bottomMenuKeys = ['finance', 'admin'];
+            const currentOpenKeys = data.openKeys?.filter((k) => bottomMenuKeys.includes(k)) || [];
+            
+            if (currentOpenKeys.length > 1) {
+              // 只保留最后一个展开的
+              setOpenedKeys([currentOpenKeys[currentOpenKeys.length - 1]]);
+            } else {
+              setOpenedKeys(data.openKeys);
+            }
           }}
         >
           {/* 聊天区域 */}
@@ -583,29 +593,38 @@ const SiderBar = ({ onNavigate = () => {} }) => {
             </>
           )}
 
-       {/* 财务管理区域 - 仅财务运营人员可见 */}
-          {isFinanceAdmin() && hasSectionVisibleModules('finance') && (
+          {/* 底部折叠菜单 - 财务 + 管理员 */}
+          {((isFinanceAdmin() && hasSectionVisibleModules('finance')) || (isAdmin() && hasSectionVisibleModules('admin'))) && (
             <>
               <Divider className='sidebar-divider' />
-              <div>
-                {!collapsed && (
-                  <div className='sidebar-group-label'>{t('财务管理')}</div>
-                )}
-                {financeItems.map((item) => renderNavItem(item))}
-              </div>
-            </>
-          )}
-          
-          {/* 管理员区域 - 只在管理员时显示且配置允许时显示 */}
-          {isAdmin() && hasSectionVisibleModules('admin') && (
-            <>
-              <Divider className='sidebar-divider' />
-              <div>
-                {!collapsed && (
-                  <div className='sidebar-group-label'>{t('管理员')}</div>
-                )}
-                {adminItems.map((item) => renderNavItem(item))}
-              </div>
+              {/* 财务模块折叠菜单 */}
+              {isFinanceAdmin() && hasSectionVisibleModules('finance') && (
+                <Nav.Sub
+                  key='finance'
+                  itemKey='finance'
+                  text={
+                    <span className='truncate font-medium text-sm'>
+                      {t('财务运营')}
+                    </span>
+                  }
+                >
+                  {financeItems.map((item) => renderNavItem(item))}
+                </Nav.Sub>
+              )}
+              {/* 管理员模块折叠菜单 */}
+              {isAdmin() && hasSectionVisibleModules('admin') && (
+                <Nav.Sub
+                  key='admin'
+                  itemKey='admin'
+                  text={
+                    <span className='truncate font-medium text-sm'>
+                      {t('管理员')}
+                    </span>
+                  }
+                >
+                  {adminItems.map((item) => renderNavItem(item))}
+                </Nav.Sub>
+              )}
             </>
           )}
         </Nav>
@@ -614,36 +633,36 @@ const SiderBar = ({ onNavigate = () => {} }) => {
       {/* 底部折叠按钮 */}
       <div className='sidebar-collapse-button'>
         <SkeletonWrapper
-          loading={showSkeleton}
-          type='button'
-          width={collapsed ? 36 : 156}
-          height={24}
-          className='w-full'
+        loading={showSkeleton}
+        type='button'
+        width={collapsed ? 36 : 156}
+        height={24}
+        className='w-full'
+      >
+        <Button
+          theme='outline'
+          type='tertiary'
+          size='small'
+          icon={
+            <ChevronLeft
+              size={16}
+              strokeWidth={2.5}
+              color='var(--semi-color-text-2)'
+              style={{
+                transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)',
+              }}
+            />
+          }
+          onClick={toggleCollapsed}
+          icononly={collapsed}
+          style={
+            collapsed
+              ? { width: 36, height: 24, padding: 0 }
+              : { padding: '4px 12px', width: '100%' }
+          }
         >
-          <Button
-            theme='outline'
-            type='tertiary'
-            size='small'
-            icon={
-              <ChevronLeft
-                size={16}
-                strokeWidth={2.5}
-                color='var(--semi-color-text-2)'
-                style={{
-                  transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)',
-                }}
-              />
-            }
-            onClick={toggleCollapsed}
-            icononly={collapsed}
-            style={
-              collapsed
-                ? { width: 36, height: 24, padding: 0 }
-                : { padding: '4px 12px', width: '100%' }
-            }
-          >
-            {!collapsed ? t('收起侧边栏') : null}
-          </Button>
+          {!collapsed ? t('收起侧边栏') : null}
+        </Button>
         </SkeletonWrapper>
       </div>
     </div>

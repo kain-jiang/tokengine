@@ -347,6 +347,30 @@ code {
   padding-top: 12px;
 }
 
+/* 底部折叠菜单区域 */
+.sidebar-bottom-menus {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: var(--semi-color-bg-0);
+}
+
+/* 底部单个折叠菜单 */
+.sidebar-bottom-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* 底部折叠菜单展开内容 */
+.sidebar-bottom-menu-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0 4px 12px;
+}
+
 @media (max-width: 767px) {
   .sidebar-container {
     background: var(--semi-color-bg-1);

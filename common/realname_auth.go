@@ -20,10 +20,10 @@ var (
 )
 
 func initRealNameAuthConfig() {
-	RealNameAuthAccessKeyId = os.Getenv("ACCESS_KEY_ID")
-	RealNameAuthAccessKeySecret = os.Getenv("ACCESS_KEY_SECRET")
-	RealNameAuthRegionId = GetEnvOrDefaultString("REGION_ID", "cn-hangzhou")
-	RealNameAuthEndpoint = GetEnvOrDefaultString("xxx", "cloudauth.aliyuncs.com")
+	RealNameAuthAccessKeyId = os.Getenv("Ali_ACCESS_KEY_ID")
+	RealNameAuthAccessKeySecret = os.Getenv("Ali_ACCESS_KEY_SECRET")
+	RealNameAuthRegionId = GetEnvOrDefaultString("Ali_REGION_ID", "cn-hangzhou")
+	RealNameAuthEndpoint = GetEnvOrDefaultString("Ali_ENDPOINT", "cloudauth.aliyuncs.com")
 }
 
 func createRealNameAuthClient() (*cloudauth20190307.Client, error) {
