@@ -68,7 +68,7 @@ const getMenuItems = (isAdmin, t) => {
   // 供应商结算仅管理员可见
   if (isAdmin) {
     items.push({
-      key: '/console/finance/supplier',
+      key: '/console/finance/supplier-settlement',
       text: t('供应商结算'),
       icon: <IconMoneyExchangeStroked />,
     });
@@ -83,7 +83,7 @@ const pageTitles = {
   '/console/finance/orders': '订单管理',
   '/console/finance/revenue': '营收分析',
   '/console/finance/invoices': '发票管理',
-  '/console/finance/supplier': '供应商结算',
+  '/console/finance/supplier-settlement': '供应商结算',
 };
 
 // 页面描述映射
@@ -92,7 +92,7 @@ const pageDescriptions = {
   '/console/finance/orders': '管理充值和订阅订单',
   '/console/finance/revenue': '查看营收趋势和详细报表',
   '/console/finance/invoices': '管理发票申请和开具状态',
-  '/console/finance/supplier': '管理供应商费率配置和结算单',
+  '/console/finance/supplier-settlement': '管理供应商结算和返点记录',
 };
 
 // 渐变色配置
@@ -101,7 +101,7 @@ const gradientColors = {
   '/console/finance/orders': 'linear-gradient(135deg, #1890ff 0%, #36cfc9 100%)',
   '/console/finance/revenue': 'linear-gradient(135deg, #722ed1 0%, #b37feb 100%)',
   '/console/finance/invoices': 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-  '/console/finance/supplier': 'linear-gradient(135deg, #fa8c16 0%, #ffd666 100%)',
+  '/console/finance/supplier-settlement': 'linear-gradient(135deg, #fa8c16 0%, #ffd666 100%)',
 };
 
 export default function FinanceLayout() {

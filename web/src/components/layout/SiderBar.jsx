@@ -58,7 +58,7 @@ const routerMap = {
   orders: '/console/finance/orders',
   revenue: '/console/finance/revenue',
   invoices: '/console/finance/invoices',
-  supplier: '/console/finance/supplier',
+  supplier: '/console/finance/supplier-settlement',
 };
 
 const SiderBar = ({ onNavigate = () => {} }) => {
@@ -163,7 +163,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
       {
         text: t('供应商结算'),
         itemKey: 'supplier',
-        to: '/console/finance/supplier',
+        to: '/console/finance/supplier-settlement',
       },
     ];
 

@@ -488,6 +488,12 @@ func migrateDBFast() error {
 		{&Invoice{}, "Invoice"},
 		{&Reconciliation{}, "Reconciliation"},
 		{&RevenueReport{}, "RevenueReport"},
+		{&SupplierSettlement{}, "SupplierSettlement"},
+		{&SupplierSettlementDetail{}, "SupplierSettlementDetail"},
+		{&SupplierPricing{}, "SupplierPricing"},
+		{&SupplierAccount{}, "SupplierAccount"},
+		{&SupplierRebate{}, "SupplierRebate"},
+		{&SupplierRebateConfig{}, "SupplierRebateConfig"},
 	}
 	// 动态计算migration数量，确保errChan缓冲区足够大
 	errChan := make(chan error, len(migrations))

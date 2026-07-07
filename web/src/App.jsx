@@ -39,6 +39,7 @@ import Token from './pages/Token';
 import TokenPlan from './pages/TokenPlan';
 import Redemption from './pages/Redemption';
 import TopUp from './pages/TopUp';
+import MyPlan from './pages/MyPlan';
 import MyPlanBilling from './pages/MyPlanBilling';
 import Finance from './pages/Finance';
 import FinanceLayout from './pages/Finance/FinanceLayout';
@@ -48,6 +49,7 @@ import FinanceRevenue from './pages/Finance/Revenue';
 import FinanceInvoices from './pages/Finance/Invoices';
 import FinanceReconciliation from './pages/Finance/Reconciliation';
 import FinanceSupplier from './pages/Finance/Supplier';
+import FinanceSupplierSettlement from './pages/Finance/SupplierSettlement';
 
 // Debug: Test if all finance imports are valid
 console.log('[App.jsx] FinanceReconciliation:', typeof FinanceReconciliation, FinanceReconciliation?.name);
@@ -73,7 +75,6 @@ import PersonalSetting from './components/settings/PersonalSetting';
 import RealNameAuthForm from './components/settings/personal/RealNameAuthForm';
 import Setup from './pages/Setup';
 import SetupCheck from './components/layout/SetupCheck';
-import DashboardBoard from './pages/DashboardBoard';
 
 const Home = lazy(() => import('./pages/Home'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -132,15 +133,6 @@ function App() {
           }
         />
         <Route path='/forbidden' element={<Forbidden />} />
-        {/* 大屏数据中心 - 管理员可见，无侧边栏和导航栏 */}
-        <Route
-          path='/console/dashboard'
-          element={
-            <AdminRoute>
-              <DashboardBoard />
-            </AdminRoute>
-          }
-        />
         <Route
           path='/console/models'
           element={
@@ -356,7 +348,17 @@ function App() {
           }
         />
         <Route
-          path='/console/billing'
+                  path='/console/my-plan'
+                  element={
+                    <PrivateRoute>
+                      <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                        <MyPlan />
+                      </Suspense>
+                    </PrivateRoute>
+                  }
+                />
+                <Route
+                  path='/console/billing'
           element={
             <PrivateRoute>
               <Suspense fallback={<Loading></Loading>} key={location.pathname}>
@@ -400,9 +402,9 @@ function App() {
               }
             />
             <Route
-              path='supplier'
+              path='supplier-settlement'
               element={
-                <ErrorBoundary key='finance-supplier'><FinanceSupplier /></ErrorBoundary>
+                <ErrorBoundary key='finance-supplier-settlement'><FinanceSupplierSettlement /></ErrorBoundary>
               }
             />
           </Route>
