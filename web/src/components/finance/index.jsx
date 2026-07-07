@@ -1006,7 +1006,7 @@ export default function Finance() {
       <Content>
         <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>
           <h2 style={{ marginBottom: 24, fontSize: 24 }}>
-            {t('财务管理')}
+            {t('财务运营')}
           </h2>
           {renderContent()}
         </div>

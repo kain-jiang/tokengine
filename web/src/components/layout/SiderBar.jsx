@@ -570,19 +570,6 @@ const SiderBar = ({ onNavigate = () => {} }) => {
             </>
           )}
 
-          {/* 财务管理区域 - 仅财务运营人员可见 */}
-          {isFinanceAdmin() && hasSectionVisibleModules('finance') && (
-            <>
-              <Divider className='sidebar-divider' />
-              <div>
-                {!collapsed && (
-                  <div className='sidebar-group-label'>{t('财务管理')}</div>
-                )}
-                {financeItems.map((item) => renderNavItem(item))}
-              </div>
-            </>
-          )}
-
           {/* 个人中心区域 */}
           {hasSectionVisibleModules('personal') && (
             <>
@@ -596,6 +583,19 @@ const SiderBar = ({ onNavigate = () => {} }) => {
             </>
           )}
 
+       {/* 财务管理区域 - 仅财务运营人员可见 */}
+          {isFinanceAdmin() && hasSectionVisibleModules('finance') && (
+            <>
+              <Divider className='sidebar-divider' />
+              <div>
+                {!collapsed && (
+                  <div className='sidebar-group-label'>{t('财务管理')}</div>
+                )}
+                {financeItems.map((item) => renderNavItem(item))}
+              </div>
+            </>
+          )}
+          
           {/* 管理员区域 - 只在管理员时显示且配置允许时显示 */}
           {isAdmin() && hasSectionVisibleModules('admin') && (
             <>

@@ -45,26 +45,6 @@ const ModelsFilters = ({
   };
 
   return (
-    <div className='flex flex-col gap-2 w-full'>
-      {/* Channel filter dropdown - client-side filtering */}
-      <div className='w-full md:w-56'>
-        <Select
-          placeholder={t('筛选渠道')}
-          value={channelFilter}
-          onChange={(value) => setChannelFilter(value)}
-          style={{ width: '100%' }}
-          size='small'
-          showClear
-        >
-          <Select.Option value=''>{t('全部渠道')}</Select.Option>
-          {channels.map((ch) => (
-            <Select.Option key={ch.id} value={ch.name}>
-              {ch.name}
-            </Select.Option>
-          ))}
-        </Select>
-      </div>
-
       <Form
         initValues={formInitValues}
         getFormApi={(api) => {
@@ -142,7 +122,6 @@ const ModelsFilters = ({
           </div>
         </div>
       </Form>
-    </div>
   );
 };
 
