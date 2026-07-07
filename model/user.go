@@ -768,6 +768,25 @@ func IsAdmin(userId int) bool {
 	return user.Role >= common.RoleAdminUser
 }
 
+// IsFinanceAdmin checks if the user is a finance administrator.
+// A user is considered a finance administrator if their role is at least RoleAdminUser.
+// This ensures that role-based access control is enforced server-side, independent of
+// any client-side data (e.g., localStorage) that could be tampered with.
+func IsFinanceAdmin(userId int) bool {
+	if userId == 0 {
+		return false
+	}
+	var user User
+	err := DB.Where("id = ?", userId).Select("role").Find(&user).Error
+	if err != nil {
+		common.SysLog("IsFinanceAdmin: " + err.Error())
+		return false
+	}
+	// 基于数据库中的 role 字段判断是否为财务管理员
+	// role >= RoleAdminUser (10) 的用户具有财务管理员权限
+	return user.Role >= common.RoleAdminUser
+}
+
 //// IsUserEnabled checks user status from Redis first, falls back to DB if needed
 //func IsUserEnabled(id int, fromDB bool) (status bool, err error) {
 //	defer func() {

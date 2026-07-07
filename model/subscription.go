@@ -185,8 +185,10 @@ type SubscriptionPlan struct {
 	// TokensLimit is the tokens上限 for tokens-type plans (0 = unlimited)
 	TokensLimit int64 `json:"tokens_limit" gorm:"type:bigint;default:0"`
 
-	CreatedAt int64 `json:"created_at" gorm:"bigint"`
-	UpdatedAt int64 `json:"updated_at" gorm:"bigint"`
+	// VisibleToUser indicates whether this plan is visible to end users (default false)
+	VisibleToUser bool  `json:"visible_to_user" gorm:"default:false"`
+	CreatedAt     int64 `json:"created_at" gorm:"bigint"`
+	UpdatedAt     int64 `json:"updated_at" gorm:"bigint"`
 }
 
 func (p *SubscriptionPlan) BeforeCreate(tx *gorm.DB) error {
@@ -1030,6 +1032,20 @@ func PreConsumeUserSubscription(requestId string, userId int, modelName string, 
 			if err := maybeResetUserSubscriptionWithPlanTx(tx, &sub, plan, now); err != nil {
 				return err
 			}
+			// Check if model is applicable (both quota and tokens types support this)
+			if sub.ApplicableModels != "" {
+				applicableModels := strings.Split(sub.ApplicableModels, ",")
+				modelAllowed := false
+				for _, m := range applicableModels {
+					if strings.TrimSpace(m) == modelName {
+						modelAllowed = true
+						break
+					}
+				}
+				if !modelAllowed {
+					continue
+				}
+			}
 			usedBefore := sub.AmountUsed
 			if sub.AmountTotal > 0 {
 				remain := sub.AmountTotal - usedBefore
@@ -1434,27 +1450,32 @@ func RefundSubscriptionTokensPreConsume(requestId string) error {
 // HasActiveTokensSubscription checks if user has an active tokens-type subscription.
 func HasActiveTokensSubscription(userId int) (bool, *UserSubscription, error) {
 	now := GetDBTimestamp()
-	var sub UserSubscription
+
+	// 获取所有活跃订阅
+	var subs []UserSubscription
 	err := DB.Where("user_id = ? AND status = ? AND end_time > ?", userId, "active", now).
 		Order("end_time asc, id asc").
-		First(&sub).Error
-	if err == gorm.ErrRecordNotFound {
-		return false, nil, nil
-	}
+		Find(&subs).Error
 	if err != nil {
 		return false, nil, err
 	}
 
-	// Check if it's a tokens-type plan
-	plan, err := GetSubscriptionPlanById(sub.PlanId)
-	if err != nil {
-		return false, nil, err
-	}
-	if plan.PlanType != "tokens" {
-		return false, nil, nil
+	// 遍历所有活跃订阅，查找 tokens 类型
+	for _, sub := range subs {
+		plan, err := GetSubscriptionPlanById(sub.PlanId)
+		if err != nil {
+			continue
+		}
+		if plan.PlanType == "tokens" {
+			// 如果是 debug 模式，记录日志
+			if common.DebugEnabled {
+				println(fmt.Sprintf("[HAS_TOKENS_SUB] userId=%d, found tokens subscription id=%d, planId=%d, planType=%s", userId, sub.Id, sub.PlanId, plan.PlanType))
+			}
+			return true, &sub, nil
+		}
 	}
 
-	return true, &sub, nil
+	return false, nil, nil
 }
 
 // IsModelApplicableForTokensSubscription checks if the model is applicable for the tokens subscription.

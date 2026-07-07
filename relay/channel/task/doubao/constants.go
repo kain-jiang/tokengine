@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// ModelList 系统原生支持的模型列表（带日期后缀格式）
 var ModelList = []string{
 	"doubao-seedance-1-0-pro-250528",
 	"doubao-seedance-1-0-lite-t2v",
@@ -14,6 +15,28 @@ var ModelList = []string{
 	"doubao-seedance-2-0-fast-260128",
 }
 
+// SdModelList SD文档/鲸灵AI平台使用的模型名称列表（简化格式，无日期后缀）
+// 这些名称会通过模型映射转换为对应的系统原生模型
+var SdModelList = []string{
+	"doubao-seedance-1.5-pro",
+	"doubao-seedance-2.0",
+	"doubao-seedance-2.0-fast",
+}
+
+// SdToSystemModelMap SD模型名称到系统原生模型名称的映射
+var SdToSystemModelMap = map[string]string{
+	"doubao-seedance-1.5-pro":  "doubao-seedance-1-5-pro-251215",
+	"doubao-seedance-2.0":      "doubao-seedance-2-0-260128",
+	"doubao-seedance-2.0-fast": "doubao-seedance-2-0-fast-260128",
+}
+
+// SystemToSdModelMap 系统原生模型名称到SD模型名称的反向映射
+var SystemToSdModelMap = map[string]string{
+	"doubao-seedance-1-5-pro-251215":  "doubao-seedance-1.5-pro",
+	"doubao-seedance-2-0-260128":      "doubao-seedance-2.0",
+	"doubao-seedance-2-0-fast-260128": "doubao-seedance-2.0-fast",
+}
+
 var ChannelName = "doubao-video"
 
 // videoInputRatioMap 视频输入折扣比率（含视频单价 / 不含视频单价）。
@@ -21,13 +44,26 @@ var ChannelName = "doubao-video"
 // 系统在检测到视频输入时自动乘以此折扣。
 // 格式: model -> resolution -> ratio
 // 分辨率: "480p", "720p" (基准), "1080p"
+// 支持系统原生模型名称和SD简化模型名称
 var videoInputRatioMap = map[string]map[string]float64{
+	// 系统原生模型名称
 	"doubao-seedance-2-0-260128": {
 		"480p":  28.0 / 46.0, // ~0.6087
 		"720p":  28.0 / 46.0, // ~0.6087
 		"1080p": 31.0 / 51.0, // ~0.6078
 	},
 	"doubao-seedance-2-0-fast-260128": {
+		"480p":  22.0 / 37.0, // ~0.5946
+		"720p":  22.0 / 37.0, // ~0.5946
+		"1080p": 22.0 / 37.0, // fast 模型不支持 1080p，按基准计算
+	},
+	// SD简化模型名称（鲸灵AI平台格式）
+	"doubao-seedance-2.0": {
+		"480p":  28.0 / 46.0, // ~0.6087
+		"720p":  28.0 / 46.0, // ~0.6087
+		"1080p": 31.0 / 51.0, // ~0.6078
+	},
+	"doubao-seedance-2.0-fast": {
 		"480p":  22.0 / 37.0, // ~0.5946
 		"720p":  22.0 / 37.0, // ~0.5946
 		"1080p": 22.0 / 37.0, // fast 模型不支持 1080p，按基准计算

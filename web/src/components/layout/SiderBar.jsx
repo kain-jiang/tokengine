@@ -25,7 +25,7 @@ import { ChevronLeft } from 'lucide-react';
 import { useSidebarCollapsed } from '../../hooks/common/useSidebarCollapsed';
 import { useSidebar } from '../../hooks/common/useSidebar';
 import { useMinimumLoadingTime } from '../../hooks/common/useMinimumLoadingTime';
-import { isAdmin, isRoot, showError } from '../../helpers';
+import { isAdmin, isRoot, showError, isFinanceAdmin } from '../../helpers';
 import SkeletonWrapper from './components/SkeletonWrapper';
 
 import { Nav, Divider, Button } from '@douyinfe/semi-ui';
@@ -58,7 +58,7 @@ const routerMap = {
   orders: '/console/finance/orders',
   revenue: '/console/finance/revenue',
   invoices: '/console/finance/invoices',
-  reconciliation: '/console/finance/reconciliation',
+  supplier: '/console/finance/supplier-settlement',
 };
 
 const SiderBar = ({ onNavigate = () => {} }) => {
@@ -161,9 +161,9 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         to: '/console/finance/invoices',
       },
       {
-        text: t('对账管理'),
-        itemKey: 'reconciliation',
-        to: '/console/finance/reconciliation',
+        text: t('供应商结算'),
+        itemKey: 'supplier',
+        to: '/console/finance/supplier-settlement',
       },
     ];
 
@@ -182,11 +182,6 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         text: t('钱包管理'),
         itemKey: 'topup',
         to: '/topup',
-      },
-      {
-        text: t('我的套餐'),
-        itemKey: 'myPlan',
-        to: '/my-plan',
       },
       {
         text: t('用户账单'),
@@ -540,13 +535,6 @@ const SiderBar = ({ onNavigate = () => {} }) => {
               return;
             }
 
-            if (itemKey === 'reconciliation') {
-              navigate('/console/finance/reconciliation');
-              onNavigate();
-              setSelectedKeys([itemKey]);
-              return;
-            }
-
             // 如果点击的是已经展开的子菜单的父项，则收起子菜单
             if (openedKeys.includes(itemKey)) {
               setOpenedKeys(openedKeys.filter((k) => k !== itemKey));
@@ -582,19 +570,6 @@ const SiderBar = ({ onNavigate = () => {} }) => {
             </>
           )}
 
-          {/* 财务管理区域 */}
-          {hasSectionVisibleModules('finance') && (
-            <>
-              <Divider className='sidebar-divider' />
-              <div>
-                {!collapsed && (
-                  <div className='sidebar-group-label'>{t('财务管理')}</div>
-                )}
-                {financeItems.map((item) => renderNavItem(item))}
-              </div>
-            </>
-          )}
-
           {/* 个人中心区域 */}
           {hasSectionVisibleModules('personal') && (
             <>
@@ -608,6 +583,19 @@ const SiderBar = ({ onNavigate = () => {} }) => {
             </>
           )}
 
+       {/* 财务管理区域 - 仅财务运营人员可见 */}
+          {isFinanceAdmin() && hasSectionVisibleModules('finance') && (
+            <>
+              <Divider className='sidebar-divider' />
+              <div>
+                {!collapsed && (
+                  <div className='sidebar-group-label'>{t('财务管理')}</div>
+                )}
+                {financeItems.map((item) => renderNavItem(item))}
+              </div>
+            </>
+          )}
+          
           {/* 管理员区域 - 只在管理员时显示且配置允许时显示 */}
           {isAdmin() && hasSectionVisibleModules('admin') && (
             <>

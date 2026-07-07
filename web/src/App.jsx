@@ -18,10 +18,10 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { lazy, Suspense, useContext, useMemo } from 'react';
-import { Route, Routes, useLocation, useParams } from 'react-router-dom';
+import { Route, Routes, useLocation, useParams, Navigate } from 'react-router-dom';
 import Loading from './components/common/ui/Loading';
 import User from './pages/User';
-import { AuthRedirect, PrivateRoute, AdminRoute } from './helpers';
+import { AuthRedirect, PrivateRoute, AdminRoute, isFinanceAdmin } from './helpers';
 import RegisterForm from './components/auth/RegisterForm';
 import LoginForm from './components/auth/LoginForm';
 import PhoneLoginForm from './components/auth/PhoneLoginForm';
@@ -48,6 +48,8 @@ import FinanceOrders from './pages/Finance/Orders';
 import FinanceRevenue from './pages/Finance/Revenue';
 import FinanceInvoices from './pages/Finance/Invoices';
 import FinanceReconciliation from './pages/Finance/Reconciliation';
+import FinanceSupplier from './pages/Finance/Supplier';
+import FinanceSupplierSettlement from './pages/Finance/SupplierSettlement';
 
 // Debug: Test if all finance imports are valid
 console.log('[App.jsx] FinanceReconciliation:', typeof FinanceReconciliation, FinanceReconciliation?.name);
@@ -73,7 +75,6 @@ import PersonalSetting from './components/settings/PersonalSetting';
 import RealNameAuthForm from './components/settings/personal/RealNameAuthForm';
 import Setup from './pages/Setup';
 import SetupCheck from './components/layout/SetupCheck';
-import DashboardBoard from './pages/DashboardBoard';
 
 const Home = lazy(() => import('./pages/Home'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -132,15 +133,6 @@ function App() {
           }
         />
         <Route path='/forbidden' element={<Forbidden />} />
-        {/* 大屏数据中心 - 管理员可见，无侧边栏和导航栏 */}
-        <Route
-          path='/console/dashboard'
-          element={
-            <AdminRoute>
-              <DashboardBoard />
-            </AdminRoute>
-          }
-        />
         <Route
           path='/console/models'
           element={
@@ -375,45 +367,48 @@ function App() {
             </PrivateRoute>
           }
         />
-        <Route
-          path='/console/finance'
-          element={
-            <PrivateRoute>
-              <ErrorBoundary key='finance-layout'><FinanceLayout /></ErrorBoundary>
-            </PrivateRoute>
-          }
-        >
+        {/* 财务模块路由 - 仅财务运营人员可访问 */}
+        {isFinanceAdmin() && (
           <Route
-            index
+            path='/console/finance'
             element={
-              <ErrorBoundary key='finance-dashboard'><FinanceDashboard /></ErrorBoundary>
+              <PrivateRoute>
+                <ErrorBoundary key='finance-layout'><FinanceLayout /></ErrorBoundary>
+              </PrivateRoute>
             }
-          />
-          <Route
-            path='orders'
-            element={
-              <ErrorBoundary key='finance-orders'><FinanceOrders /></ErrorBoundary>
-            }
-          />
-          <Route
-            path='revenue'
-            element={
-              <ErrorBoundary key='finance-revenue'><FinanceRevenue /></ErrorBoundary>
-            }
-          />
-          <Route
-            path='invoices'
-            element={
-              <ErrorBoundary key='finance-invoices'><FinanceInvoices /></ErrorBoundary>
-            }
-          />
-          <Route
-            path='reconciliation'
-            element={
-              <ErrorBoundary key='finance-reconciliation'><FinanceReconciliation /></ErrorBoundary>
-            }
-          />
-        </Route>
+          >
+            <Route
+              index
+              element={
+                <ErrorBoundary key='finance-dashboard'><FinanceDashboard /></ErrorBoundary>
+              }
+            />
+            <Route
+              path='orders'
+              element={
+                <ErrorBoundary key='finance-orders'><FinanceOrders /></ErrorBoundary>
+              }
+            />
+            <Route
+              path='revenue'
+              element={
+                <ErrorBoundary key='finance-revenue'><FinanceRevenue /></ErrorBoundary>
+              }
+            />
+            <Route
+              path='invoices'
+              element={
+                <ErrorBoundary key='finance-invoices'><FinanceInvoices /></ErrorBoundary>
+              }
+            />
+            <Route
+              path='supplier-settlement'
+              element={
+                <ErrorBoundary key='finance-supplier-settlement'><FinanceSupplierSettlement /></ErrorBoundary>
+              }
+            />
+          </Route>
+        )}
         <Route
           path='/console/log'
           element={

@@ -79,6 +79,10 @@ import {
   Video,
   Receipt,
   Wallet,
+  Building2,
+  TrendingUp,
+  Users,
+  DollarSign,
 } from 'lucide-react';
 import {
   SiAtlassian,
@@ -161,6 +165,15 @@ export function getLucideIcon(key, selected = false) {
       return <Receipt {...commonProps} color={iconColor} />;
     case 'finance':
       return <Wallet {...commonProps} color={iconColor} />;
+    case 'supplier':
+    case 'supplier-dashboard':
+      return <Building2 {...commonProps} color={iconColor} />;
+    case 'supplier-pricing':
+      return <TrendingUp {...commonProps} color={iconColor} />;
+    case 'supplier-settlement':
+      return <DollarSign {...commonProps} color={iconColor} />;
+    case 'supplier-account':
+      return <Users {...commonProps} color={iconColor} />;
     default:
       return <CircleUser {...commonProps} color={iconColor} />;
   }

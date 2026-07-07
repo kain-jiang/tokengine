@@ -52,7 +52,7 @@ export default function ModelRatioNotSetEditor(props) {
       candidateModelNames={enabledModels}
       filterMode='unset'
       allowAddModel={false}
-      allowDeleteModel={false}
+      allowDeleteModel={true}
       showConflictFilter={false}
       listDescription={t(
         '此页面仅显示未设置价格或基础倍率的模型，设置后会自动从列表中移出',

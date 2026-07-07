@@ -404,6 +404,67 @@ func SetApiRouter(router *gin.Engine) {
 			vendorRoute.DELETE("/:id", controller.DeleteVendorMeta)
 		}
 
+		// Supplier settlement routes
+		supplierRoute := apiRouter.Group("/supplier")
+		supplierRoute.Use(middleware.AdminAuth())
+		{
+			// Pricing management
+			supplierRoute.GET("/pricing", controller.GetAllSupplierPricings)
+			supplierRoute.GET("/pricing/search", controller.SearchSupplierPricings)
+			supplierRoute.GET("/pricing/:id", controller.GetSupplierPricing)
+			supplierRoute.POST("/pricing", controller.CreateSupplierPricing)
+			supplierRoute.PUT("/pricing", controller.UpdateSupplierPricing)
+			supplierRoute.DELETE("/pricing/:id", controller.DeleteSupplierPricing)
+			supplierRoute.POST("/pricing/import", controller.ImportSupplierPricings)
+			supplierRoute.POST("/pricing/batch", controller.BatchUpdateSupplierPricings)
+
+			// Settlement management
+			supplierRoute.GET("/settlement", controller.GetAllSupplierSettlements)
+			supplierRoute.GET("/settlement/search", controller.SearchSupplierSettlements)
+			supplierRoute.GET("/settlement/:id", controller.GetSupplierSettlement)
+			supplierRoute.GET("/settlement/:id/details", controller.GetSupplierSettlementDetails)
+			supplierRoute.POST("/settlement/generate", controller.GenerateSupplierSettlement)
+			supplierRoute.POST("/settlement/generate-all", controller.GenerateAllSupplierSettlements)
+			supplierRoute.PUT("/settlement/:id/confirm", controller.ConfirmSupplierSettlement)
+			supplierRoute.PUT("/settlement/:id/paid", controller.MarkSupplierSettlementPaid)
+			supplierRoute.PUT("/settlement/:id/cancel", controller.CancelSupplierSettlement)
+			supplierRoute.GET("/settlement/export", controller.ExportSupplierSettlements)
+			supplierRoute.GET("/settlement/statistics", controller.GetSupplierSettlementStatistics)
+
+			// Settlement aggregation (for supplier settlement page)
+			supplierRoute.GET("/settlement/aggregation", controller.GetSupplierSettlementList)
+			supplierRoute.POST("/settlement/manual", controller.CreateManualSettlement)
+
+			// Account management
+			supplierRoute.GET("/account", controller.GetAllSupplierAccounts)
+			supplierRoute.GET("/account/:vendor_id", controller.GetSupplierAccount)
+			supplierRoute.POST("/account/recharge", controller.RechargeSupplierAccount)
+			supplierRoute.GET("/account/:vendor_id/statistics", controller.GetSupplierAccountStatistics)
+
+			// Recharge records
+			supplierRoute.GET("/recharge", controller.GetAllSupplierRecharges)
+			supplierRoute.GET("/recharge/:id", controller.GetSupplierRecharge)
+			supplierRoute.GET("/recharge/export", controller.ExportSupplierRecharges)
+			supplierRoute.GET("/recharge/statistics", controller.GetSupplierRechargeStatistics)
+
+			// Rebate management
+			supplierRoute.GET("/rebates", controller.GetRebateList)
+			supplierRoute.GET("/rebates/statistics", controller.GetRebateStatistics)
+			supplierRoute.GET("/rebates/:id", controller.GetRebateById)
+			supplierRoute.POST("/rebates", controller.CreateManualRebate)
+			supplierRoute.PUT("/rebates/:id", controller.UpdateRebate)
+			supplierRoute.PUT("/rebates/:id/status", controller.UpdateRebateStatus)
+			supplierRoute.DELETE("/rebates/:id", controller.DeleteRebate)
+			supplierRoute.GET("/rebates/export", controller.ExportRebateList)
+
+			// Rebate config management
+			supplierRoute.GET("/rebate-configs", controller.GetRebateConfigList)
+			supplierRoute.POST("/rebate-configs", controller.CreateRebateConfig)
+			supplierRoute.PUT("/rebate-configs/:id", controller.UpdateRebateConfig)
+			supplierRoute.DELETE("/rebate-configs/:id", controller.DeleteRebateConfig)
+			supplierRoute.PUT("/rebate-configs/:id/toggle", controller.ToggleRebateConfig)
+		}
+
 		modelsRoute := apiRouter.Group("/models")
 		modelsRoute.Use(middleware.AdminAuth())
 		{

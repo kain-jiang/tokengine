@@ -433,6 +433,12 @@ func migrateDB() error {
 		&RealNameAuth{},
 		&InvoiceTitle{},
 		&InvoiceRecord{},
+		// Supplier settlement tables
+		&SupplierPricing{},
+		&SupplierSettlement{},
+		&SupplierSettlementDetail{},
+		&SupplierAccount{},
+		&SupplierRecharge{},
 	)
 	if err != nil {
 		return err

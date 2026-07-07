@@ -124,7 +124,7 @@ export default function Finance() {
   // 获取路由参数
   const tabFromRoute = useMemo(() => {
     const path = location.pathname.split('/').pop();
-    if (['dashboard', 'orders', 'revenue', 'invoices', 'reconciliation'].includes(path)) {
+    if (['dashboard', 'orders', 'revenue', 'invoices', 'supplier'].includes(path)) {
       return path;
     }
     return 'dashboard';
@@ -527,10 +527,10 @@ export default function Finance() {
     ...(isAdmin
       ? [
           {
-            itemKey: 'reconciliation',
-            text: t('对账管理'),
-            to: '/finance/reconciliation',
-            icon: <IconCheckCircleStroked />,
+            itemKey: 'supplier',
+            text: t('供应商结算'),
+            to: '/console/finance/supplier-settlement',
+            icon: <IconMoneyExchangeStroked />,
           },
         ]
       : []),
@@ -996,8 +996,6 @@ export default function Finance() {
         return renderRevenue();
       case 'invoices':
         return renderInvoices();
-      case 'reconciliation':
-        return renderReconciliation();
       default:
         return renderDashboard();
     }
@@ -1008,7 +1006,7 @@ export default function Finance() {
       <Content>
         <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>
           <h2 style={{ marginBottom: 24, fontSize: 24 }}>
-            {t('财务管理')}
+            {t('财务运营')}
           </h2>
           {renderContent()}
         </div>

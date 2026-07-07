@@ -41,37 +41,41 @@ import {
 } from './NativeLayout';
 
 // 菜单项配置
-const getMenuItems = (isAdmin, t) => [
-  {
-    key: '/console/finance',
-    text: t('财务概览'),
-    icon: <IconMoneyExchangeStroked />,
-  },
-  {
-    key: '/console/finance/orders',
-    text: t('订单管理'),
-    icon: <IconShoppingBagStroked />,
-  },
-  {
-    key: '/console/finance/revenue',
-    text: t('营收分析'),
-    icon: <IconArrowUp />,
-  },
-  {
-    key: '/console/finance/invoices',
-    text: t('发票管理'),
-    icon: <IconFile />,
-  },
-  ...(isAdmin
-    ? [
-        {
-          key: '/console/finance/reconciliation',
-          text: t('对账管理'),
-          icon: <IconCheckCircleStroked />,
-        },
-      ]
-    : []),
-];
+const getMenuItems = (isAdmin, t) => {
+  const items = [
+    {
+      key: '/console/finance',
+      text: t('财务概览'),
+      icon: <IconMoneyExchangeStroked />,
+    },
+    {
+      key: '/console/finance/orders',
+      text: t('订单管理'),
+      icon: <IconShoppingBagStroked />,
+    },
+    {
+      key: '/console/finance/revenue',
+      text: t('营收分析'),
+      icon: <IconArrowUp />,
+    },
+    {
+      key: '/console/finance/invoices',
+      text: t('发票管理'),
+      icon: <IconFile />,
+    },
+  ];
+
+  // 供应商结算仅管理员可见
+  if (isAdmin) {
+    items.push({
+      key: '/console/finance/supplier-settlement',
+      text: t('供应商结算'),
+      icon: <IconMoneyExchangeStroked />,
+    });
+  }
+
+  return items;
+};
 
 // 页面标题映射
 const pageTitles = {
@@ -79,7 +83,7 @@ const pageTitles = {
   '/console/finance/orders': '订单管理',
   '/console/finance/revenue': '营收分析',
   '/console/finance/invoices': '发票管理',
-  '/console/finance/reconciliation': '对账管理',
+  '/console/finance/supplier-settlement': '供应商结算',
 };
 
 // 页面描述映射
@@ -88,7 +92,7 @@ const pageDescriptions = {
   '/console/finance/orders': '管理充值和订阅订单',
   '/console/finance/revenue': '查看营收趋势和详细报表',
   '/console/finance/invoices': '管理发票申请和开具状态',
-  '/console/finance/reconciliation': '管理上下游支付对账',
+  '/console/finance/supplier-settlement': '管理供应商结算和返点记录',
 };
 
 // 渐变色配置
@@ -97,7 +101,7 @@ const gradientColors = {
   '/console/finance/orders': 'linear-gradient(135deg, #1890ff 0%, #36cfc9 100%)',
   '/console/finance/revenue': 'linear-gradient(135deg, #722ed1 0%, #b37feb 100%)',
   '/console/finance/invoices': 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-  '/console/finance/reconciliation': 'linear-gradient(135deg, #52c41a 0%, #95de64 100%)',
+  '/console/finance/supplier-settlement': 'linear-gradient(135deg, #fa8c16 0%, #ffd666 100%)',
 };
 
 export default function FinanceLayout() {
@@ -120,7 +124,7 @@ export default function FinanceLayout() {
   }, [location.pathname]);
   
   // 获取当前页面标题
-  const currentPageTitle = pageTitles[activeKey] || t('财务管理');
+  const currentPageTitle = pageTitles[activeKey] || t('财务运营');
   
   // 获取当前页面描述
   const currentPageDesc = pageDescriptions[activeKey] || '';

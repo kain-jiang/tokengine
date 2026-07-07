@@ -186,19 +186,19 @@ func GetDashboardBoardRealtime(c *gin.Context) {
 type DashboardChartData struct {
 	// 消耗分布数据
 	QuotaDistribution []model.QuotaDistributionData `json:"quota_distribution"`
-	
+
 	// 调用趋势数据
 	CallTrend []model.CallTrendData `json:"call_trend"`
-	
+
 	// 调用次数分布
 	CallDistribution []model.CallDistributionData `json:"call_distribution"`
-	
+
 	// 调用次数排行
 	CallRank []model.CallRankData `json:"call_rank"`
-	
+
 	// 用户消耗排行（管理员）
 	UserQuotaRank []model.UserQuotaRankData `json:"user_quota_rank"`
-	
+
 	// 用户消耗趋势（管理员）
 	UserQuotaTrend []model.UserQuotaTrendData `json:"user_quota_trend"`
 }
@@ -208,43 +208,43 @@ func GetDashboardBoardChartData(c *gin.Context) {
 	// 获取查询参数
 	startTimeStr := c.Query("start_timestamp")
 	endTimeStr := c.Query("end_timestamp")
-	
+
 	var startTime, endTime int64
 	now := time.Now()
-	
+
 	if startTimeStr != "" {
 		startTime = parseInt64(startTimeStr)
 	} else {
 		// 默认近7天
 		startTime = now.AddDate(0, 0, -7).Unix()
 	}
-	
+
 	if endTimeStr != "" {
 		endTime = parseInt64(endTimeStr)
 	} else {
 		endTime = now.Unix()
 	}
-	
+
 	data := DashboardChartData{}
-	
+
 	// 获取消耗分布数据（按模型和时间）
 	data.QuotaDistribution = model.GetQuotaDistribution(startTime, endTime)
-	
+
 	// 获取调用趋势数据（按时间和模型）
 	data.CallTrend = model.GetCallTrend(startTime, endTime)
-	
+
 	// 获取调用次数分布（饼图数据）
 	data.CallDistribution = model.GetCallDistribution(startTime, endTime)
-	
+
 	// 获取调用次数排行
 	data.CallRank = model.GetCallRank(startTime, endTime)
-	
+
 	// 获取用户消耗排行（管理员视角）
 	data.UserQuotaRank = model.GetUserQuotaRank(startTime, endTime, 10)
-	
+
 	// 获取用户消耗趋势（管理员视角）
 	data.UserQuotaTrend = model.GetUserQuotaTrend(startTime, endTime)
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    data,

@@ -29,6 +29,11 @@ func GetFinanceDashboard(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": "未登录"})
 		return
 	}
+	// 检查是否是财务运营人员
+	if !model.IsFinanceAdmin(userId) {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无权限访问财务模块"})
+		return
+	}
 	isAdmin := model.IsAdmin(userId)
 
 	var req dto.FinanceDashboardRequest
@@ -67,6 +72,11 @@ func GetOrders(c *gin.Context) {
 	userId := c.GetInt("id")
 	if userId == 0 {
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": "未登录"})
+		return
+	}
+	// 检查是否是财务运营人员
+	if !model.IsFinanceAdmin(userId) {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无权限访问财务模块"})
 		return
 	}
 	isAdmin := model.IsAdmin(userId)
@@ -115,6 +125,11 @@ func ExportOrders(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": "未登录"})
 		return
 	}
+	// 检查是否是财务运营人员
+	if !model.IsFinanceAdmin(userId) {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无权限访问财务模块"})
+		return
+	}
 	isAdmin := model.IsAdmin(userId)
 
 	var req dto.OrderListRequest
@@ -150,6 +165,12 @@ func ExportOrders(c *gin.Context) {
 // @Router /finance/reports [get]
 // @Security ApiKeyAuth
 func GetRevenueReports(c *gin.Context) {
+	userId := c.GetInt("id")
+	// 检查是否是财务运营人员
+	if !model.IsFinanceAdmin(userId) {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无权限访问财务模块"})
+		return
+	}
 	var req dto.RevenueReportRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
@@ -183,6 +204,12 @@ func GetRevenueReports(c *gin.Context) {
 // @Router /finance/trend [get]
 // @Security ApiKeyAuth
 func GetRevenueTrend(c *gin.Context) {
+	userId := c.GetInt("id")
+	// 检查是否是财务运营人员
+	if !model.IsFinanceAdmin(userId) {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无权限访问财务模块"})
+		return
+	}
 	days, _ := strconv.Atoi(c.DefaultQuery("days", "30"))
 
 	serviceInstance := service.GetFinanceService()
@@ -209,6 +236,11 @@ func ApplyInvoice(c *gin.Context) {
 	userId := c.GetInt("id")
 	if userId == 0 {
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": "未登录"})
+		return
+	}
+	// 检查是否是财务运营人员
+	if !model.IsFinanceAdmin(userId) {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无权限访问财务模块"})
 		return
 	}
 	username := c.GetString("username")
@@ -248,6 +280,11 @@ func GetInvoices(c *gin.Context) {
 	userId := c.GetInt("id")
 	if userId == 0 {
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": "未登录"})
+		return
+	}
+	// 检查是否是财务运营人员
+	if !model.IsFinanceAdmin(userId) {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无权限访问财务模块"})
 		return
 	}
 	isAdmin := model.IsAdmin(userId)
@@ -296,6 +333,11 @@ func ApproveInvoice(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": "未登录"})
 		return
 	}
+	// 检查是否是财务运营人员
+	if !model.IsFinanceAdmin(userId) {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无权限访问财务模块"})
+		return
+	}
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -334,6 +376,12 @@ func ApproveInvoice(c *gin.Context) {
 // @Router /finance/reconciliations [get]
 // @Security ApiKeyAuth
 func GetReconciliations(c *gin.Context) {
+	userId := c.GetInt("id")
+	// 检查是否是财务运营人员
+	if !model.IsFinanceAdmin(userId) {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无权限访问财务模块"})
+		return
+	}
 	var req dto.ReconciliationListRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
@@ -360,8 +408,9 @@ func AutoReconcile(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": "未登录"})
 		return
 	}
-	if !model.IsAdmin(userId) {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "权限不足"})
+	// 检查是否是财务运营人员
+	if !model.IsFinanceAdmin(userId) {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无权限访问财务模块"})
 		return
 	}
 
@@ -397,8 +446,9 @@ func GenerateDailyReport(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": "未登录"})
 		return
 	}
-	if !model.IsAdmin(userId) {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "权限不足"})
+	// 检查是否是财务运营人员
+	if !model.IsFinanceAdmin(userId) {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无权限访问财务模块"})
 		return
 	}
 
