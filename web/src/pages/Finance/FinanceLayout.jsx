@@ -124,7 +124,7 @@ export default function FinanceLayout() {
   }, [location.pathname]);
   
   // 获取当前页面标题
-  const currentPageTitle = pageTitles[activeKey] || t('财务管理');
+  const currentPageTitle = pageTitles[activeKey] || t('财务运营');
   
   // 获取当前页面描述
   const currentPageDesc = pageDescriptions[activeKey] || '';
