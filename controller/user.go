@@ -205,10 +205,6 @@ func Register(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgUserInputInvalid, map[string]any{"Error": err.Error()})
 		return
 	}
-	if *user.TelePhone == "" || len(*user.TelePhone) != 11 {
-		common.ApiErrorMsg(c, "请填写11位的手机号")
-		return
-	}
 	if common.EmailVerificationEnabled {
 		if user.Email == "" || user.VerificationCode == "" {
 			common.ApiErrorI18n(c, i18n.MsgUserEmailVerificationRequired)
@@ -219,6 +215,11 @@ func Register(c *gin.Context) {
 			return
 		}
 	}
+	if *user.TelePhone == "" || len(*user.TelePhone) != 11 {
+		common.ApiErrorMsg(c, "请填写11位的手机号")
+		return
+	}
+
 	// 验证短信验证码
 	if !common.VerifySMSCodeWithKey(*user.TelePhone, user.VerificationCode) {
 		common.ApiErrorMsg(c, i18n.MsgUserVerificationCodeError)
@@ -1026,7 +1027,6 @@ func ManageUser(c *gin.Context) {
 				common.ApiErrorI18n(c, i18n.MsgUserQuotaChangeZero)
 				return
 			}
-			fmt.Println(req.Value)
 			if err := model.IncreaseUserQuota(user.Id, req.Value, true); err != nil {
 				common.ApiError(c, err)
 				return

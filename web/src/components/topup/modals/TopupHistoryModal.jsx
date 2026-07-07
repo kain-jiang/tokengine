@@ -200,7 +200,7 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
     if (visible) {
       loadTopups(page, pageSize);
     }
-  }, [visible, page, pageSize, keyword, statusFilter]);
+  }, [visible, page, pageSize, keyword, statusFilter, dateRange]);
 
   const handleStatusChange = (value) => {
     setStatusFilter(value);

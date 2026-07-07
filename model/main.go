@@ -431,6 +431,8 @@ func migrateDB() error {
 		&RevenueReport{},
 		&Media{},
 		&RealNameAuth{},
+		&InvoiceTitle{},
+		&InvoiceRecord{},
 		// Supplier settlement tables
 		&SupplierPricing{},
 		&SupplierSettlement{},

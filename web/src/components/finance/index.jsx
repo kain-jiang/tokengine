@@ -529,7 +529,7 @@ export default function Finance() {
           {
             itemKey: 'supplier',
             text: t('供应商结算'),
-            to: '/finance/supplier',
+            to: '/console/finance/supplier-settlement',
             icon: <IconMoneyExchangeStroked />,
           },
         ]

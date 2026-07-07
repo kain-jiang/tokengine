@@ -100,6 +100,11 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.GET("/topup/info", controller.GetTopUpInfo)
 				selfRoute.GET("/topup/self", controller.GetUserTopUps)
 				selfRoute.GET("/topup/self/export", controller.ExportUserTopUps)
+				selfRoute.GET("/invoice/title", controller.GetInvoiceTitle)
+				selfRoute.POST("/invoice/title", controller.SaveInvoiceTitle)
+				selfRoute.GET("/invoice/records", controller.GetInvoiceRecords)
+				selfRoute.POST("/invoice/apply", controller.SubmitInvoiceApply)
+				//selfRoute.POST("/invoice/apply", controller.ApplyInvoice)
 				selfRoute.POST("/topup", middleware.CriticalRateLimit(), controller.TopUp)
 				selfRoute.POST("/pay", middleware.CriticalRateLimit(), controller.RequestEpay)
 				selfRoute.POST("/zs_pay/pay", middleware.CriticalRateLimit(), controller.RequestZSPay)
@@ -426,6 +431,10 @@ func SetApiRouter(router *gin.Engine) {
 			supplierRoute.GET("/settlement/export", controller.ExportSupplierSettlements)
 			supplierRoute.GET("/settlement/statistics", controller.GetSupplierSettlementStatistics)
 
+			// Settlement aggregation (for supplier settlement page)
+			supplierRoute.GET("/settlement/aggregation", controller.GetSupplierSettlementList)
+			supplierRoute.POST("/settlement/manual", controller.CreateManualSettlement)
+
 			// Account management
 			supplierRoute.GET("/account", controller.GetAllSupplierAccounts)
 			supplierRoute.GET("/account/:vendor_id", controller.GetSupplierAccount)
@@ -437,6 +446,23 @@ func SetApiRouter(router *gin.Engine) {
 			supplierRoute.GET("/recharge/:id", controller.GetSupplierRecharge)
 			supplierRoute.GET("/recharge/export", controller.ExportSupplierRecharges)
 			supplierRoute.GET("/recharge/statistics", controller.GetSupplierRechargeStatistics)
+
+			// Rebate management
+			supplierRoute.GET("/rebates", controller.GetRebateList)
+			supplierRoute.GET("/rebates/statistics", controller.GetRebateStatistics)
+			supplierRoute.GET("/rebates/:id", controller.GetRebateById)
+			supplierRoute.POST("/rebates", controller.CreateManualRebate)
+			supplierRoute.PUT("/rebates/:id", controller.UpdateRebate)
+			supplierRoute.PUT("/rebates/:id/status", controller.UpdateRebateStatus)
+			supplierRoute.DELETE("/rebates/:id", controller.DeleteRebate)
+			supplierRoute.GET("/rebates/export", controller.ExportRebateList)
+
+			// Rebate config management
+			supplierRoute.GET("/rebate-configs", controller.GetRebateConfigList)
+			supplierRoute.POST("/rebate-configs", controller.CreateRebateConfig)
+			supplierRoute.PUT("/rebate-configs/:id", controller.UpdateRebateConfig)
+			supplierRoute.DELETE("/rebate-configs/:id", controller.DeleteRebateConfig)
+			supplierRoute.PUT("/rebate-configs/:id/toggle", controller.ToggleRebateConfig)
 		}
 
 		modelsRoute := apiRouter.Group("/models")
