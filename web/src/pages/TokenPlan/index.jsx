@@ -465,7 +465,7 @@ const TokenPlan = () => {
                 <Text size='small' className={`mt-2 ${isActive ? 'text-gray-800' : 'text-gray-400'}`}>
                   {step.title}
                 </Text>
-                <Text size='extra-small' type='tertiary' className='mt-1'>
+                <Text size='small' type='tertiary' className='mt-1 text-xs'>
                   {step.desc}
                 </Text>
               </div>
