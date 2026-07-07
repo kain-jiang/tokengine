@@ -347,6 +347,21 @@ code {
   padding-top: 12px;
 }
 
+/* 底部折叠菜单子项垂直对齐 */
+/* 移除折叠菜单子项的左侧缩进，使其与父菜单左对齐 */
+.sidebar-nav .semi-navigation-sub-list-wrapper {
+  padding-left: 0 !important;
+}
+
+.sidebar-nav .semi-navigation-sub-list-wrapper .semi-navigation-item {
+  margin-left: 0 !important;
+}
+
+/* 财务和管理员折叠菜单的子项样式 */
+.sidebar-nav .semi-navigation-sub-list-wrapper .semi-navigation-item .semi-navigation-item-content {
+  padding-left: 12px !important;
+}
+
 /* 底部折叠菜单区域 */
 .sidebar-bottom-menus {
   display: flex;

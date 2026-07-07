@@ -602,10 +602,16 @@ const SiderBar = ({ onNavigate = () => {} }) => {
                 <Nav.Sub
                   key='finance'
                   itemKey='finance'
+                  className='sidebar-bottom-sub-menu'
                   text={
                     <span className='truncate font-medium text-sm'>
                       {t('财务运营')}
                     </span>
+                  }
+                  icon={
+                    <div className='sidebar-icon-container flex-shrink-0' style={{ visibility: 'hidden' }}>
+                      <div style={{ width: 16, height: 16 }} />
+                    </div>
                   }
                 >
                   {financeItems.map((item) => renderNavItem(item))}
@@ -616,10 +622,16 @@ const SiderBar = ({ onNavigate = () => {} }) => {
                 <Nav.Sub
                   key='admin'
                   itemKey='admin'
+                  className='sidebar-bottom-sub-menu'
                   text={
                     <span className='truncate font-medium text-sm'>
                       {t('管理员')}
                     </span>
+                  }
+                  icon={
+                    <div className='sidebar-icon-container flex-shrink-0' style={{ visibility: 'hidden' }}>
+                      <div style={{ width: 16, height: 16 }} />
+                    </div>
                   }
                 >
                   {adminItems.map((item) => renderNavItem(item))}
