@@ -55,6 +55,7 @@ const routerMap = {
   personal: '/console/personal',
   dashboardBoard: '/console/dashboard',
   finance: '/console/finance',
+  financeDashboard: '/console/finance',
   orders: '/console/finance/orders',
   revenue: '/console/finance/revenue',
   invoices: '/console/finance/invoices',
@@ -142,7 +143,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
     const items = [
       {
         text: t('财务概览'),
-        itemKey: 'finance',
+        itemKey: 'financeDashboard',
         to: '/console/finance',
       },
       {
@@ -514,11 +515,27 @@ const SiderBar = ({ onNavigate = () => {} }) => {
               return;
             }
 
+            // 财务概览导航
+            if (itemKey === 'financeDashboard') {
+              navigate('/console/finance');
+              onNavigate();
+              setSelectedKeys([itemKey]);
+              // 确保财务运营菜单保持展开
+              if (!openedKeys.includes('finance')) {
+                setOpenedKeys(prev => [...prev, 'finance']);
+              }
+              return;
+            }
+
             // 财务子路由导航
             if (itemKey === 'orders') {
               navigate('/console/finance/orders');
               onNavigate();
               setSelectedKeys([itemKey]);
+              // 确保财务运营菜单保持展开
+              if (!openedKeys.includes('finance')) {
+                setOpenedKeys(prev => [...prev, 'finance']);
+              }
               return;
             }
 
@@ -526,6 +543,10 @@ const SiderBar = ({ onNavigate = () => {} }) => {
               navigate('/console/finance/revenue');
               onNavigate();
               setSelectedKeys([itemKey]);
+              // 确保财务运营菜单保持展开
+              if (!openedKeys.includes('finance')) {
+                setOpenedKeys(prev => [...prev, 'finance']);
+              }
               return;
             }
 
@@ -533,6 +554,21 @@ const SiderBar = ({ onNavigate = () => {} }) => {
               navigate('/console/finance/invoices');
               onNavigate();
               setSelectedKeys([itemKey]);
+              // 确保财务运营菜单保持展开
+              if (!openedKeys.includes('finance')) {
+                setOpenedKeys(prev => [...prev, 'finance']);
+              }
+              return;
+            }
+
+            if (itemKey === 'supplier') {
+              navigate('/console/finance/supplier-settlement');
+              onNavigate();
+              setSelectedKeys([itemKey]);
+              // 确保财务运营菜单保持展开
+              if (!openedKeys.includes('finance')) {
+                setOpenedKeys(prev => [...prev, 'finance']);
+              }
               return;
             }
 
