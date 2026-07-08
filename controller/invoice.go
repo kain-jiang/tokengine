@@ -199,11 +199,29 @@ func SubmitInvoiceApply(c *gin.Context) {
 		}
 	}
 
-	// todo 过滤掉已经开了票或正在开票的
+	// 过滤掉已经开了票或正在开票的
+	invoicedOrderIdMap, err := model.GetInvoicedOrderIds(userId)
+	if err != nil {
+		logger.LogError(c, fmt.Sprintf("get user[%d] invoiced order ids failed, error detail --> %s", userId, err))
+		common.ApiErrorMsg(c, "申请开票失败, 系统异常")
+		return
+	}
+	var validTopups []model.TopUp
+	for _, topup := range topups {
+		if !invoicedOrderIdMap[topup.Id] {
+			validTopups = append(validTopups, topup)
+		}
+	}
+	fmt.Println("valid topups", validTopups)
+	if len(validTopups) == 0 {
+		common.ApiErrorMsg(c, "所选订单均已开票或正在开票中, 请检查")
+		return
+	}
+
 	titleInfo, _ := json.Marshal(title)
 
 	totalMoney := 0.0
-	for _, topup := range topups {
+	for _, topup := range validTopups {
 		totalMoney += topup.Money
 	}
 
