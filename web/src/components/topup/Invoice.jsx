@@ -186,6 +186,16 @@ const Invoice = () => {
     }
   };
 
+  const loadData = async () => {
+    const [topupData, invoiceData] = await Promise.all([
+      loadTopups(topupPage, topupPageSize),
+      loadInvoices(invoicePage, invoicePageSize),
+    ]);
+    if (topupData.length > 0) {
+      injectInvoiceStatus(topupData, invoiceData);
+    }
+  };
+
   useEffect(() => {
     loadTopups(topupPage, topupPageSize);
   }, [topupPage, topupPageSize, topupKeyword]);
@@ -199,17 +209,6 @@ const Invoice = () => {
   }, []);
 
   useEffect(() => {
-    const loadData = async () => {
-      const [topupData, invoiceData] = await Promise.all([
-        loadTopups(topupPage, topupPageSize),
-        loadInvoices(invoicePage, invoicePageSize),
-      ]);
-
-      if (topupData.length > 0 && invoiceData.length > 0) {
-        injectInvoiceStatus(topupData, invoiceData);
-      }
-    };
-
     loadData();
   }, [topupPage, topupPageSize, topupKeyword]);
 
@@ -321,8 +320,8 @@ const Invoice = () => {
         setShowInvoiceTitleModal(false);
         setSelectedOrderIds([]);
         setAllSelected(false);
-        await loadInvoices(invoicePage, invoicePageSize);
-        await loadTopups(topupPage, topupPageSize);
+        // await loadInvoices(invoicePage, invoicePageSize);
+        await loadData();
 
       } else {
         Toast.error({ content: message || t('开票申请失败') });
