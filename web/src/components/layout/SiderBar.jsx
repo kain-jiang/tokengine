@@ -143,7 +143,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
     const items = [
       {
         text: t('财务概览'),
-        itemKey: 'financeDashboard',
+        itemKey: 'finance',
         to: '/console/finance',
       },
       {
@@ -359,6 +359,13 @@ const SiderBar = ({ onNavigate = () => {} }) => {
       }
     }
 
+    // 处理财务路由：当访问 /console/finance 及其子路由时，确保财务运营菜单保持展开
+    if (currentPath === '/console/finance' || currentPath.startsWith('/console/finance/')) {
+      if (!openedKeys.includes('finance')) {
+        setOpenedKeys(prev => [...prev, 'finance']);
+      }
+    }
+
     // 如果找到匹配的键，更新选中的键
     if (matchingKey) {
       setSelectedKeys([matchingKey]);
@@ -515,16 +522,16 @@ const SiderBar = ({ onNavigate = () => {} }) => {
               return;
             }
 
-            // 财务概览导航
-            if (itemKey === 'financeDashboard') {
+            // 财务概览导航（itemKey 与父菜单相同，需要特殊处理）
+            if (itemKey === 'finance') {
               navigate('/console/finance');
               onNavigate();
               setSelectedKeys([itemKey]);
-              // 确保财务运营菜单保持展开
+              // 确保财务运营菜单保持展开（不要触发收起逻辑）
               if (!openedKeys.includes('finance')) {
                 setOpenedKeys(prev => [...prev, 'finance']);
               }
-              return;
+              return; // 重要：不要继续执行到后面的收起逻辑
             }
 
             // 财务子路由导航
