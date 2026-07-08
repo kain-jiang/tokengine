@@ -148,17 +148,29 @@ const TopUp = () => {
       const { success, message, data } = res.data;
       if (success) {
         showSuccess(t('兑换成功！'));
-        Modal.success({
-          title: t('兑换成功！'),
-          content: t('成功兑换额度：') + renderQuota(data),
-          centered: true,
-        });
-        if (userState.user) {
-          const updatedUser = {
-            ...userState.user,
-            quota: userState.user.quota + data,
-          };
-          userDispatch({ type: 'login', payload: updatedUser });
+        // 根据返回数据判断兑换类型：有 plan_id 说明是套餐包，只有 quota 说明是额度充值
+        if (data && data.plan_id) {
+          // 套餐包兑换
+          const planTitle = data.plan_title || t('套餐');
+          Modal.success({
+            title: t('兑换成功！'),
+            content: t('成功兑换套餐：') + planTitle,
+            centered: true,
+          });
+        } else {
+          // 额度充值
+          Modal.success({
+            title: t('兑换成功！'),
+            content: t('成功兑换额度：') + renderQuota(data),
+            centered: true,
+          });
+          if (userState.user) {
+            const updatedUser = {
+              ...userState.user,
+              quota: userState.user.quota + data,
+            };
+            userDispatch({ type: 'login', payload: updatedUser });
+          }
         }
         setRedemptionCode('');
       } else {
