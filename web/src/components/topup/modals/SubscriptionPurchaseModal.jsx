@@ -207,7 +207,10 @@ const SubscriptionPurchaseModal = ({
                     </Text>
                   )}
                 </div>
-                {values.plan?.plan_type === 'tokens' && plan?.applicable_models ? (
+                {/* [DIAGNOSTIC] Debug: plan object and plan_type check */}
+                {console.log('[SubscriptionPurchaseModal] selectedPlan:', selectedPlan, 'plan:', plan, 'plan.plan_type:', plan?.plan_type)}
+                {/* [TEMPORARILY COMMENTED] This line references undefined `values` variable */}
+                {/* {values?.plan?.plan_type === 'tokens' && plan?.applicable_models ? (
                   <div className='flex justify-between items-center'>
                     <Text strong className='text-slate-700 dark:text-slate-200'>
                       {t('模型')}：
@@ -218,7 +221,7 @@ const SubscriptionPurchaseModal = ({
                       </Text>
                     </Tooltip>
                   </div>
-                ) : null}
+                ) : null} */}
               </div>
             ) : (
               <>

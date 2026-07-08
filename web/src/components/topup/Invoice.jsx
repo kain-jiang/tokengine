@@ -196,40 +196,51 @@ const Invoice = () => {
     loadInvoiceTitle();
   }, []);
 
-  // 为订单注入开票状态
-  useEffect(() => {
-    const mergeData = () => {
-      if (!topups.length) return;
-      // 为订单里添加字段invoice_status
-      const array = topups.map((item) => {
-        const dic = { ...item };
-        let found = false;
+  // useEffect(() => {
+  //   const loadData = async () => {
+  //     const [topupData, invoiceData] = await Promise.all([
+  //       loadTopups(topupPage, topupPageSize),
+  //       loadInvoices(invoicePage, invoicePageSize),
+  //     ]);
+  //
+  //     if (topupData.length > 0 && invoiceData.length > 0) {
+  //       injectInvoiceStatus(topupData, invoiceData);
+  //     }
+  //   };
+  //
+  //   loadData();
+  // }, [topupPage, topupPageSize, topupKeyword]);
 
-        // 遍历发票记录
-        for (const record of invoices) {
-          if (record.order_ids) {
-            const ids = record.order_ids.split(',').map((id) => id.trim());
-            // 注意：这里用 String() 转换类型
-            if (ids.includes(String(item.id))) {
-              dic.invoice_status = record.status;
-              found = true;
-              break;
-            }
+  // 为订单注入开票状态
+  const injectInvoiceStatus = (topups, invoices) => {
+    if (!topups.length) return;
+    // 为订单里添加字段invoice_status
+    const array = topups.map((item) => {
+      const dic = { ...item };
+      let found = false;
+
+      // 遍历发票记录
+      for (const record of invoices) {
+        if (record.order_ids) {
+          const ids = record.order_ids.split(',').map((id) => id.trim());
+          // 注意：这里用 String() 转换类型
+          if (ids.includes(String(item.id))) {
+            dic.invoice_status = record.status;
+            found = true;
+            break;
           }
         }
+      }
 
-        // 如果没有找到，设置为未开票
-        if (!found) {
-          dic.invoice_status = 'uninvoiced';
-        }
-        return dic;
-      });
+      // 如果没有找到，设置为未开票
+      if (!found) {
+        dic.invoice_status = 'uninvoiced';
+      }
+      return dic;
+    });
 
-      setTopups(array);
-    };
-    mergeData();
-
-  }, [topups, invoices]);
+    setTopups(array);
+  };
 
   const handleTopupPageChange = (currentPage) => {
     setTopupPage(currentPage);

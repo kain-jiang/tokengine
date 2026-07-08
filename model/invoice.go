@@ -2,6 +2,8 @@ package model
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -111,4 +113,37 @@ func (o *InvoiceRecord) ToMap() (map[string]interface{}, error) {
 		"created_at":         o.CreatedAt.Format("2006-01-02 15:04:05"),
 	}
 	return dic, nil
+}
+
+// 获取已经开票、正在开票的订单
+func GetInvoicedOrderIds(userId int) (map[int]bool, error) {
+	var invoicedOrderIds []string
+	err := DB.Model(&InvoiceRecord{}).
+		Where("user_id = ? AND status IN ?", userId, []string{
+			InvoicePendingStatus,
+			InvoiceRunningStatus,
+			InvoiceStatusCompleted,
+		}).
+		Pluck("order_ids", &invoicedOrderIds).Error
+	if err != nil {
+		return nil, fmt.Errorf("查询失败, 错误详情：%s", err)
+	}
+	invoicedOrderIdMap := make(map[int]bool)
+	for _, orderIdsStr := range invoicedOrderIds {
+		if orderIdsStr == "" {
+			continue
+		}
+		for _, idStr := range strings.Split(orderIdsStr, ",") {
+			idStr = strings.TrimSpace(idStr)
+			if idStr == "" {
+				continue
+			}
+			var id int
+			_, err = fmt.Sscanf(idStr, "%d", &id)
+			if err == nil {
+				invoicedOrderIdMap[id] = true
+			}
+		}
+	}
+	return invoicedOrderIdMap, nil
 }
