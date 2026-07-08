@@ -27,46 +27,40 @@ import {
 } from '@douyinfe/semi-icons';
 import { API, showError } from '../../helpers';
 import { StatusContext } from '../../context/Status';
-import {
-  NativeRow,
-  NativeCol,
-  NativeCard,
-  NativeSpace,
-  NativeButton,
-  NativeSpin,
-  NativeDatePicker,
-  NativeText,
-} from './NativeLayout';
-
-// 格式化金额
-const formatMoney = (value) => {
-  if (!value && value !== 0) return '-';
-  return new Intl.NumberFormat('zh-CN', {
-    style: 'currency',
-    currency: 'CNY',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-};
+import CardPro from '../../components/common/ui/CardPro';
+import { formatMoney } from './utils';
+import { createCardProPagination } from '../../helpers/utils';
+import { useIsMobile } from '../../hooks/common/useIsMobile';
 
 // 统计卡片组件
 const StatCard = ({ children, icon, color, title }) => (
-  <NativeCard bodyStyle={{ padding: '20px' }} style={{ borderRadius: 12 }}>
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ color: '#999', fontSize: 14, marginBottom: 8 }}>{title}</div>
-      <div style={{ fontSize: 24, fontWeight: 'bold', color }}>{children}</div>
-    </div>
-    {icon && (
-      <div style={{ float: 'right' }}>
-        {icon}
+  <div
+    style={{
+      backgroundColor: '#fff',
+      borderRadius: 12,
+      padding: '20px',
+      flex: 1,
+      minWidth: 200,
+    }}
+  >
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div>
+        <div style={{ color: '#999', fontSize: 14, marginBottom: 8 }}>{title}</div>
+        <div style={{ fontSize: 24, fontWeight: 'bold', color }}>{children}</div>
       </div>
-    )}
-  </NativeCard>
+      {icon && (
+        <div style={{ color }}>
+          {icon}
+        </div>
+      )}
+    </div>
+  </div>
 );
 
 export default function FinanceDashboard() {
   const { t } = useTranslation();
   const [statusState] = useContext(StatusContext);
+  const isMobile = useIsMobile();
 
   // 日期范围
   const [dateRange, setDateRange] = useState([]);
@@ -127,7 +121,6 @@ export default function FinanceDashboard() {
       setDateRange([]);
       return;
     }
-    // 处理单个或两个日期（兼容原生 input type="date" 返回的字符串和 moment.js 对象）
     const newStart = dates[0]?.format?.('YYYY-MM-DD') || dates[0] || '';
     const newEnd = dates[1]?.format?.('YYYY-MM-DD') || dates[1] || '';
     setStartDate(newStart);
@@ -135,124 +128,183 @@ export default function FinanceDashboard() {
     setDateRange(dates);
   };
 
-  // 渲染概览页面
-  if (dashboardLoading) {
-    return (
-      <div style={{ textAlign: 'center', padding: '40px' }}>
-        <NativeSpin size='large' />
+  // 统计区域 - 4 个统计卡片
+  const statsArea = (
+    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 0 }}>
+      <StatCard
+        title={t('总营收')}
+        color="#1890ff"
+        icon={<IconMoneyExchangeStroked style={{ fontSize: 24 }} />}
+      >
+        {dashboardData ? formatMoney(dashboardData.total_revenue) : '-'}
+      </StatCard>
+      <StatCard
+        title={t('总充值')}
+        color="#52c41a"
+        icon={<IconCoinMoneyStroked style={{ fontSize: 24 }} />}
+      >
+        {dashboardData ? formatMoney(dashboardData.total_topup) : '-'}
+      </StatCard>
+      <StatCard
+        title={t('今日营收')}
+        color="#722ed1"
+        icon={<IconArrowUp style={{ fontSize: 24 }} />}
+      >
+        {dashboardData ? formatMoney(dashboardData.today_revenue) : '-'}
+      </StatCard>
+      <StatCard
+        title={t('订单数')}
+        color="#fa8c16"
+        icon={<IconClockStroked style={{ fontSize: 24 }} />}
+      >
+        {dashboardData?.order_count || 0}
+      </StatCard>
+    </div>
+  );
+
+  // 搜索区域 - 日期范围选择器 + 查询按钮
+  const searchArea = (
+    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          border: '1px solid #d9d9d9',
+          borderRadius: 6,
+          padding: '0 12px',
+          height: 40,
+          minWidth: 280,
+          backgroundColor: '#fff',
+        }}
+      >
+        <input
+          type="date"
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+          style={{
+            border: 'none',
+            outline: 'none',
+            fontSize: 14,
+            flex: 1,
+            backgroundColor: 'transparent',
+          }}
+          placeholder={t('开始日期')}
+        />
+        <span style={{ color: '#999', margin: '0 8px' }}>至</span>
+        <input
+          type="date"
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          style={{
+            border: 'none',
+            outline: 'none',
+            fontSize: 14,
+            flex: 1,
+            backgroundColor: 'transparent',
+          }}
+          placeholder={t('结束日期')}
+        />
       </div>
-    );
-  }
+      <button
+        onClick={() => { fetchDashboard(); fetchRevenueTrend(); }}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: 40,
+          padding: '0 16px',
+          backgroundColor: '#1677ff',
+          color: '#fff',
+          border: '1px solid #1677ff',
+          borderRadius: 6,
+          fontSize: 14,
+          fontWeight: 500,
+          cursor: dashboardLoading ? 'not-allowed' : 'pointer',
+          opacity: dashboardLoading ? 0.6 : 1,
+        }}
+        disabled={dashboardLoading}
+      >
+        {t('查询')}
+      </button>
+    </div>
+  );
+
+  // 营收趋势图表
+  const revenueTrendChart = revenueTrend.length > 0 ? (
+    <div style={{ height: 300, display: 'flex', alignItems: 'flex-end', gap: 4, padding: '20px 0' }}>
+      {revenueTrend.map((item) => {
+        const maxRevenue = Math.max(...revenueTrend.map((r) => r.revenue || 0), 1);
+        const height = Math.max((item.revenue / maxRevenue) * 250, 4);
+        return (
+          <div
+            key={item.date}
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            <div
+              style={{
+                width: '100%',
+                maxWidth: 40,
+                height,
+                background: 'linear-gradient(180deg, #1890ff 0%, #69c0ff 100%)',
+                borderRadius: '4px 4px 0 0',
+              }}
+            />
+            <span style={{ fontSize: 10, color: '#999', writingMode: 'vertical-rl' }}>
+              {item.date?.slice(5)}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  ) : (
+    <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+      {t('暂无数据')}
+    </div>
+  );
 
   return (
-    <div>
-      {/* 筛选栏 */}
-      <NativeCard
-        bodyStyle={{ padding: '16px 20px' }}
-        style={{ borderRadius: 12, marginBottom: 16 }}
-      >
-        <NativeSpace size={12}>
-          <NativeDatePicker
-            value={dateRange}
-            onChange={handleDateRangeChange}
-          />
-          <NativeButton 
-            theme='solid' 
-            type='primary'
-            onClick={() => { fetchDashboard(); fetchRevenueTrend(); }}
-          >
-            {t('查询')}
-          </NativeButton>
-        </NativeSpace>
-      </NativeCard>
-
-      {/* 统计卡片 */}
-      <NativeRow gutter={16} style={{ marginBottom: 24 }}>
-        <NativeCol span={6}>
-          <StatCard 
-            title={t('总营收')} 
-            color="#1890ff"
-            icon={<IconMoneyExchangeStroked size='large' style={{ color: '#1890ff', float: 'right' }} />}
-          >
-            {dashboardData ? formatMoney(dashboardData.total_revenue) : '-'}
-          </StatCard>
-        </NativeCol>
-        <NativeCol span={6}>
-          <StatCard 
-            title={t('总充值')} 
-            color="#52c41a"
-            icon={<IconCoinMoneyStroked size='large' style={{ color: '#52c41a', float: 'right' }} />}
-          >
-            {dashboardData ? formatMoney(dashboardData.total_topup) : '-'}
-          </StatCard>
-        </NativeCol>
-        <NativeCol span={6}>
-          <StatCard 
-            title={t('今日营收')} 
-            color="#722ed1"
-            icon={<IconArrowUp size='large' style={{ color: '#722ed1', float: 'right' }} />}
-          >
-            {dashboardData ? formatMoney(dashboardData.today_revenue) : '-'}
-          </StatCard>
-        </NativeCol>
-        <NativeCol span={6}>
-          <StatCard 
-            title={t('订单数')} 
-            color="#fa8c16"
-            icon={<IconClockStroked size='large' style={{ color: '#fa8c16', float: 'right' }} />}
-          >
-            {dashboardData?.order_count || 0}
-          </StatCard>
-        </NativeCol>
-      </NativeRow>
-
+    <CardPro
+      type='type2'
+      statsArea={statsArea}
+      searchArea={searchArea}
+      t={t}
+    >
       {/* 营收趋势 */}
-      <NativeCard
-        title={t('近30天营收趋势')}
-        bodyStyle={{ padding: '20px' }}
-        style={{ borderRadius: 12 }}
+      <div
+        style={{
+          marginBottom: 16,
+          padding: 20,
+          backgroundColor: '#fafafa',
+          borderRadius: 8,
+        }}
       >
-        {revenueTrend.length > 0 ? (
-          <div style={{ height: 300, display: 'flex', alignItems: 'flex-end', gap: 4, padding: '20px 0' }}>
-            {revenueTrend.map((item) => {
-              const maxRevenue = Math.max(
-                ...revenueTrend.map((r) => r.revenue || 0),
-                1
-              );
-              const height = Math.max((item.revenue / maxRevenue) * 250, 4);
-              return (
-                <div
-                  key={item.date}
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: 4,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '100%',
-                      maxWidth: 40,
-                      height,
-                      background: 'linear-gradient(180deg, #1890ff 0%, #69c0ff 100%)',
-                      borderRadius: '4px 4px 0 0',
-                    }}
-                  />
-                  <span style={{ fontSize: 10, color: '#999', writingMode: 'vertical-rl' }}>
-                    {item.date?.slice(5)}
-                  </span>
-                </div>
-              );
-            })}
+        <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>
+          {t('近30天营收趋势')}
+        </div>
+        {dashboardLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px' }}>
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                border: '3px solid #f0f0f0',
+                borderTopColor: '#1677ff',
+                borderRadius: '50%',
+                animation: 'semi-spin 0.6s infinite linear',
+                margin: '0 auto',
+              }}
+            />
           </div>
         ) : (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-            {t('暂无数据')}
-          </div>
+          revenueTrendChart
         )}
-      </NativeCard>
-    </div>
+      </div>
+    </CardPro>
   );
 }
