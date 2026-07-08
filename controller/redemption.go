@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"unicode/utf8"
@@ -69,6 +70,17 @@ func AddRedemption(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgRedemptionNameLength)
 		return
 	}
+	// 套餐模式和直接充值模式二选一
+	if redemption.PlanId > 0 {
+		// 套餐模式：不需要 quota，quota 由套餐决定
+		redemption.Quota = 0
+	} else {
+		// 直接充值模式：quota 必须 > 0
+		if redemption.Quota <= 0 {
+			common.ApiError(c, errors.New("额度必须大于0"))
+			return
+		}
+	}
 	if redemption.Count <= 0 {
 		common.ApiErrorI18n(c, i18n.MsgRedemptionCountPositive)
 		return
@@ -91,6 +103,7 @@ func AddRedemption(c *gin.Context) {
 			CreatedTime: common.GetTimestamp(),
 			Quota:       redemption.Quota,
 			ExpiredTime: redemption.ExpiredTime,
+			PlanId:      redemption.PlanId,
 		}
 		err = cleanRedemption.Insert()
 		if err != nil {
@@ -148,6 +161,7 @@ func UpdateRedemption(c *gin.Context) {
 		cleanRedemption.Name = redemption.Name
 		cleanRedemption.Quota = redemption.Quota
 		cleanRedemption.ExpiredTime = redemption.ExpiredTime
+		cleanRedemption.PlanId = redemption.PlanId
 	}
 	if statusOnly != "" {
 		cleanRedemption.Status = redemption.Status
