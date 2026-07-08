@@ -367,8 +367,8 @@ function App() {
             </PrivateRoute>
           }
         />
-        {/* 财务模块路由 - 仅财务运营人员可访问 */}
-        {isFinanceAdmin() && (
+        {/* 财务模块路由 - 管理员可访问 */}
+        {isAdmin() && (
           <Route
             path='/console/finance'
             element={

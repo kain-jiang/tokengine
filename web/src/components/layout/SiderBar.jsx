@@ -594,11 +594,11 @@ const SiderBar = ({ onNavigate = () => {} }) => {
           )}
 
           {/* 底部折叠菜单 - 财务 + 管理员 */}
-          {((isFinanceAdmin() && hasSectionVisibleModules('finance')) || (isAdmin() && hasSectionVisibleModules('admin'))) && (
+          {((isAdmin() && hasSectionVisibleModules('finance')) || (isAdmin() && hasSectionVisibleModules('admin'))) && (
             <>
               <Divider className='sidebar-divider' />
               {/* 财务模块折叠菜单 */}
-              {isFinanceAdmin() && hasSectionVisibleModules('finance') && (
+              {isAdmin() && hasSectionVisibleModules('finance') && (
                 <Nav.Sub
                   key='finance'
                   itemKey='finance'
