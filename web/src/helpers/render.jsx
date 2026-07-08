@@ -525,7 +525,9 @@ export function getLobeHubIcon(iconName, size = 14) {
     }
     const key = seg.slice(0, eqIdx).trim();
     const valRaw = seg.slice(eqIdx + 1).trim();
-    props[key] = parseValue(valRaw);
+    // 将 SVG 属性转换为小写以符合 DOM 规范（如 Color -> color）
+    const normalizedKey = key.toLowerCase();
+    props[normalizedKey] = parseValue(valRaw);
   }
 
   // 兼容第二参数 size，若字符串中未显式指定 size，则使用函数入参

@@ -215,6 +215,11 @@ func Register(c *gin.Context) {
 			return
 		}
 	}
+	// 先检查 TelePhone 是否为 nil，避免 nil 指针解引用 panic
+	if user.TelePhone == nil {
+		common.ApiErrorMsg(c, "请填写手机号")
+		return
+	}
 	if *user.TelePhone == "" || len(*user.TelePhone) != 11 {
 		common.ApiErrorMsg(c, "请填写11位的手机号")
 		return

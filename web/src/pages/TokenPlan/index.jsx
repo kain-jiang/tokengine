@@ -179,41 +179,20 @@ const TokenPlan = () => {
   const fetchSubscriptionSelf = async () => {
     try {
       const res = await API.get('/api/subscription/self');
-      console.log('[TokenPlan] API response:', JSON.stringify(res.data, null, 2));
       if (res.data?.success) {
         const subs = res.data.data?.subscriptions || [];
         const allSubs = res.data.data?.all_subscriptions || [];
-        console.log('[TokenPlan] Active subscriptions count:', subs.length);
-        console.log('[TokenPlan] All subscriptions count:', allSubs.length);
         setAllSubscriptions(allSubs);
         
-        // 调试日志：打印每个订阅的 plan_type
-        subs.forEach((s, idx) => {
-          console.log(`[TokenPlan] Subscription ${idx}:`, {
-            id: s?.subscription?.id,
-            plan_type: s?.plan?.plan_type,
-            plan_title: s?.plan?.title,
-            tokens_limit: s?.subscription?.tokens_limit,
-            tokens_used: s?.subscription?.tokens_used,
-          });
-        });
-        
-        const tokenSub = subs.find(s => {
-          const planType = s?.plan?.plan_type;
-          console.log(`[TokenPlan] Checking plan_type:`, planType, '=== tokens?', planType === 'tokens');
-          return planType === 'tokens';
-        });
-        console.log('[TokenPlan] Found tokenSub:', tokenSub);
+        const tokenSub = subs.find(s => s?.plan?.plan_type === 'tokens');
         
         if (tokenSub) {
           setActiveSubscription(tokenSub);
         } else {
-          console.warn('[TokenPlan] No tokens-type subscription found, setting to null');
           setActiveSubscription(null);
         }
       }
     } catch (e) {
-      console.error('[TokenPlan] fetchSubscriptionSelf error:', e);
       // ignore
     }
   };
@@ -239,19 +218,14 @@ const TokenPlan = () => {
   
   const fetchApiKeys = async () => {
     try {
-      console.log('[TokenPlan] Fetching subscription token API key...');
       const res = await API.get('/api/user/token/subscription');
-      console.log('[TokenPlan] API response:', res.data);
       if (res.data?.success) {
         const key = res.data.data?.key || '';
-        console.log('[TokenPlan] Received API key:', key ? key.substring(0, 10) + '...' : '(empty)');
         setSubscriptionApiKey(key);
       } else {
-        console.warn('[TokenPlan] API returned failure:', res.data?.message);
         setSubscriptionApiKey('');
       }
     } catch (e) {
-      console.error('[TokenPlan] Failed to fetch subscription API key:', e);
       showError('获取 API Key 失败，请刷新页面重试');
       setSubscriptionApiKey('');
     } finally {
@@ -491,7 +465,7 @@ const TokenPlan = () => {
                 <Text size='small' className={`mt-2 ${isActive ? 'text-gray-800' : 'text-gray-400'}`}>
                   {step.title}
                 </Text>
-                <Text size='extra-small' type='tertiary' className='mt-1'>
+                <Text size='small' type='tertiary' className='mt-1 text-xs'>
                   {step.desc}
                 </Text>
               </div>
