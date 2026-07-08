@@ -126,6 +126,7 @@ const Invoice = () => {
       if (success) {
         setTopups(data.items || []);
         setTopupTotal(data.total || 0);
+        return data.items
       } else {
         Toast.error({ content: message || t('加载失败') });
       }
@@ -145,6 +146,7 @@ const Invoice = () => {
       if (success) {
         setInvoices(data.items || []);
         setInvoiceTotal(data.total || 0);
+        return data.items
       } else {
         Toast.error({ content: message || t('加载失败') });
       }
@@ -196,20 +198,20 @@ const Invoice = () => {
     loadInvoiceTitle();
   }, []);
 
-  // useEffect(() => {
-  //   const loadData = async () => {
-  //     const [topupData, invoiceData] = await Promise.all([
-  //       loadTopups(topupPage, topupPageSize),
-  //       loadInvoices(invoicePage, invoicePageSize),
-  //     ]);
-  //
-  //     if (topupData.length > 0 && invoiceData.length > 0) {
-  //       injectInvoiceStatus(topupData, invoiceData);
-  //     }
-  //   };
-  //
-  //   loadData();
-  // }, [topupPage, topupPageSize, topupKeyword]);
+  useEffect(() => {
+    const loadData = async () => {
+      const [topupData, invoiceData] = await Promise.all([
+        loadTopups(topupPage, topupPageSize),
+        loadInvoices(invoicePage, invoicePageSize),
+      ]);
+
+      if (topupData.length > 0 && invoiceData.length > 0) {
+        injectInvoiceStatus(topupData, invoiceData);
+      }
+    };
+
+    loadData();
+  }, [topupPage, topupPageSize, topupKeyword]);
 
   // 为订单注入开票状态
   const injectInvoiceStatus = (topups, invoices) => {
