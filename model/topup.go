@@ -247,7 +247,9 @@ func SearchAllTopUpsWithUsername(keyword string, status string, pageInfo *common
 
 	query := tx.Model(&TopUp{})
 	if keyword != "" {
-		query = query.Where("trade_no LIKE ?", "%%"+keyword+"%%")
+		keywordLike := "%%" + keyword + "%%"
+		query = query.Where("trade_no LIKE ?", keywordLike).
+			Or("users.username LIKE ?", keywordLike)
 	}
 	if status != "" {
 		query = query.Where("top_ups.status = ?", status)
