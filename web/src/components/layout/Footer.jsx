@@ -20,12 +20,7 @@ For commercial licensing, please contact support@quantumnous.com
 import React, { useEffect, useState, useMemo, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '@douyinfe/semi-ui';
-import {
-  getFooterHTML,
-  getIcpVersion,
-  getLogo,
-  getSystemName,
-} from '../../helpers';
+import { getFooterHTML, getLogo, getSystemName, getIcpVersion } from '../../helpers';
 import { StatusContext } from '../../context/Status';
 
 const FooterBar = () => {
@@ -185,23 +180,19 @@ const FooterBar = () => {
 
         <div className='flex flex-col md:flex-row items-center justify-between w-full max-w-[1110px] gap-6'>
           <div className='flex flex-wrap items-center gap-2'>
+            <Typography.Text className='text-sm text-white/80 caption'>
+               © {currentYear} {systemName}. {t('版权所有')}
+            </Typography.Text>
 
-            {icpVersion ? (
-              <Typography.Text className='text-sm text-white/80 caption'>
-                <a href='https://beian.miit.gov.cn' target={'_blank'}>
-                  {icpVersion}
-                </a>
-              </Typography.Text>
-            ) : (
-              <Typography.Text className='text-sm text-white/80 caption'>
-                © {currentYear} {systemName}. {t('版权所有')}
-              </Typography.Text>
-            )}
+             <Typography.Text className='text-sm text-white/80 caption'>
+              <a href='https://beian.miit.gov.cn' target={'_blank'}> {icpVersion}</a>
+            </Typography.Text>
+
           </div>
         </div>
       </footer>
     ),
-    [logo, systemName, t, currentYear, isDemoSiteMode, icpVersion],
+    [logo, systemName, t, currentYear, isDemoSiteMode],
   );
 
   useEffect(() => {

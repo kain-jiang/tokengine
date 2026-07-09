@@ -3643,6 +3643,8 @@
     "此套餐仅适用于指定的模型": "This plan only applies to specified models",
     "请输入Tokens上限": "Please enter Tokens limit",
     "请输入适用模型": "Please enter applicable models",
-    "Tokens套餐必须指定适用模型": "Tokens plan must specify applicable models"
-  }
+    "Tokens套餐必须指定适用模型": "Tokens plan must specify applicable models",
+    "当前账号未认证，去认证": "Account not verified, go to verify",
+    "当前账号已认证": "Account verified"
+ }
 }

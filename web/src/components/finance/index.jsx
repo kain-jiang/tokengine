@@ -444,7 +444,7 @@ export default function Finance() {
       },
     },
     {
-      title: t('总营收'),
+      title: t('总消耗'),
       dataIndex: 'total_revenue',
       key: 'total_revenue',
       width: 120,
@@ -558,7 +558,7 @@ export default function Finance() {
               <Descriptions
                 data={[
                   {
-                    label: t('总营收'),
+                    label: t('总消耗'),
                     value: dashboardData
                       ? formatMoney(dashboardData.total_revenue)
                       : '-',
@@ -602,7 +602,7 @@ export default function Finance() {
               <Descriptions
                 data={[
                   {
-                    label: t('今日营收'),
+                    label: t('今日消耗'),
                     value: dashboardData
                       ? formatMoney(dashboardData.today_revenue)
                       : '-',

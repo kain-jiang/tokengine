@@ -245,9 +245,11 @@ func SearchAllTopUpsWithUsername(keyword string, status string, pageInfo *common
 		}
 	}()
 
-	query := tx.Model(&TopUp{})
+	// 先JOIN users表，这样WHERE条件才能引用users.username
+	query := tx.Model(&TopUp{}).Joins("LEFT JOIN users ON top_ups.user_id = users.id")
 	if keyword != "" {
-		query = query.Where("trade_no LIKE ?", "%%"+keyword+"%%")
+		keywordLike := "%%" + keyword + "%%"
+		query = query.Where("top_ups.trade_no LIKE ? OR users.username LIKE ?", keywordLike, keywordLike)
 	}
 	if status != "" {
 		query = query.Where("top_ups.status = ?", status)
@@ -260,14 +262,13 @@ func SearchAllTopUpsWithUsername(keyword string, status string, pageInfo *common
 		query = query.Where("create_time <= ?", endTime)
 	}
 
-	if err = query.Count(&total).Error; err != nil {
+	if err = query.Select("top_ups.*, users.username").Count(&total).Error; err != nil {
 		tx.Rollback()
 		return nil, 0, err
 	}
 
 	topups = make([]*TopUpWithUsername, 0)
 	if err = query.Select("top_ups.*, users.username").
-		Joins("LEFT JOIN users ON top_ups.user_id = users.id").
 		Order("top_ups.id desc").
 		Limit(pageInfo.GetPageSize()).
 		Offset(pageInfo.GetStartIdx()).

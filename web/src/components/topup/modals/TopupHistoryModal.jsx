@@ -76,6 +76,16 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
   });
   const isMobile = useIsMobile();
 
+  // 初始化默认查询最近1个月
+  useEffect(() => {
+    if (visible && !dateRange.startDate && !dateRange.endDate) {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setMonth(startDate.getMonth() - 1);
+      setDateRange({ startDate, endDate });
+    }
+  }, [visible]);
+
   // 计算半年前的日期（最大导出范围）
   const getMaxStartDate = () => {
     const now = new Date();
@@ -181,18 +191,14 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
     }
   };
 
-  // 快速选择时间范围
-  const handleQuickDateSelect = (days) => {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - days);
-    setDateRange({ startDate, endDate });
-    setPage(1);
-  };
-
   // 清除日期筛选
   const clearDateFilter = () => {
     setDateRange({ startDate: null, endDate: null });
+    setPage(1);
+  };
+
+  // 查询按钮点击处理
+  const handleSearch = () => {
     setPage(1);
   };
 
@@ -373,64 +379,8 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
       footer={null}
       size={isMobile ? 'full-width' : 'large'}
     >
-      {/* 时间范围筛选和导出 */}
+      {/* 日期范围和状态筛选 */}
       <div className='mb-3 p-3 bg-gray-50 rounded-lg'>
-        <div className='flex items-center justify-between mb-3'>
-          <div className='flex flex-wrap items-center gap-2'>
-            <span className='text-sm text-gray-600 mr-2'>{t('时间范围')}</span>
-            <Button
-              size='small'
-              type='tertiary'
-              onClick={() => handleQuickDateSelect(7)}
-              className={dateRange.startDate && dateRange.endDate && 
-                Math.floor((dateRange.endDate - dateRange.startDate) / (1000 * 60 * 60 * 24)) === 7 ? 'bg-green-100 text-green-700 border border-green-300' : 'text-gray-600 hover:text-gray-800'}
-            >
-              {t('近7天')}
-            </Button>
-            <Button
-              size='small'
-              type='tertiary'
-              onClick={() => handleQuickDateSelect(30)}
-              className={dateRange.startDate && dateRange.endDate && 
-                Math.floor((dateRange.endDate - dateRange.startDate) / (1000 * 60 * 60 * 24)) === 30 ? 'bg-green-100 text-green-700 border border-green-300' : 'text-gray-600 hover:text-gray-800'}
-            >
-              {t('近30天')}
-            </Button>
-            <Button
-              size='small'
-              type='tertiary'
-              onClick={() => handleQuickDateSelect(90)}
-              className={dateRange.startDate && dateRange.endDate && 
-                Math.floor((dateRange.endDate - dateRange.startDate) / (1000 * 60 * 60 * 24)) === 90 ? 'bg-green-100 text-green-700 border border-green-300' : 'text-gray-600 hover:text-gray-800'}
-            >
-              {t('近90天')}
-            </Button>
-            <Button
-              size='small'
-              type='tertiary'
-              onClick={() => handleQuickDateSelect(180)}
-              className={dateRange.startDate && dateRange.endDate && 
-                Math.floor((dateRange.endDate - dateRange.startDate) / (1000 * 60 * 60 * 24)) === 180 ? 'bg-green-100 text-green-700 border border-green-300' : 'text-gray-600 hover:text-gray-800'}
-            >
-              {t('近半年')}
-            </Button>
-            {(dateRange.startDate || dateRange.endDate) && (
-              <Button size='small' theme='borderless' onClick={clearDateFilter}>
-                {t('清除')}
-              </Button>
-            )}
-          </div>
-          <Button
-            type='primary'
-            theme='solid'
-            onClick={handleExport}
-            loading={exportLoading}
-            icon={<Download size={16} />}
-            size='small'
-          >
-            {t('导出')}
-          </Button>
-        </div>
         <div className='flex flex-wrap items-center gap-2'>
           <DatePicker
             type='date'
@@ -442,6 +392,7 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
             }}
             maxDate={dateRange.endDate || new Date()}
             disabledDate={(date) => date > new Date() || date < getMaxStartDate()}
+            style={{ minWidth: '150px' }}
           />
           <span className='text-gray-400'>~</span>
           <DatePicker
@@ -454,36 +405,51 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
             }}
             minDate={dateRange.startDate}
             maxDate={new Date()}
+            style={{ minWidth: '150px' }}
           />
-          <span className='text-xs text-gray-500'>
-            {t('最大导出范围：半年')}
-          </span>
+          <Select
+            placeholder={t('全部状态')}
+            value={statusFilter}
+            onChange={handleStatusChange}
+            style={{ width: 120 }}
+          >
+            <Select.Option value=''>{t('全部状态')}</Select.Option>
+            <Select.Option value='pending'>{t('待支付')}</Select.Option>
+            <Select.Option value='success'>{t('成功')}</Select.Option>
+            <Select.Option value='failed'>{t('失败')}</Select.Option>
+            <Select.Option value='expired'>{t('已过期')}</Select.Option>
+            <Select.Option value='cancelled'>{t('已取消')}</Select.Option>
+          </Select>
         </div>
       </div>
 
-      {/* 搜索和状态筛选 */}
-      <div className='flex flex-wrap gap-3 mb-3'>
+      {/* 搜索和导出 */}
+      <div className='flex flex-wrap items-center gap-2 mb-3'>
         <Input
           prefix={<IconSearch />}
-          placeholder={t('订单号')}
+          placeholder={t('订单号或用户名')}
           value={keyword}
           onChange={handleKeywordChange}
           showClear
+          onPressEnter={handleSearch}
           style={{ flex: 1, minWidth: '200px' }}
         />
-        <Select
-          placeholder={t('全部状态')}
-          value={statusFilter}
-          onChange={handleStatusChange}
-          style={{ width: 140 }}
+        <Button
+          type='primary'
+          theme='solid'
+          onClick={handleSearch}
         >
-          <Select.Option value=''>{t('全部状态')}</Select.Option>
-          <Select.Option value='pending'>{t('待支付')}</Select.Option>
-          <Select.Option value='success'>{t('成功')}</Select.Option>
-          <Select.Option value='failed'>{t('失败')}</Select.Option>
-          <Select.Option value='expired'>{t('已过期')}</Select.Option>
-          <Select.Option value='cancelled'>{t('已取消')}</Select.Option>
-        </Select>
+          {t('查询')}
+        </Button>
+        <Button
+          type='primary'
+          theme='solid'
+          onClick={handleExport}
+          loading={exportLoading}
+          icon={<Download size={16} />}
+        >
+          {t('导出')}
+        </Button>
       </div>
       <Table
         columns={columns}

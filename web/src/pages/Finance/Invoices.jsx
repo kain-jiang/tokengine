@@ -21,39 +21,29 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API, showError, showSuccess } from '../../helpers';
 import { useTranslation } from 'react-i18next';
-import {
-  NativeCard,
-  NativeRow,
-  NativeCol,
-  NativeSpace,
-  NativeButton,
-  NativeTable,
-  NativeTag,
-  NativeInput,
-  NativeSelect,
-  NativeModal,
-  NativePopconfirm,
-  NativeTextArea,
-} from './NativeLayout';
+import CardPro from '../../components/common/ui/CardPro';
+import { formatMoney, formatTimestamp, getStatusTag, getTypeTag } from './utils';
+import { createCardProPagination } from '../../helpers/utils';
+import { useIsMobile } from '../../hooks/common/useIsMobile';
 
-const formatMoney = (value) => {
-  if (!value && value !== 0) return '-';
-  return new Intl.NumberFormat('zh-CN', {
-    style: 'currency',
-    currency: 'CNY',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
+// 发票状态映射
+const invoiceStatusMap = {
+  pending: { text: '待审核', color: 'orange' },
+  approved: { text: '已通过', color: 'blue' },
+  rejected: { text: '已拒绝', color: 'red' },
+  issued: { text: '已开具', color: 'green' },
 };
 
-const formatTimestamp = (ts) => {
-  if (!ts) return '-';
-  return new Date(ts * 1000).toLocaleString('zh-CN');
+// 发票类型映射
+const invoiceTypeMap = {
+  electronic: { text: '电子发票', color: 'purple' },
+  paper: { text: '纸质发票', color: 'cyan' },
 };
 
 export default function Invoices() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [loading, setLoading] = useState(false);
   const [invoiceList, setInvoiceList] = useState([]);
   const [total, setTotal] = useState(0);
@@ -92,7 +82,6 @@ export default function Invoices() {
         },
       });
       if (res.data?.success) {
-        // 后端返回 { success: true, data: [...], total: 123 }
         setInvoiceList(res.data?.data || []);
         setTotal(res.data?.total || 0);
       }
@@ -143,93 +132,9 @@ export default function Invoices() {
     }
   };
 
-  // 发票状态标签
-  const getStatusTag = (status) => {
-    const statusMap = {
-      pending: { color: 'orange', text: t('待审核') },
-      approved: { color: 'blue', text: t('已通过') },
-      rejected: { color: 'red', text: t('已拒绝') },
-      issued: { color: 'green', text: t('已开具') },
-    };
-    const config = statusMap[status] || { color: 'gray', text: status };
-    return <NativeTag color={config.color}>{config.text}</NativeTag>;
-  };
-
-  // 发票类型标签
-  const getTypeTag = (type) => {
-    const typeMap = {
-      electronic: { color: 'purple', text: t('电子发票') },
-      paper: { color: 'cyan', text: t('纸质发票') },
-    };
-    const config = typeMap[type] || { color: 'gray', text: type };
-    return <NativeTag color={config.color}>{config.text}</NativeTag>;
-  };
-
-  // 发票列表列定义
-  const columns = [
-    {
-      title: t('发票号'),
-      dataIndex: 'invoice_no',
-      width: 180,
-    },
-    {
-      title: t('用户'),
-      dataIndex: 'username',
-      render: (username) => username || '-',
-    },
-    {
-      title: t('类型'),
-      dataIndex: 'type',
-      width: 120,
-      render: (type) => getTypeTag(type),
-    },
-    {
-      title: t('抬头'),
-      dataIndex: 'title',
-      ellipsis: true,
-    },
-    {
-      title: t('金额'),
-      dataIndex: 'amount',
-      width: 120,
-      render: (value) => formatMoney(value),
-    },
-    {
-      title: t('状态'),
-      dataIndex: 'status',
-      width: 100,
-      render: (status) => getStatusTag(status),
-    },
-    {
-      title: t('申请时间'),
-      dataIndex: 'created_at',
-      width: 180,
-      render: (ts) => formatTimestamp(ts),
-    },
-    {
-      title: t('操作'),
-      width: 120,
-      render: (_, record) => (
-        <NativeSpace size={8}>
-          {record.status === 'pending' && (
-            <NativePopconfirm
-              content={t('确定要撤销此申请吗？')}
-              onConfirm={() => {
-                // TODO: 实现撤销功能
-              }}
-            >
-              <NativeButton type="danger" size="small" theme="borderless">
-                {t('撤销')}
-              </NativeButton>
-            </NativePopconfirm>
-          )}
-        </NativeSpace>
-      ),
-    },
-  ];
-
   // 状态选项
   const statusOptions = [
+    { value: '', label: t('全部') },
     { value: 'pending', label: t('待审核') },
     { value: 'approved', label: t('已通过') },
     { value: 'rejected', label: t('已拒绝') },
@@ -242,157 +147,454 @@ export default function Invoices() {
     { value: 'paper', label: t('纸质发票') },
   ];
 
-  return (
-    <div>
-      {/* 筛选和操作栏 */}
-      <NativeCard style={{ marginBottom: 24 }}>
-        <NativeSpace wrap size={12}>
-          <NativeSelect
-            placeholder={t('状态筛选')}
-            value={statusFilter}
-            onChange={setStatusFilter}
-            options={statusOptions}
-            style={{ width: 150 }}
-            clearable
-          />
-          <NativeInput
-            placeholder={t('搜索发票号或抬头')}
-            value={keyword}
-            onChange={setKeyword}
-            style={{ width: 250 }}
-            onSearch={() => {
+  // 搜索区域
+  const searchArea = (
+    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+      {/* 状态筛选 */}
+      <select
+        value={statusFilter}
+        onChange={(e) => {
+          setStatusFilter(e.target.value);
+          setPage(1);
+        }}
+        style={{
+          height: 32,
+          padding: '0 12px',
+          border: '1px solid #d9d9d9',
+          borderRadius: 6,
+          fontSize: 12,
+          backgroundColor: '#fff',
+          minWidth: 150,
+          outline: 'none',
+        }}
+      >
+        {statusOptions.map((opt) => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+
+      {/* 关键词搜索 */}
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          border: '1px solid #d9d9d9',
+          borderRadius: 6,
+          height: 32,
+          minWidth: 250,
+          backgroundColor: '#fff',
+        }}
+      >
+        <input
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          placeholder={t('搜索发票号或抬头')}
+          style={{
+            border: 'none',
+            outline: 'none',
+            fontSize: 12,
+            padding: '0 12px',
+            flex: 1,
+            backgroundColor: 'transparent',
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
               setPage(1);
               fetchInvoices();
-            }}
-            clearable
-          />
-          <NativeButton
-            type="primary"
-            theme="solid"
-            onClick={() => setShowApplyModal(true)}
-          >
-            {t('申请发票')}
-          </NativeButton>
-        </NativeSpace>
-      </NativeCard>
-
-      {/* 发票列表 */}
-      <NativeCard>
-        <NativeTable
-          columns={columns}
-          dataSource={invoiceList}
-          loading={loading}
-          rowKey="invoice_id"
-          pagination={{
-            current: page,
-            pageSize: pageSize,
-            total: total,
-            onChange: (page) => setPage(page),
-            showTotal: (total) => `共 ${total} 条`,
-            pageSizeActions: [10, 20, 50],
+            }
           }}
         />
-      </NativeCard>
+        {keyword && (
+          <button
+            onClick={() => { setKeyword(''); setPage(1); }}
+            style={{
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              fontSize: 14,
+              color: '#999',
+              padding: '0 8px',
+            }}
+          >
+            ×
+          </button>
+        )}
+      </div>
 
-      {/* 申请发票弹窗 */}
-      <NativeModal
-        title={t('申请发票')}
-        visible={showApplyModal}
-        onOk={handleApplyInvoice}
-        onCancel={() => {
-          setShowApplyModal(false);
-          setFormData({
-            type: 'electronic',
-            amount: '',
-            title: '',
-            tax_number: '',
-            bank: '',
-            bank_account: '',
-            address: '',
-            phone: '',
-            remark: '',
-          });
+      {/* 申请发票按钮 */}
+      <button
+        onClick={() => setShowApplyModal(true)}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: 32,
+          padding: '0 16px',
+          backgroundColor: '#1677ff',
+          color: '#fff',
+          border: '1px solid #1677ff',
+          borderRadius: 6,
+          fontSize: 12,
+          fontWeight: 500,
+          cursor: 'pointer',
         }}
-        width={600}
-        okText={t('提交')}
-        cancelText={t('取消')}
-        loading={formLoading}
       >
-        <div style={{ marginTop: 16 }}>
-          <div style={{ marginBottom: 8, fontWeight: 500 }}>{t('发票类型')}</div>
-          <NativeSelect
+        {t('申请发票')}
+      </button>
+    </div>
+  );
+
+  // 表格列定义
+  const columns = [
+    {
+      title: t('发票号'),
+      dataIndex: 'invoice_no',
+      key: 'invoice_no',
+      width: 180,
+    },
+    {
+      title: t('用户'),
+      dataIndex: 'username',
+      key: 'username',
+      render: (username) => username || '-',
+    },
+    {
+      title: t('类型'),
+      dataIndex: 'type',
+      key: 'type',
+      width: 120,
+      render: (type) => getTypeTag(type, invoiceTypeMap, t),
+    },
+    {
+      title: t('抬头'),
+      dataIndex: 'title',
+      key: 'title',
+      ellipsis: true,
+    },
+    {
+      title: t('金额'),
+      dataIndex: 'amount',
+      key: 'amount',
+      width: 120,
+      render: (value) => formatMoney(value),
+    },
+    {
+      title: t('状态'),
+      dataIndex: 'status',
+      key: 'status',
+      width: 100,
+      render: (status) => getStatusTag(status, invoiceStatusMap, t),
+    },
+    {
+      title: t('申请时间'),
+      dataIndex: 'created_at',
+      key: 'created_at',
+      width: 180,
+      render: (ts) => formatTimestamp(ts),
+    },
+    {
+      title: t('操作'),
+      key: 'action',
+      width: 120,
+      render: (_, record) => (
+        record.status === 'pending' ? (
+          <button
+            onClick={() => {
+              // TODO: 实现撤销功能
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '4px 12px',
+              border: 'none',
+              background: 'none',
+              color: '#ff4d4f',
+              cursor: 'pointer',
+              fontSize: 12,
+            }}
+          >
+            {t('撤销')}
+          </button>
+        ) : null
+      ),
+    },
+  ];
+
+  // 发票列表表格
+  const invoiceTable = (
+    <div style={{ overflowX: 'auto' }}>
+      <table
+        style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+          fontSize: 13,
+        }}
+      >
+        <thead>
+          <tr style={{ backgroundColor: '#fafafa' }}>
+            {columns.map((col) => (
+              <th
+                key={col.key}
+                style={{
+                  padding: '12px 16px',
+                  textAlign: col.key === 'amount' ? 'right' : 'left',
+                  borderBottom: '1px solid #f0f0f0',
+                  fontWeight: 600,
+                  color: 'rgba(0, 0, 0, 0.88)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {col.title}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {invoiceList.map((invoice) => (
+            <tr
+              key={invoice.invoice_id}
+              style={{ borderBottom: '1px solid #f0f0f0', transition: 'background-color 0.2s' }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f5f5f5')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+            >
+              {columns.map((col) => (
+                <td
+                  key={`${invoice.invoice_id}-${col.key}`}
+                  style={{
+                    padding: '12px 16px',
+                    textAlign: col.key === 'amount' ? 'right' : 'left',
+                    color: 'rgba(0, 0, 0, 0.65)',
+                  }}
+                >
+                  {col.render ? col.render(invoice, invoice) : invoice[col.dataIndex]}
+                </td>
+              ))}
+            </tr>
+          ))}
+          {invoiceList.length === 0 && !loading && (
+            <tr>
+              <td
+                colSpan={columns.length}
+                style={{
+                  padding: '40px 16px',
+                  textAlign: 'center',
+                  color: '#999',
+                }}
+              >
+                {t('暂无数据')}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  // 分页
+  const paginationArea = createCardProPagination({
+    currentPage: page,
+    pageSize: pageSize,
+    total: total,
+    onPageChange: setPage,
+    onPageSizeChange: (size) => {
+      setPageSize(size);
+      setPage(1);
+    },
+    isMobile: isMobile,
+    t: t,
+  });
+
+  // 申请发票弹窗
+  const applyModal = (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.45)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+      }}
+      onClick={() => !formLoading && setShowApplyModal(false)}
+    >
+      <div
+        style={{
+          backgroundColor: '#fff',
+          borderRadius: 8,
+          width: '90%',
+          maxWidth: 600,
+          maxHeight: '90vh',
+          overflow: 'auto',
+          padding: 24,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 20 }}>
+          {t('申请发票')}
+        </div>
+
+        {/* 表单 */}
+        <div>
+          <div style={{ marginBottom: 8, fontWeight: 500, fontSize: 14 }}>{t('发票类型')}</div>
+          <select
             value={formData.type}
-            onChange={(val) => setFormData({ ...formData, type: val })}
-            options={typeOptions}
-            style={{ width: '100%', marginBottom: 16 }}
-          />
+            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+            style={{ width: '100%', height: 40, padding: '0 12px', border: '1px solid #d9d9d9', borderRadius: 6, fontSize: 14, marginBottom: 16, outline: 'none' }}
+          >
+            {typeOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
 
-          <div style={{ marginBottom: 8, fontWeight: 500 }}>{t('发票金额')} *</div>
-          <NativeInput
+          <div style={{ marginBottom: 8, fontWeight: 500, fontSize: 14 }}>{t('发票金额')} *</div>
+          <input
             value={formData.amount}
-            onChange={(val) => setFormData({ ...formData, amount: val })}
+            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
             placeholder={t('请输入发票金额')}
-            prefix="¥"
-            style={{ marginBottom: 16 }}
+            style={{ width: '100%', height: 40, padding: '0 12px', border: '1px solid #d9d9d9', borderRadius: 6, fontSize: 14, marginBottom: 16, outline: 'none', boxSizing: 'border-box' }}
           />
 
-          <div style={{ marginBottom: 8, fontWeight: 500 }}>{t('发票抬头')} *</div>
-          <NativeInput
+          <div style={{ marginBottom: 8, fontWeight: 500, fontSize: 14 }}>{t('发票抬头')} *</div>
+          <input
             value={formData.title}
-            onChange={(val) => setFormData({ ...formData, title: val })}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             placeholder={t('请输入发票抬头')}
-            style={{ marginBottom: 16 }}
+            style={{ width: '100%', height: 40, padding: '0 12px', border: '1px solid #d9d9d9', borderRadius: 6, fontSize: 14, marginBottom: 16, outline: 'none', boxSizing: 'border-box' }}
           />
 
-          <div style={{ marginBottom: 8, fontWeight: 500 }}>{t('税号')}</div>
-          <NativeInput
+          <div style={{ marginBottom: 8, fontWeight: 500, fontSize: 14 }}>{t('税号')}</div>
+          <input
             value={formData.tax_number}
-            onChange={(val) => setFormData({ ...formData, tax_number: val })}
+            onChange={(e) => setFormData({ ...formData, tax_number: e.target.value })}
             placeholder={t('请输入税号（选填）')}
-            style={{ marginBottom: 16 }}
+            style={{ width: '100%', height: 40, padding: '0 12px', border: '1px solid #d9d9d9', borderRadius: 6, fontSize: 14, marginBottom: 16, outline: 'none', boxSizing: 'border-box' }}
           />
 
-          <div style={{ marginBottom: 8, fontWeight: 500 }}>{t('开户银行')}</div>
-          <NativeInput
+          <div style={{ marginBottom: 8, fontWeight: 500, fontSize: 14 }}>{t('开户银行')}</div>
+          <input
             value={formData.bank}
-            onChange={(val) => setFormData({ ...formData, bank: val })}
+            onChange={(e) => setFormData({ ...formData, bank: e.target.value })}
             placeholder={t('请输入开户银行（选填）')}
-            style={{ marginBottom: 16 }}
+            style={{ width: '100%', height: 40, padding: '0 12px', border: '1px solid #d9d9d9', borderRadius: 6, fontSize: 14, marginBottom: 16, outline: 'none', boxSizing: 'border-box' }}
           />
 
-          <div style={{ marginBottom: 8, fontWeight: 500 }}>{t('银行账号')}</div>
-          <NativeInput
+          <div style={{ marginBottom: 8, fontWeight: 500, fontSize: 14 }}>{t('银行账号')}</div>
+          <input
             value={formData.bank_account}
-            onChange={(val) => setFormData({ ...formData, bank_account: val })}
+            onChange={(e) => setFormData({ ...formData, bank_account: e.target.value })}
             placeholder={t('请输入银行账号（选填）')}
-            style={{ marginBottom: 16 }}
+            style={{ width: '100%', height: 40, padding: '0 12px', border: '1px solid #d9d9d9', borderRadius: 6, fontSize: 14, marginBottom: 16, outline: 'none', boxSizing: 'border-box' }}
           />
 
-          <div style={{ marginBottom: 8, fontWeight: 500 }}>{t('注册地址')}</div>
-          <NativeInput
+          <div style={{ marginBottom: 8, fontWeight: 500, fontSize: 14 }}>{t('注册地址')}</div>
+          <input
             value={formData.address}
-            onChange={(val) => setFormData({ ...formData, address: val })}
+            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
             placeholder={t('请输入注册地址（选填）')}
-            style={{ marginBottom: 16 }}
+            style={{ width: '100%', height: 40, padding: '0 12px', border: '1px solid #d9d9d9', borderRadius: 6, fontSize: 14, marginBottom: 16, outline: 'none', boxSizing: 'border-box' }}
           />
 
-          <div style={{ marginBottom: 8, fontWeight: 500 }}>{t('联系电话')}</div>
-          <NativeInput
+          <div style={{ marginBottom: 8, fontWeight: 500, fontSize: 14 }}>{t('联系电话')}</div>
+          <input
             value={formData.phone}
-            onChange={(val) => setFormData({ ...formData, phone: val })}
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
             placeholder={t('请输入联系电话（选填）')}
-            style={{ marginBottom: 16 }}
+            style={{ width: '100%', height: 40, padding: '0 12px', border: '1px solid #d9d9d9', borderRadius: 6, fontSize: 14, marginBottom: 16, outline: 'none', boxSizing: 'border-box' }}
           />
 
-          <div style={{ marginBottom: 8, fontWeight: 500 }}>{t('备注')}</div>
-          <NativeTextArea
+          <div style={{ marginBottom: 16, fontWeight: 500, fontSize: 14 }}>{t('备注')}</div>
+          <textarea
             value={formData.remark}
-            onChange={(val) => setFormData({ ...formData, remark: val })}
+            onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
             placeholder={t('请输入备注（选填）')}
             rows={3}
+            style={{ width: '100%', padding: '12px', border: '1px solid #d9d9d9', borderRadius: 6, fontSize: 14, marginBottom: 20, outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
+          />
+
+          {/* 按钮 */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+            <button
+              onClick={() => {
+                setShowApplyModal(false);
+                setFormData({
+                  type: 'electronic',
+                  amount: '',
+                  title: '',
+                  tax_number: '',
+                  bank: '',
+                  bank_account: '',
+                  address: '',
+                  phone: '',
+                  remark: '',
+                });
+              }}
+              disabled={formLoading}
+              style={{
+                height: 40,
+                padding: '0 20px',
+                border: '1px solid #d9d9d9',
+                borderRadius: 6,
+                fontSize: 14,
+                backgroundColor: '#fff',
+                cursor: formLoading ? 'not-allowed' : 'pointer',
+                opacity: formLoading ? 0.6 : 1,
+              }}
+            >
+              {t('取消')}
+            </button>
+            <button
+              onClick={handleApplyInvoice}
+              disabled={formLoading}
+              style={{
+                height: 40,
+                padding: '0 20px',
+                border: '1px solid #1677ff',
+                borderRadius: 6,
+                fontSize: 14,
+                backgroundColor: '#1677ff',
+                color: '#fff',
+                cursor: formLoading ? 'not-allowed' : 'pointer',
+                opacity: formLoading ? 0.6 : 1,
+              }}
+            >
+              {t('提交')}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <CardPro
+      type='type2'
+      searchArea={searchArea}
+      paginationArea={paginationArea}
+      t={t}
+    >
+      {loading && invoiceList.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px' }}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              border: '3px solid #f0f0f0',
+              borderTopColor: '#1677ff',
+              borderRadius: '50%',
+              animation: 'semi-spin 0.6s infinite linear',
+              margin: '0 auto',
+            }}
           />
         </div>
-      </NativeModal>
-    </div>
+      ) : (
+        invoiceTable
+      )}
+
+      {showApplyModal && applyModal}
+    </CardPro>
   );
 }

@@ -55,6 +55,7 @@ const routerMap = {
   personal: '/console/personal',
   dashboardBoard: '/console/dashboard',
   finance: '/console/finance',
+  financeDashboard: '/console/finance',
   orders: '/console/finance/orders',
   revenue: '/console/finance/revenue',
   invoices: '/console/finance/invoices',
@@ -358,6 +359,13 @@ const SiderBar = ({ onNavigate = () => {} }) => {
       }
     }
 
+    // 处理财务路由：当访问 /console/finance 及其子路由时，确保财务运营菜单保持展开
+    if (currentPath === '/console/finance' || currentPath.startsWith('/console/finance/')) {
+      if (!openedKeys.includes('finance')) {
+        setOpenedKeys(prev => [...prev, 'finance']);
+      }
+    }
+
     // 如果找到匹配的键，更新选中的键
     if (matchingKey) {
       setSelectedKeys([matchingKey]);
@@ -514,11 +522,27 @@ const SiderBar = ({ onNavigate = () => {} }) => {
               return;
             }
 
+            // 财务概览导航（itemKey 与父菜单相同，需要特殊处理）
+            if (itemKey === 'finance') {
+              navigate('/console/finance');
+              onNavigate();
+              setSelectedKeys([itemKey]);
+              // 确保财务运营菜单保持展开（不要触发收起逻辑）
+              if (!openedKeys.includes('finance')) {
+                setOpenedKeys(prev => [...prev, 'finance']);
+              }
+              return; // 重要：不要继续执行到后面的收起逻辑
+            }
+
             // 财务子路由导航
             if (itemKey === 'orders') {
               navigate('/console/finance/orders');
               onNavigate();
               setSelectedKeys([itemKey]);
+              // 确保财务运营菜单保持展开
+              if (!openedKeys.includes('finance')) {
+                setOpenedKeys(prev => [...prev, 'finance']);
+              }
               return;
             }
 
@@ -526,6 +550,10 @@ const SiderBar = ({ onNavigate = () => {} }) => {
               navigate('/console/finance/revenue');
               onNavigate();
               setSelectedKeys([itemKey]);
+              // 确保财务运营菜单保持展开
+              if (!openedKeys.includes('finance')) {
+                setOpenedKeys(prev => [...prev, 'finance']);
+              }
               return;
             }
 
@@ -533,6 +561,21 @@ const SiderBar = ({ onNavigate = () => {} }) => {
               navigate('/console/finance/invoices');
               onNavigate();
               setSelectedKeys([itemKey]);
+              // 确保财务运营菜单保持展开
+              if (!openedKeys.includes('finance')) {
+                setOpenedKeys(prev => [...prev, 'finance']);
+              }
+              return;
+            }
+
+            if (itemKey === 'supplier') {
+              navigate('/console/finance/supplier-settlement');
+              onNavigate();
+              setSelectedKeys([itemKey]);
+              // 确保财务运营菜单保持展开
+              if (!openedKeys.includes('finance')) {
+                setOpenedKeys(prev => [...prev, 'finance']);
+              }
               return;
             }
 
@@ -594,11 +637,11 @@ const SiderBar = ({ onNavigate = () => {} }) => {
           )}
 
           {/* 底部折叠菜单 - 财务 + 管理员 */}
-          {((isFinanceAdmin() && hasSectionVisibleModules('finance')) || (isAdmin() && hasSectionVisibleModules('admin'))) && (
+          {((isAdmin() && hasSectionVisibleModules('finance')) || (isAdmin() && hasSectionVisibleModules('admin'))) && (
             <>
               <Divider className='sidebar-divider' />
               {/* 财务模块折叠菜单 */}
-              {isFinanceAdmin() && hasSectionVisibleModules('finance') && (
+              {isAdmin() && hasSectionVisibleModules('finance') && (
                 <Nav.Sub
                   key='finance'
                   itemKey='finance'

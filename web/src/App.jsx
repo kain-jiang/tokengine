@@ -21,7 +21,7 @@ import React, { lazy, Suspense, useContext, useMemo } from 'react';
 import { Route, Routes, useLocation, useParams, Navigate } from 'react-router-dom';
 import Loading from './components/common/ui/Loading';
 import User from './pages/User';
-import { AuthRedirect, PrivateRoute, AdminRoute, isFinanceAdmin } from './helpers';
+import { AuthRedirect, PrivateRoute, AdminRoute, isFinanceAdmin, isAdmin } from './helpers';
 import RegisterForm from './components/auth/RegisterForm';
 import LoginForm from './components/auth/LoginForm';
 import PhoneLoginForm from './components/auth/PhoneLoginForm';
@@ -367,8 +367,8 @@ function App() {
             </PrivateRoute>
           }
         />
-        {/* 财务模块路由 - 仅财务运营人员可访问 */}
-        {isFinanceAdmin() && (
+        {/* 财务模块路由 - 管理员可访问 */}
+        {isAdmin() && (
           <Route
             path='/console/finance'
             element={

@@ -19,45 +19,42 @@ For commercial licensing, please contact support@quantumnous.com
 
 import React, { useState, useEffect, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
-import { API, showError, showSuccess } from '../../helpers';
+import { API, showError } from '../../helpers';
 import { StatusContext } from '../../context/Status';
-import {
-  NativeRow,
-  NativeCol,
-  NativeCard,
-  NativeSpace,
-  NativeButton,
-  NativeTag,
-  NativeInput,
-  NativeSelect,
-  NativeDatePicker,
-  NativeTable,
-} from './NativeLayout';
+import CardPro from '../../components/common/ui/CardPro';
+import { formatMoney, formatNumber, formatTimestamp, getStatusTag, getTypeTag } from './utils';
+import { createCardProPagination } from '../../helpers/utils';
+import { useIsMobile } from '../../hooks/common/useIsMobile';
 
-// 格式化金额
-const formatMoney = (value) => {
-  if (!value && value !== 0) return '-';
-  return new Intl.NumberFormat('zh-CN', {
-    style: 'currency',
-    currency: 'CNY',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
+// 订单类型映射
+const orderTypeMap = {
+  topup: { text: '充值', color: 'blue' },
+  subscription: { text: '订阅', color: 'purple' },
 };
 
-// 格式化时间
-const formatTimestamp = (ts) => {
-  if (!ts) return '-';
-  return new Date(ts * 1000).toLocaleString('zh-CN');
+// 支付方式映射
+const paymentMethodMap = {
+  alipay: { text: '支付宝', color: 'blue' },
+  wxpay: { text: '微信支付', color: 'green' },
+  stripe: { text: 'Stripe', color: 'purple' },
+  wallet: { text: '钱包', color: 'orange' },
+};
+
+// 订单状态映射
+const orderStatusMap = {
+  pending: { text: '待处理', color: 'orange' },
+  success: { text: '成功', color: 'green' },
+  failed: { text: '失败', color: 'red' },
+  cancelled: { text: '已取消', color: 'gray' },
 };
 
 export default function FinanceOrders() {
   const { t } = useTranslation();
   const [statusState] = useContext(StatusContext);
+  const isMobile = useIsMobile();
   const isAdmin = statusState?.user?.is_admin === true;
 
   // 日期范围
-  const [dateRange, setDateRange] = useState([]);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -85,7 +82,7 @@ export default function FinanceOrders() {
         status: orderStatus,
         order_type: orderType,
         keyword: orderKeyword,
-        p: ordersPage,           // 后端使用 'p' 作为页码参数
+        p: ordersPage,
         page_size: ordersPageSize,
       };
       console.log('[Orders] 请求参数:', params);
@@ -119,23 +116,7 @@ export default function FinanceOrders() {
     orderKeyword,
   ]);
 
-  // 设置日期范围
-  const handleDateRangeChange = (dates) => {
-    if (!dates || dates.length === 0) {
-      setStartDate('');
-      setEndDate('');
-      setDateRange([]);
-      return;
-    }
-    // 处理单个或两个日期（兼容原生 input type="date" 返回的字符串和 moment.js 对象）
-    const newStart = dates[0]?.format?.('YYYY-MM-DD') || dates[0] || '';
-    const newEnd = dates[1]?.format?.('YYYY-MM-DD') || dates[1] || '';
-    setStartDate(newStart);
-    setEndDate(newEnd);
-    setDateRange(dates);
-  };
-
-  // 订单状态选项
+  // 状态选项
   const statusOptions = [
     { value: '', label: t('全部') },
     { value: 'pending', label: t('待处理') },
@@ -151,8 +132,158 @@ export default function FinanceOrders() {
     { value: 'subscription', label: t('订阅') },
   ];
 
-  // 订单表格列
-  const orderColumns = [
+  // 搜索区域
+  const searchArea = (
+    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+      {/* 日期范围 */}
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          border: '1px solid #d9d9d9',
+          borderRadius: 6,
+          padding: '0 12px',
+          height: 32,
+          minWidth: 280,
+          backgroundColor: '#fff',
+        }}
+      >
+        <input
+          type="date"
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+          style={{
+            border: 'none',
+            outline: 'none',
+            fontSize: 12,
+            flex: 1,
+            backgroundColor: 'transparent',
+          }}
+          placeholder={t('开始日期')}
+        />
+        <span style={{ color: '#999', margin: '0 8px' }}>至</span>
+        <input
+          type="date"
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          style={{
+            border: 'none',
+            outline: 'none',
+            fontSize: 12,
+            flex: 1,
+            backgroundColor: 'transparent',
+          }}
+          placeholder={t('结束日期')}
+        />
+      </div>
+
+      {/* 状态筛选 */}
+      <select
+        value={orderStatus}
+        onChange={(e) => setOrderStatus(e.target.value)}
+        style={{
+          height: 32,
+          padding: '0 12px',
+          border: '1px solid #d9d9d9',
+          borderRadius: 6,
+          fontSize: 12,
+          backgroundColor: '#fff',
+          minWidth: 120,
+          outline: 'none',
+        }}
+      >
+        {statusOptions.map((opt) => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+
+      {/* 类型筛选 */}
+      <select
+        value={orderType}
+        onChange={(e) => setOrderType(e.target.value)}
+        style={{
+          height: 32,
+          padding: '0 12px',
+          border: '1px solid #d9d9d9',
+          borderRadius: 6,
+          fontSize: 12,
+          backgroundColor: '#fff',
+          minWidth: 120,
+          outline: 'none',
+        }}
+      >
+        {typeOptions.map((opt) => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+
+      {/* 关键词搜索 */}
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          border: '1px solid #d9d9d9',
+          borderRadius: 6,
+          height: 32,
+          minWidth: 200,
+          backgroundColor: '#fff',
+        }}
+      >
+        <input
+          value={orderKeyword}
+          onChange={(e) => setOrderKeyword(e.target.value)}
+          placeholder={t('搜索订单号/用户名')}
+          style={{
+            border: 'none',
+            outline: 'none',
+            fontSize: 12,
+            padding: '0 12px',
+            flex: 1,
+            backgroundColor: 'transparent',
+          }}
+        />
+        {orderKeyword && (
+          <button
+            onClick={() => setOrderKeyword('')}
+            style={{
+              border: 'none',
+              background: 'none',
+              cursor: 'pointer',
+              fontSize: 14,
+              color: '#999',
+              padding: '0 8px',
+            }}
+          >
+            ×
+          </button>
+        )}
+      </div>
+
+      {/* 查询按钮 */}
+      <button
+        onClick={fetchOrders}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: 32,
+          padding: '0 16px',
+          backgroundColor: '#1677ff',
+          color: '#fff',
+          border: '1px solid #1677ff',
+          borderRadius: 6,
+          fontSize: 12,
+          fontWeight: 500,
+          cursor: 'pointer',
+        }}
+      >
+        {t('查询')}
+      </button>
+    </div>
+  );
+
+  // 表格列定义
+  const columns = [
     {
       title: t('订单号'),
       dataIndex: 'order_id',
@@ -170,30 +301,14 @@ export default function FinanceOrders() {
       dataIndex: 'order_type',
       key: 'order_type',
       width: 100,
-      render: (type) => {
-        const config = {
-          topup: { text: t('充值'), color: 'blue' },
-          subscription: { text: t('订阅'), color: 'purple' },
-        };
-        const item = config[type] || { text: type, color: 'gray' };
-        return <NativeTag color={item.color}>{item.text}</NativeTag>;
-      },
+      render: (type) => getTypeTag(type, orderTypeMap, t),
     },
     {
       title: t('支付方式'),
       dataIndex: 'payment_method',
       key: 'payment_method',
       width: 120,
-      render: (method) => {
-        const config = {
-          alipay: { text: '支付宝', color: 'blue' },
-          wxpay: { text: '微信支付', color: 'green' },
-          stripe: { text: 'Stripe', color: 'purple' },
-          wallet: { text: '钱包', color: 'orange' },
-        };
-        const item = config[method] || { text: method, color: 'gray' };
-        return <NativeTag color={item.color}>{item.text}</NativeTag>;
-      },
+      render: (method) => getTypeTag(method, paymentMethodMap, t),
     },
     {
       title: t('金额'),
@@ -209,7 +324,7 @@ export default function FinanceOrders() {
       width: 150,
       render: (val) => {
         if (val == null) return '-';
-        return new Intl.NumberFormat('zh-CN').format(val);
+        return formatNumber(val);
       },
     },
     {
@@ -217,16 +332,7 @@ export default function FinanceOrders() {
       dataIndex: 'status',
       key: 'status',
       width: 100,
-      render: (status) => {
-        const config = {
-          pending: { text: t('待处理'), color: 'orange' },
-          success: { text: t('成功'), color: 'green' },
-          failed: { text: t('失败'), color: 'red' },
-          cancelled: { text: t('已取消'), color: 'gray' },
-        };
-        const item = config[status] || { text: status, color: 'gray' };
-        return <NativeTag color={item.color}>{item.text}</NativeTag>;
-      },
+      render: (status) => getStatusTag(status, orderStatusMap, t),
     },
     {
       title: t('创建时间'),
@@ -244,74 +350,116 @@ export default function FinanceOrders() {
     },
   ];
 
-  return (
-    <div>
-      {/* 筛选栏 */}
-      <NativeCard
-        bodyStyle={{ padding: '16px 20px' }}
-        style={{ borderRadius: 12, marginBottom: 16 }}
+  // 表格
+  const tableContent = (
+    <div style={{ overflowX: 'auto' }}>
+      <table
+        style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+          fontSize: 13,
+        }}
       >
-        <NativeSpace wrap size={12}>
-          <NativeDatePicker
-            value={dateRange}
-            onChange={handleDateRangeChange}
-            style={{ width: 280 }}
-          />
-          <NativeSelect
-            value={orderStatus}
-            onChange={setOrderStatus}
-            options={statusOptions}
-            style={{ width: 120 }}
-            clearable
-          />
-          <NativeSelect
-            value={orderType}
-            onChange={setOrderType}
-            options={typeOptions}
-            style={{ width: 120 }}
-            clearable
-          />
-          <NativeInput
-            value={orderKeyword}
-            onChange={setOrderKeyword}
-            placeholder={t('搜索订单号/用户名')}
-            style={{ width: 200 }}
-            clearable
-          />
-          <NativeButton 
-            theme='solid' 
-            type='primary'
-            onClick={fetchOrders}
-          >
-            {t('查询')}
-          </NativeButton>
-        </NativeSpace>
-      </NativeCard>
-
-      {/* 订单表格 */}
-      <NativeCard
-        bodyStyle={{ padding: '0 20px 20px' }}
-        style={{ borderRadius: 12 }}
-      >
-        <NativeTable
-          columns={orderColumns}
-          dataSource={orders}
-          loading={ordersLoading}
-          rowKey='id'
-          pagination={{
-            current: ordersPage,
-            pageSize: ordersPageSize,
-            total: ordersTotal,
-            onChange: (page) => setOrdersPage(page),
-            onPageSizeChange: (size) => {
-              setOrdersPageSize(size);
-              setOrdersPage(1);
-            },
-            showSizeChanger: true,
-            pageSizeActions: [10, 20, 50],
-          }}
-        />
-      </NativeCard>
+        <thead>
+          <tr style={{ backgroundColor: '#fafafa' }}>
+            {columns.map((col) => (
+              <th
+                key={col.key}
+                style={{
+                  padding: '12px 16px',
+                  textAlign: col.dataIndex === 'amount' || col.dataIndex === 'quota' ? 'right' : 'left',
+                  borderBottom: '1px solid #f0f0f0',
+                  fontWeight: 600,
+                  color: 'rgba(0, 0, 0, 0.88)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {col.title}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map((order) => (
+            <tr
+              key={order.id}
+              style={{ borderBottom: '1px solid #f0f0f0', transition: 'background-color 0.2s' }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f5f5f5')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+            >
+              {columns.map((col) => (
+                <td
+                  key={`${order.id}-${col.key}`}
+                  style={{
+                    padding: '12px 16px',
+                    textAlign: col.dataIndex === 'amount' || col.dataIndex === 'quota' ? 'right' : 'left',
+                    color: 'rgba(0, 0, 0, 0.65)',
+                  }}
+                >
+                  {col.render
+                    ? col.render(order[col.dataIndex], order)
+                    : order[col.dataIndex]}
+                </td>
+              ))}
+            </tr>
+          ))}
+          {orders.length === 0 && !ordersLoading && (
+            <tr>
+              <td
+                colSpan={columns.length}
+                style={{
+                  padding: '40px 16px',
+                  textAlign: 'center',
+                  color: '#999',
+                }}
+              >
+                {t('暂无数据')}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
+  );
+
+  // 分页
+  const paginationArea = createCardProPagination({
+    currentPage: ordersPage,
+    pageSize: ordersPageSize,
+    total: ordersTotal,
+    onPageChange: setOrdersPage,
+    onPageSizeChange: (size) => {
+      setOrdersPageSize(size);
+      setOrdersPage(1);
+    },
+    isMobile: isMobile,
+    t: t,
+  });
+
+  return (
+    <CardPro
+      type='type2'
+      searchArea={searchArea}
+      paginationArea={paginationArea}
+      t={t}
+    >
+      {ordersLoading ? (
+        <div style={{ textAlign: 'center', padding: '40px' }}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              border: '3px solid #f0f0f0',
+              borderTopColor: '#1677ff',
+              borderRadius: '50%',
+              animation: 'semi-spin 0.6s infinite linear',
+              margin: '0 auto',
+            }}
+          />
+        </div>
+      ) : (
+        tableContent
+      )}
+    </CardPro>
   );
 }
