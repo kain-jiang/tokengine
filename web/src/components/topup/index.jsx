@@ -1140,12 +1140,12 @@ const TopUp = () => {
             userQuota={userState?.user?.quota || 0}
           />
         </TabPane>
-        <TabPane
-          tab={t('充值开票')}
-          itemKey="invoice"
-        >
-          <Invoice />
-        </TabPane>
+        {/*<TabPane*/}
+        {/*  tab={t('充值开票')}*/}
+        {/*  itemKey="invoice"*/}
+        {/*>*/}
+        {/*  <Invoice />*/}
+        {/*</TabPane>*/}
       </Tabs>
 
       {/* 招商银行聚合支付二维码弹窗 */}

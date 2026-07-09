@@ -586,18 +586,8 @@ const Invoice = () => {
   return (
     <div className='w-full max-w-7xl mx-auto px-2'>
       <div
-        className='flex items-center justify-between mb-4'
-        style={{ marginTop: '16px' }}
+        className='flex items-center justify-end'
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1px' }}>
-          <FileText size={18} color='#1768ef' />
-          <span
-            className='text-xl font-semibold'
-            style={{ fontSize: '15px', color: '#1c1f23' }}
-          >
-            {t('充值开票')}
-          </span>
-        </div>
         <Button
           style={{ fontSize: '12px', width: '100px' }}
           type='primary'
@@ -609,13 +599,11 @@ const Invoice = () => {
       </div>
 
       <div
-        className='border rounded-lg overflow-hidden'
-        style={{ border: '1px solid #F0F1F5', padding: '24px' }}
+
       >
         <Tabs
           activeKey={activeTab}
           onChange={(key) => setActiveTab(key)}
-          type='line'
         >
           <Tabs.TabPane tab={t('充值记录')} itemKey='topup'>
             <div
