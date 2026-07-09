@@ -19,11 +19,13 @@ For commercial licensing, please contact support@quantumnous.com
 
 import React, { useState, useEffect, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import {
   IconMoneyExchangeStroked,
   IconCoinMoneyStroked,
   IconArrowUp,
   IconClockStroked,
+  IconCursorStroked,
 } from '@douyinfe/semi-icons';
 import { API, showError } from '../../helpers';
 import { StatusContext } from '../../context/Status';
@@ -33,7 +35,7 @@ import { createCardProPagination } from '../../helpers/utils';
 import { useIsMobile } from '../../hooks/common/useIsMobile';
 
 // 统计卡片组件
-const StatCard = ({ children, icon, color, title }) => (
+const StatCard = ({ children, icon, color, title, onClick }) => (
   <div
     style={{
       backgroundColor: '#fff',
@@ -41,7 +43,9 @@ const StatCard = ({ children, icon, color, title }) => (
       padding: '20px',
       flex: 1,
       minWidth: 200,
+      cursor: onClick ? 'pointer' : 'default',
     }}
+    onClick={onClick}
   >
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
       <div>
@@ -59,6 +63,7 @@ const StatCard = ({ children, icon, color, title }) => (
 
 export default function FinanceDashboard() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [statusState] = useContext(StatusContext);
   const isMobile = useIsMobile();
 
@@ -132,9 +137,10 @@ export default function FinanceDashboard() {
   const statsArea = (
     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 0 }}>
       <StatCard
-        title={t('总营收')}
+        title={t('总消耗')}
         color="#1890ff"
         icon={<IconMoneyExchangeStroked style={{ fontSize: 24 }} />}
+        onClick={() => navigate('/console/finance/revenue')}
       >
         {dashboardData ? formatMoney(dashboardData.total_revenue) : '-'}
       </StatCard>
@@ -142,13 +148,15 @@ export default function FinanceDashboard() {
         title={t('总充值')}
         color="#52c41a"
         icon={<IconCoinMoneyStroked style={{ fontSize: 24 }} />}
+        onClick={() => navigate('/console/finance/revenue')}
       >
         {dashboardData ? formatMoney(dashboardData.total_topup) : '-'}
       </StatCard>
       <StatCard
-        title={t('今日营收')}
+        title={t('今日消耗')}
         color="#722ed1"
         icon={<IconArrowUp style={{ fontSize: 24 }} />}
+        onClick={() => navigate('/console/finance/revenue')}
       >
         {dashboardData ? formatMoney(dashboardData.today_revenue) : '-'}
       </StatCard>
@@ -156,6 +164,7 @@ export default function FinanceDashboard() {
         title={t('订单数')}
         color="#fa8c16"
         icon={<IconClockStroked style={{ fontSize: 24 }} />}
+        onClick={() => navigate('/console/finance/orders')}
       >
         {dashboardData?.order_count || 0}
       </StatCard>

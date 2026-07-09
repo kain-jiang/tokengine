@@ -108,7 +108,7 @@ export default function Revenue() {
           minWidth: 180,
         }}
       >
-        <div style={{ color: '#999', fontSize: 14, marginBottom: 8 }}>{t('总营收')}</div>
+        <div style={{ color: '#999', fontSize: 14, marginBottom: 8 }}>{t('总消耗')}</div>
         <div style={{ fontSize: 24, fontWeight: 'bold', color: '#10b981' }}>
           {revenueData ? formatMoney(revenueData.total_revenue) : '-'}
         </div>
@@ -122,7 +122,7 @@ export default function Revenue() {
           minWidth: 180,
         }}
       >
-        <div style={{ color: '#999', fontSize: 14, marginBottom: 8 }}>{t('今日营收')}</div>
+        <div style={{ color: '#999', fontSize: 14, marginBottom: 8 }}>{t('今日消耗')}</div>
         <div style={{ fontSize: 24, fontWeight: 'bold', color: '#3b82f6' }}>
           {revenueData ? formatMoney(revenueData.today_revenue) : '-'}
         </div>
@@ -236,7 +236,7 @@ export default function Revenue() {
       key: 'order_count',
     },
     {
-      title: t('总营收'),
+      title: t('总消耗'),
       dataIndex: 'total_revenue',
       key: 'total_revenue',
       render: (value) => formatMoney(value),
