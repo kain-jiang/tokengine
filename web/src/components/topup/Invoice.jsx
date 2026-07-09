@@ -126,6 +126,7 @@ const Invoice = () => {
       if (success) {
         setTopups(data.items || []);
         setTopupTotal(data.total || 0);
+        return data.items
       } else {
         Toast.error({ content: message || t('加载失败') });
       }
@@ -145,6 +146,7 @@ const Invoice = () => {
       if (success) {
         setInvoices(data.items || []);
         setInvoiceTotal(data.total || 0);
+        return data.items
       } else {
         Toast.error({ content: message || t('加载失败') });
       }
@@ -184,6 +186,16 @@ const Invoice = () => {
     }
   };
 
+  const loadData = async () => {
+    const [topupData, invoiceData] = await Promise.all([
+      loadTopups(topupPage, topupPageSize),
+      loadInvoices(invoicePage, invoicePageSize),
+    ]);
+    if (topupData.length > 0) {
+      injectInvoiceStatus(topupData, invoiceData);
+    }
+  };
+
   useEffect(() => {
     loadTopups(topupPage, topupPageSize);
   }, [topupPage, topupPageSize, topupKeyword]);
@@ -196,20 +208,9 @@ const Invoice = () => {
     loadInvoiceTitle();
   }, []);
 
-  // useEffect(() => {
-  //   const loadData = async () => {
-  //     const [topupData, invoiceData] = await Promise.all([
-  //       loadTopups(topupPage, topupPageSize),
-  //       loadInvoices(invoicePage, invoicePageSize),
-  //     ]);
-  //
-  //     if (topupData.length > 0 && invoiceData.length > 0) {
-  //       injectInvoiceStatus(topupData, invoiceData);
-  //     }
-  //   };
-  //
-  //   loadData();
-  // }, [topupPage, topupPageSize, topupKeyword]);
+  useEffect(() => {
+    loadData();
+  }, [topupPage, topupPageSize, topupKeyword]);
 
   // 为订单注入开票状态
   const injectInvoiceStatus = (topups, invoices) => {
@@ -319,8 +320,8 @@ const Invoice = () => {
         setShowInvoiceTitleModal(false);
         setSelectedOrderIds([]);
         setAllSelected(false);
-        await loadInvoices(invoicePage, invoicePageSize);
-        await loadTopups(topupPage, topupPageSize);
+        // await loadInvoices(invoicePage, invoicePageSize);
+        await loadData();
 
       } else {
         Toast.error({ content: message || t('开票申请失败') });
@@ -585,18 +586,8 @@ const Invoice = () => {
   return (
     <div className='w-full max-w-7xl mx-auto px-2'>
       <div
-        className='flex items-center justify-between mb-4'
-        style={{ marginTop: '16px' }}
+        className='flex items-center justify-end'
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1px' }}>
-          <FileText size={18} color='#1768ef' />
-          <span
-            className='text-xl font-semibold'
-            style={{ fontSize: '15px', color: '#1c1f23' }}
-          >
-            {t('充值开票')}
-          </span>
-        </div>
         <Button
           style={{ fontSize: '12px', width: '100px' }}
           type='primary'
@@ -608,13 +599,11 @@ const Invoice = () => {
       </div>
 
       <div
-        className='border rounded-lg overflow-hidden'
-        style={{ border: '1px solid #F0F1F5', padding: '24px' }}
+
       >
         <Tabs
           activeKey={activeTab}
           onChange={(key) => setActiveTab(key)}
-          type='line'
         >
           <Tabs.TabPane tab={t('充值记录')} itemKey='topup'>
             <div
