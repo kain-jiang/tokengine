@@ -24,7 +24,6 @@ import App from '../../App';
 import FooterBar from './Footer';
 import { ToastContainer } from 'react-toastify';
 import ErrorBoundary from '../common/ErrorBoundary';
-import Banner from './Banner';
 import React, { useContext, useEffect, useState } from 'react';
 import { useIsMobile } from '../../hooks/common/useIsMobile';
 import { useSidebarCollapsed } from '../../hooks/common/useSidebarCollapsed';
@@ -41,8 +40,6 @@ import { StatusContext } from '../../context/Status';
 import { useLocation } from 'react-router-dom';
 import { normalizeLanguage } from '../../i18n/language';
 const { Sider, Content, Header } = Layout;
-
-const BANNER_HEIGHT = 48;
 
 const PageLayout = () => {
   const [userState, userDispatch] = useContext(UserContext);
@@ -159,23 +156,21 @@ const PageLayout = () => {
         overflow: isMobile ? 'visible' : 'hidden',
       }}
     >
-      <Banner onVisibilityChange={setBannerVisible} />
-      <Header
+      <div
         style={{
-          padding: 0,
-          height: 'auto',
-          lineHeight: 'normal',
           position: 'fixed',
-          width: '100%',
-          top: bannerVisible ? BANNER_HEIGHT : 0,
+          top: 0,
+          left: 0,
+          right: 0,
           zIndex: 100,
         }}
       >
         <HeaderBar
           onMobileMenuToggle={() => setDrawerOpen((prev) => !prev)}
           drawerOpen={drawerOpen}
+          onBannerVisibilityChange={setBannerVisible}
         />
-      </Header>
+      </div>
       <Layout
         style={{
           overflow: isMobile ? 'visible' : 'auto',
@@ -189,7 +184,7 @@ const PageLayout = () => {
             style={{
               position: 'fixed',
               left: 0,
-              top: `${(bannerVisible ? BANNER_HEIGHT : 0) + 64}px`,
+              top: `${bannerVisible ? 108 : 64}px`,
               zIndex: 99,
               border: 'none',
               paddingRight: '0',
