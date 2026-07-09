@@ -76,12 +76,12 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
   });
   const isMobile = useIsMobile();
 
-  // 初始化默认查询最近7天
+  // 初始化默认查询最近1个月
   useEffect(() => {
     if (visible && !dateRange.startDate && !dateRange.endDate) {
       const endDate = new Date();
       const startDate = new Date();
-      startDate.setDate(endDate.getDate() - 7);
+      startDate.setMonth(startDate.getMonth() - 1);
       setDateRange({ startDate, endDate });
     }
   }, [visible]);
