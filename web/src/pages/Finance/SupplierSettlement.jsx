@@ -20,24 +20,14 @@ For commercial licensing, please contact support@quantumnous.com
 import React, { useState, useEffect, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Layout,
-  Card,
-  Row,
-  Col,
-  Table,
-  Tag,
-  Space,
-  Select,
   Button,
+  Select,
   Modal,
   Form,
-  Input,
-  Typography,
-  Tabs,
+  Tag,
 } from '@douyinfe/semi-ui';
 import {
   IconMoneyExchangeStroked,
-  IconEditStroked,
   IconDownloadStroked,
   IconPlusStroked,
   IconRefresh,
@@ -45,25 +35,10 @@ import {
 import { API, showError, showSuccess } from '../../helpers';
 import { StatusContext } from '../../context/Status';
 import * as SupplierAPI from '../../services/supplier';
-
-const { Header, Content } = Layout;
-const { Text } = Typography;
-
-// 格式化金额
-const formatMoney = (value) => {
-  if (!value && value !== 0) return '-';
-  return new Intl.NumberFormat('zh-CN', {
-    style: 'decimal',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-};
-
-// 格式化数字
-const formatNumber = (value) => {
-  if (!value && value !== 0) return '-';
-  return new Intl.NumberFormat('zh-CN').format(value);
-};
+import CardPro from '../../components/common/ui/CardPro';
+import { formatMoney, formatNumber, getStatusTag } from './utils';
+import { createCardProPagination } from '../../helpers/utils';
+import { useIsMobile } from '../../hooks/common/useIsMobile';
 
 // 状态标签映射
 const settlementStatusMap = {
@@ -79,9 +54,15 @@ const rebateStatusMap = {
   failed: { text: '同步失败', color: 'red' },
 };
 
+const renderStatusTag = (status, statusMap) => {
+  const info = statusMap[status] || { text: status, color: 'gray' };
+  return <Tag color={info.color} size="small">{info.text}</Tag>;
+};
+
 export default function SupplierSettlement() {
   const { t } = useTranslation();
   const [statusState] = useContext(StatusContext);
+  const isMobile = useIsMobile();
   const isAdmin = statusState?.user?.is_admin === true;
 
   // Tab状态
@@ -111,7 +92,6 @@ export default function SupplierSettlement() {
   // 弹窗状态
   const [manualSettlementModalVisible, setManualSettlementModalVisible] = useState(false);
   const [settlementForm] = Form.useForm();
-
   const [manualRebateModalVisible, setManualRebateModalVisible] = useState(false);
   const [rebateForm] = Form.useForm();
 
@@ -143,10 +123,7 @@ export default function SupplierSettlement() {
   const fetchSettlements = async () => {
     setSettlementsLoading(true);
     try {
-      const params = {
-        page: currentPage,
-        page_size: pageSize,
-      };
+      const params = { page: currentPage, page_size: pageSize };
       if (filterVendorId) params.vendor_id = filterVendorId;
       if (filterModelId) params.model_id = filterModelId;
       if (filterStatus) params.status = filterStatus;
@@ -154,12 +131,10 @@ export default function SupplierSettlement() {
       const res = await SupplierAPI.fetchSupplierSettlementAggregation(params);
       if (res.success) {
         setSettlements(res.data || []);
-        // 获取总数
         const countRes = await API.get('/api/supplier/settlement/aggregation', {
           params: { ...params, page: 1, page_size: 1 },
         });
         if (countRes.data.success) {
-          // 使用聚合接口的总数
           setTotalSettlements(res.data?.length || 0);
         }
       }
@@ -174,10 +149,7 @@ export default function SupplierSettlement() {
   const fetchRebates = async () => {
     setRebatesLoading(true);
     try {
-      const params = {
-        page: currentPage,
-        page_size: pageSize,
-      };
+      const params = { page: currentPage, page_size: pageSize };
       if (filterVendorId) params.vendor_id = filterVendorId;
       if (filterRebateStatus) params.status = filterRebateStatus;
 
@@ -198,7 +170,6 @@ export default function SupplierSettlement() {
     try {
       const params = {};
       if (filterVendorId) params.vendor_id = filterVendorId;
-
       const res = await SupplierAPI.getRebateStatistics(params);
       if (res.success) {
         setRebateStatistics(res.data);
@@ -259,12 +230,10 @@ export default function SupplierSettlement() {
       : ['id', 'vendor_name', 'period', 'rebate_type', 'rebate_amount', 'rebate_tokens', 'status', 'source', 'remark', 'create_time', 'update_time'];
 
     let csvContent = '\uFEFF' + headers.join(',') + '\n';
-    
     data.forEach(item => {
       const row = keys.map(key => {
         let value = item[key];
         if (value === null || value === undefined) value = '';
-        // 处理包含逗号或换行符的值
         value = String(value).replace(/"/g, '""');
         if (value.includes(',') || value.includes('\n') || value.includes('"')) {
           return `"${value}"`;
@@ -346,403 +315,366 @@ export default function SupplierSettlement() {
 
   // 供应商侧表格列
   const settlementColumns = [
+    { title: 'ID', dataIndex: 'id', width: 60 },
+    { title: '供应商名称', dataIndex: 'vendor_name', width: 150 },
+    { title: '渠道', dataIndex: 'channel', width: 100 },
+    { title: '模型', dataIndex: 'model', width: 120 },
+    { title: '官网价格', dataIndex: 'official_input_price', width: 100, render: (v) => formatMoney(v) },
+    { title: '额度', dataIndex: 'quota', width: 100, render: (v) => formatMoney(v) },
+    { title: 'Token', dataIndex: 'tokens', width: 80, render: (v) => formatNumber(v) },
+    { title: '计费方式', dataIndex: 'pricing_method', width: 100 },
+    { title: '平台消耗Token', dataIndex: 'platform_consumed_tokens', width: 120, render: (v) => formatNumber(v) },
+    { title: '平台花费', dataIndex: 'platform_cost', width: 100, render: (v) => formatMoney(v) },
+    { title: '平台剩余Token', dataIndex: 'platform_remaining_tokens', width: 120, render: (v) => formatNumber(v) },
+    { title: '平台剩余金额', dataIndex: 'platform_remaining_amount', width: 120, render: (v) => formatMoney(v) },
+    { title: '供应商返点额度', dataIndex: 'rebate_amount', width: 120, render: (v) => formatMoney(v) },
+    { title: '状态', dataIndex: 'status', width: 80, render: (v) => renderStatusTag(v, settlementStatusMap) },
+    { title: '周期', dataIndex: 'period', width: 100 },
     {
-      title: 'ID',
-      dataIndex: 'id',
-      width: 60,
-    },
-    {
-      title: '供应商名称',
-      dataIndex: 'vendor_name',
-      width: 150,
-      ellipsis: true,
-    },
-    {
-      title: '渠道',
-      dataIndex: 'channel',
-      width: 100,
-    },
-    {
-      title: '模型',
-      dataIndex: 'model',
-      width: 120,
-      ellipsis: true,
-    },
-    {
-      title: '官网价格',
-      dataIndex: 'official_input_price',
-      width: 100,
-      render: (value) => formatMoney(value),
-    },
-    {
-      title: '额度',
-      dataIndex: 'quota',
-      width: 100,
-      render: (value) => formatMoney(value),
-    },
-    {
-      title: 'Token',
-      dataIndex: 'tokens',
-      width: 80,
-      render: (value) => formatNumber(value),
-    },
-    {
-      title: '计费方式',
-      dataIndex: 'pricing_method',
-      width: 100,
-    },
-    {
-      title: '平台消耗Token',
-      dataIndex: 'platform_consumed_tokens',
-      width: 120,
-      render: (value) => formatNumber(value),
-    },
-    {
-      title: '平台花费',
-      dataIndex: 'platform_cost',
-      width: 100,
-      render: (value) => formatMoney(value),
-    },
-    {
-      title: '平台剩余Token',
-      dataIndex: 'platform_remaining_tokens',
-      width: 120,
-      render: (value) => formatNumber(value),
-    },
-    {
-      title: '平台剩余金额',
-      dataIndex: 'platform_remaining_amount',
-      width: 120,
-      render: (value) => formatMoney(value),
-    },
-    {
-      title: '供应商返点额度',
-      dataIndex: 'rebate_amount',
-      width: 120,
-      render: (value) => formatMoney(value),
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      width: 80,
-      render: (value) => {
-        const statusInfo = settlementStatusMap[value] || { text: value, color: 'gray' };
-        return <Tag color={statusInfo.color} size="small">{statusInfo.text}</Tag>;
-      },
-    },
-    {
-      title: '周期',
-      dataIndex: 'period',
-      width: 100,
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'create_time',
-      width: 160,
-      render: (value) => {
-        if (!value) return '-';
-        return new Date(value * 1000).toLocaleString('zh-CN');
-      },
+      title: '创建时间', dataIndex: 'create_time', width: 160,
+      render: (v) => v ? new Date(v * 1000).toLocaleString('zh-CN') : '-',
     },
   ];
 
   // 返点侧表格列
   const rebateColumns = [
+    { title: 'ID', dataIndex: 'id', width: 60 },
+    { title: '供应商名称', dataIndex: 'vendor_name', width: 150 },
+    { title: '周期', dataIndex: 'period', width: 100 },
+    { title: '返点类型', dataIndex: 'rebate_type', width: 100 },
+    { title: '返点金额', dataIndex: 'rebate_amount', width: 120, render: (v) => formatMoney(v) },
+    { title: '返点Token', dataIndex: 'rebate_tokens', width: 100, render: (v) => formatNumber(v) },
+    { title: '状态', dataIndex: 'status', width: 90, render: (v) => renderStatusTag(v, rebateStatusMap) },
+    { title: '来源', dataIndex: 'source', width: 80 },
+    { title: '备注', dataIndex: 'remark', width: 150 },
     {
-      title: 'ID',
-      dataIndex: 'id',
-      width: 60,
-    },
-    {
-      title: '供应商名称',
-      dataIndex: 'vendor_name',
-      width: 150,
-      ellipsis: true,
-    },
-    {
-      title: '周期',
-      dataIndex: 'period',
-      width: 100,
-    },
-    {
-      title: '返点类型',
-      dataIndex: 'rebate_type',
-      width: 100,
-    },
-    {
-      title: '返点金额',
-      dataIndex: 'rebate_amount',
-      width: 120,
-      render: (value) => formatMoney(value),
-    },
-    {
-      title: '返点Token',
-      dataIndex: 'rebate_tokens',
-      width: 100,
-      render: (value) => formatNumber(value),
-    },
-    {
-      title: '状态',
-      dataIndex: 'status',
-      width: 90,
-      render: (value) => {
-        const statusInfo = rebateStatusMap[value] || { text: value, color: 'gray' };
-        return <Tag color={statusInfo.color} size="small">{statusInfo.text}</Tag>;
-      },
-    },
-    {
-      title: '来源',
-      dataIndex: 'source',
-      width: 80,
-    },
-    {
-      title: '备注',
-      dataIndex: 'remark',
-      width: 150,
-      ellipsis: true,
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'create_time',
-      width: 160,
-      render: (value) => {
-        if (!value) return '-';
-        return new Date(value * 1000).toLocaleString('zh-CN');
-      },
+      title: '创建时间', dataIndex: 'create_time', width: 160,
+      render: (v) => v ? new Date(v * 1000).toLocaleString('zh-CN') : '-',
     },
   ];
 
-  return (
-    <Layout style={{ height: '100%', background: '#f5f5f5' }}>
-      <Header style={{
-        background: '#fff',
-        padding: '12px 24px',
-        borderBottom: '1px solid #e8e8e8',
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>
-              <IconMoneyExchangeStroked style={{ marginRight: '8px' }} />
-              供应商结算管理
-            </h2>
-            <Text type="tertiary" style={{ fontSize: '12px' }}>
-              管理供应商结算记录和返点信息
-            </Text>
-          </div>
-          <Space>
-            {activeTab === 'supplier' && (
-              <>
-                <Button
-                  icon={<IconPlusStroked />}
-                  theme="solid"
-                  onClick={() => setManualSettlementModalVisible(true)}
+  // 渲染表格
+  const renderTable = (columns, data, loading) => {
+    const tableStyle = { width: '100%', borderCollapse: 'collapse', fontSize: 13 };
+    return (
+      <div style={{ overflowX: 'auto' }}>
+        <table style={tableStyle}>
+          <thead>
+            <tr style={{ backgroundColor: '#fafafa' }}>
+              {columns.map((col) => (
+                <th
+                  key={col.dataIndex}
+                  style={{
+                    padding: '12px 16px',
+                    textAlign: 'left',
+                    borderBottom: '1px solid #f0f0f0',
+                    fontWeight: 600,
+                    color: 'rgba(0, 0, 0, 0.88)',
+                    whiteSpace: 'nowrap',
+                  }}
                 >
-                  新增结算
-                </Button>
-                <Button
-                  icon={<IconDownloadStroked />}
-                  onClick={handleExportSettlements}
-                >
-                  导出
-                </Button>
-              </>
-            )}
-            {activeTab === 'user' && (
-              <>
-                <Button
-                  icon={<IconPlusStroked />}
-                  theme="solid"
-                  onClick={() => setManualRebateModalVisible(true)}
-                >
-                  新增返点
-                </Button>
-                <Button
-                  icon={<IconDownloadStroked />}
-                  onClick={handleExportRebates}
-                >
-                  导出
-                </Button>
-              </>
-            )}
-          </Space>
-        </div>
-      </Header>
-
-      <Content style={{ padding: '24px', height: 'calc(100% - 60px)', overflow: 'auto' }}>
-        <Card>
-          {/* Tab标签 */}
-          <Tabs
-            activeKey={activeTab}
-            onChange={setActiveTab}
-            type="card"
-            style={{ marginBottom: '16px' }}
-          >
-            <Tabs.TabPane tab="供应商侧" itemKey="supplier" />
-            <Tabs.TabPane tab="用户侧" itemKey="user" />
-          </Tabs>
-
-          {/* 筛选条件 */}
-          <Row gutter={[16, 16]} style={{ marginBottom: '16px' }}>
-            <Col span={6}>
-              <Select
-                placeholder="选择供应商"
-                value={filterVendorId}
-                onChange={setFilterVendorId}
-                style={{ width: '100%' }}
-                clearable
+                  {col.title}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row, idx) => (
+              <tr
+                key={row.id || idx}
+                style={{ borderBottom: '1px solid #f0f0f0', transition: 'background-color 0.2s' }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f5f5f5')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
               >
-                {vendors.map(vendor => (
-                  <Select.Option key={vendor.id} value={vendor.id}>
-                    {vendor.name}
-                  </Select.Option>
+                {columns.map((col) => (
+                  <td
+                    key={`${row.id || idx}-${col.dataIndex}`}
+                    style={{
+                      padding: '12px 16px',
+                      textAlign: 'left',
+                      color: 'rgba(0, 0, 0, 0.65)',
+                      whiteSpace: 'nowrap',
+                      maxWidth: col.width,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {col.render ? col.render(row[col.dataIndex], row) : row[col.dataIndex]}
+                  </td>
                 ))}
-              </Select>
-            </Col>
-            
-            {activeTab === 'supplier' && (
-              <>
-                <Col span={6}>
-                  <Select
-                    placeholder="选择模型"
-                    value={filterModelId}
-                    onChange={setFilterModelId}
-                    style={{ width: '100%' }}
-                    clearable
-                  >
-                    {models.map(model => (
-                      <Select.Option key={model.id} value={model.id}>
-                        {model.name}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Col>
-                <Col span={6}>
-                  <Select
-                    placeholder="结算状态"
-                    value={filterStatus}
-                    onChange={setFilterStatus}
-                    style={{ width: '100%' }}
-                    clearable
-                  >
-                    {Object.entries(settlementStatusMap).map(([key, value]) => (
-                      <Select.Option key={key} value={key}>
-                        {value.text}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Col>
-              </>
+              </tr>
+            ))}
+            {data.length === 0 && !loading && (
+              <tr>
+                <td colSpan={columns.length} style={{ padding: '40px 16px', textAlign: 'center', color: '#999' }}>
+                  {t('暂无数据')}
+                </td>
+              </tr>
             )}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
 
-            {activeTab === 'user' && (
-              <Col span={6}>
-                <Select
-                  placeholder="返点状态"
-                  value={filterRebateStatus}
-                  onChange={setFilterRebateStatus}
-                  style={{ width: '100%' }}
-                  clearable
-                >
-                  {Object.entries(rebateStatusMap).map(([key, value]) => (
-                    <Select.Option key={key} value={key}>
-                      {value.text}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Col>
-            )}
+  // Tabs 区域
+  const tabsArea = (
+    <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #f0f0f0', marginBottom: 0 }}>
+      {['supplier', 'user'].map((key) => (
+        <button
+          key={key}
+          onClick={() => setActiveTab(key)}
+          style={{
+            padding: '10px 20px',
+            border: 'none',
+            borderBottom: activeTab === key ? '2px solid #1677ff' : '2px solid transparent',
+            backgroundColor: 'transparent',
+            fontSize: 14,
+            fontWeight: activeTab === key ? 600 : 400,
+            color: activeTab === key ? '#1677ff' : 'rgba(0, 0, 0, 0.65)',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+          }}
+        >
+          {key === 'supplier' ? t('供应商侧') : t('用户侧')}
+        </button>
+      ))}
+    </div>
+  );
 
-            <Col span={6}>
-              <Button
-                icon={<IconRefresh />}
-                onClick={() => {
-                  if (activeTab === 'supplier') {
-                    fetchSettlements();
-                  } else {
-                    fetchRebates();
-                    fetchRebateStatistics();
-                  }
-                }}
-              >
-                刷新
-              </Button>
-            </Col>
-          </Row>
+  // 搜索筛选区域
+  const searchArea = (
+    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+      {/* 供应商筛选 */}
+      <Select
+        placeholder={t('选择供应商')}
+        value={filterVendorId}
+        onChange={(val) => { setFilterVendorId(val || ''); setCurrentPage(1); }}
+        style={{ width: 180 }}
+        size="small"
+        showClear
+      >
+        {vendors.map(vendor => (
+          <Select.Option key={vendor.id} value={vendor.id}>
+            {vendor.name}
+          </Select.Option>
+        ))}
+      </Select>
 
-          {/* 返点统计（仅用户侧Tab显示） */}
-          {activeTab === 'user' && rebateStatistics && (
-            <Row gutter={16} style={{ marginBottom: '16px' }}>
-              <Col span={6}>
-                <Card hoverable style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '24px', fontWeight: '600', color: '#1890ff' }}>
-                    {rebateStatistics.total_rebates || 0}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#999' }}>返点总数</div>
-                </Card>
-              </Col>
-              <Col span={6}>
-                <Card hoverable style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '24px', fontWeight: '600', color: '#52c41a' }}>
-                    {formatMoney(rebateStatistics.total_rebate_amount || 0)}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#999' }}>返点总额</div>
-                </Card>
-              </Col>
-              <Col span={6}>
-                <Card hoverable style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '24px', fontWeight: '600', color: '#52c41a' }}>
-                    {formatNumber(rebateStatistics.successed_rebates || 0)}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#999' }}>成功</div>
-                </Card>
-              </Col>
-              <Col span={6}>
-                <Card hoverable style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '24px', fontWeight: '600', color: '#ff4d4f' }}>
-                    {rebateStatistics.failed_rebates || 0}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#999' }}>失败</div>
-                </Card>
-              </Col>
-            </Row>
-          )}
+      {/* 模型筛选（仅供应商侧） */}
+      {activeTab === 'supplier' && (
+        <Select
+          placeholder={t('选择模型')}
+          value={filterModelId}
+          onChange={(val) => { setFilterModelId(val || ''); setCurrentPage(1); }}
+          style={{ width: 180 }}
+          size="small"
+          showClear
+        >
+          {models.map(model => (
+            <Select.Option key={model.id} value={model.id}>
+              {model.name}
+            </Select.Option>
+          ))}
+        </Select>
+      )}
 
-          {/* 数据表格 */}
-          {activeTab === 'supplier' ? (
-            <Table
-              columns={settlementColumns}
-              dataSource={settlements}
-              loading={settlementsLoading}
-              pagination={{
-                current: currentPage,
-                pageSize: pageSize,
-                total: totalSettlements,
-                onChange: (page) => setCurrentPage(page),
-                showSizeChanger: true,
-                showTotal: (total) => `共 ${total} 条`,
-              }}
-              rowKey="id"
-              size="middle"
-            />
+      {/* 状态筛选 */}
+      {activeTab === 'supplier' ? (
+        <Select
+          placeholder={t('结算状态')}
+          value={filterStatus}
+          onChange={(val) => { setFilterStatus(val || ''); setCurrentPage(1); }}
+          style={{ width: 140 }}
+          size="small"
+          showClear
+        >
+          {Object.entries(settlementStatusMap).map(([key, value]) => (
+            <Select.Option key={key} value={key}>{value.text}</Select.Option>
+          ))}
+        </Select>
+      ) : (
+        <Select
+          placeholder={t('返点状态')}
+          value={filterRebateStatus}
+          onChange={(val) => { setFilterRebateStatus(val || ''); setCurrentPage(1); }}
+          style={{ width: 140 }}
+          size="small"
+          showClear
+        >
+          {Object.entries(rebateStatusMap).map(([key, value]) => (
+            <Select.Option key={key} value={key}>{value.text}</Select.Option>
+          ))}
+        </Select>
+      )}
+
+      {/* 刷新按钮 */}
+      <button
+        onClick={() => {
+          if (activeTab === 'supplier') fetchSettlements();
+          else { fetchRebates(); fetchRebateStatistics(); }
+        }}
+        style={{
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          height: 32, padding: '0 12px',
+          border: '1px solid #d9d9d9', borderRadius: 6,
+          fontSize: 12, backgroundColor: '#fff', cursor: 'pointer',
+        }}
+      >
+        <IconRefresh style={{ fontSize: 14, marginRight: 4 }} />
+        {t('刷新')}
+      </button>
+
+      {/* 分隔 */}
+      <div style={{ flex: 1 }} />
+
+      {/* 操作按钮 */}
+      {activeTab === 'supplier' && (
+        <>
+          <button
+            onClick={() => setManualSettlementModalVisible(true)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              height: 32, padding: '0 16px',
+              backgroundColor: '#1677ff', color: '#fff',
+              border: '1px solid #1677ff', borderRadius: 6,
+              fontSize: 12, fontWeight: 500, cursor: 'pointer',
+            }}
+          >
+            <IconPlusStroked style={{ fontSize: 14, marginRight: 4 }} />
+            {t('新增结算')}
+          </button>
+          <button
+            onClick={handleExportSettlements}
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              height: 32, padding: '0 12px',
+              border: '1px solid #d9d9d9', borderRadius: 6,
+              fontSize: 12, backgroundColor: '#fff', cursor: 'pointer',
+            }}
+          >
+            <IconDownloadStroked style={{ fontSize: 14, marginRight: 4 }} />
+            {t('导出')}
+          </button>
+        </>
+      )}
+      {activeTab === 'user' && (
+        <>
+          <button
+            onClick={() => setManualRebateModalVisible(true)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              height: 32, padding: '0 16px',
+              backgroundColor: '#1677ff', color: '#fff',
+              border: '1px solid #1677ff', borderRadius: 6,
+              fontSize: 12, fontWeight: 500, cursor: 'pointer',
+            }}
+          >
+            <IconPlusStroked style={{ fontSize: 14, marginRight: 4 }} />
+            {t('新增返点')}
+          </button>
+          <button
+            onClick={handleExportRebates}
+            style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              height: 32, padding: '0 12px',
+              border: '1px solid #d9d9d9', borderRadius: 6,
+              fontSize: 12, backgroundColor: '#fff', cursor: 'pointer',
+            }}
+          >
+            <IconDownloadStroked style={{ fontSize: 14, marginRight: 4 }} />
+            {t('导出')}
+          </button>
+        </>
+      )}
+    </div>
+  );
+
+  // 返点统计卡片（仅用户侧）
+  const rebateStatsArea = activeTab === 'user' && rebateStatistics ? (
+    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
+      {[
+        { label: '返点总数', value: rebateStatistics.total_rebates || 0, color: '#1890ff' },
+        { label: '返点总额', value: formatMoney(rebateStatistics.total_rebate_amount || 0), color: '#52c41a' },
+        { label: '成功', value: formatNumber(rebateStatistics.successed_rebates || 0), color: '#52c41a' },
+        { label: '失败', value: rebateStatistics.failed_rebates || 0, color: '#ff4d4f' },
+      ].map((stat, idx) => (
+        <div
+          key={idx}
+          style={{
+            backgroundColor: '#fff',
+            borderRadius: 12,
+            padding: '16px 24px',
+            flex: 1,
+            minWidth: 140,
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ fontSize: 22, fontWeight: 600, color: stat.color }}>{stat.value}</div>
+          <div style={{ fontSize: 13, color: '#999', marginTop: 4 }}>{stat.label}</div>
+        </div>
+      ))}
+    </div>
+  ) : null;
+
+  // 分页
+  const currentTotal = activeTab === 'supplier' ? totalSettlements : totalRebates;
+  const paginationArea = createCardProPagination({
+    currentPage,
+    pageSize,
+    total: currentTotal,
+    onPageChange: setCurrentPage,
+    onPageSizeChange: (size) => { setPageSize(size); setCurrentPage(1); },
+    isMobile,
+    t,
+  });
+
+  return (
+    <>
+      <CardPro
+        type='type3'
+        descriptionArea={null}
+        tabsArea={tabsArea}
+        searchArea={searchArea}
+        paginationArea={paginationArea}
+        t={t}
+      >
+        {/* 返点统计卡片 */}
+        {rebateStatsArea}
+
+        {/* 数据表格 */}
+        {activeTab === 'supplier' ? (
+          settlementsLoading && settlements.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <div style={{
+                width: 32, height: 32,
+                border: '3px solid #f0f0f0',
+                borderTopColor: '#1677ff',
+                borderRadius: '50%',
+                animation: 'semi-spin 0.6s infinite linear',
+                margin: '0 auto',
+              }} />
+            </div>
           ) : (
-            <Table
-              columns={rebateColumns}
-              dataSource={rebates}
-              loading={rebatesLoading}
-              pagination={{
-                current: currentPage,
-                pageSize: pageSize,
-                total: totalRebates,
-                onChange: (page) => setCurrentPage(page),
-                showSizeChanger: true,
-                showTotal: (total) => `共 ${total} 条`,
-              }}
-              rowKey="id"
-              size="middle"
-            />
-          )}
-        </Card>
-      </Content>
+            renderTable(settlementColumns, settlements, settlementsLoading)
+          )
+        ) : (
+          rebatesLoading && rebates.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <div style={{
+                width: 32, height: 32,
+                border: '3px solid #f0f0f0',
+                borderTopColor: '#1677ff',
+                borderRadius: '50%',
+                animation: 'semi-spin 0.6s infinite linear',
+                margin: '0 auto',
+              }} />
+            </div>
+          ) : (
+            renderTable(rebateColumns, rebates, rebatesLoading)
+          )
+        )}
+      </CardPro>
 
       {/* 手动创建结算单弹窗 */}
       <Modal
@@ -756,59 +688,15 @@ export default function SupplierSettlement() {
         width={600}
       >
         <Form form={settlementForm} labelPosition="left">
-          <Form.Input
-            field="vendor_id"
-            title="供应商ID"
-            placeholder="请输入供应商ID"
-            required
-            initialValue={filterVendorId || undefined}
-          />
-          <Form.Input
-            field="vendor_name"
-            title="供应商名称"
-            placeholder="请输入供应商名称"
-            required
-          />
-          <Form.Input
-            field="period"
-            title="结算周期"
-            placeholder="例如: 2024-01"
-            required
-          />
-          <Form.Input
-            field="channel"
-            title="渠道"
-            placeholder="例如: openai"
-          />
-          <Form.Input
-            field="model"
-            title="模型"
-            placeholder="例如: gpt-4"
-          />
-          <Form.Input
-            field="quota"
-            title="额度"
-            placeholder="请输入额度"
-            type="number"
-            step="0.01"
-          />
-          <Form.Input
-            field="tokens"
-            title="Token数量"
-            placeholder="请输入Token数量"
-            type="number"
-          />
-          <Form.Input
-            field="pricing_method"
-            title="计费方式"
-            placeholder="例如: token, call"
-          />
-          <Form.Input
-            field="status"
-            title="状态"
-            placeholder="例如: pending"
-            initialValue="pending"
-          />
+          <Form.Input field="vendor_id" title="供应商ID" placeholder="请输入供应商ID" required initialValue={filterVendorId || undefined} />
+          <Form.Input field="vendor_name" title="供应商名称" placeholder="请输入供应商名称" required />
+          <Form.Input field="period" title="结算周期" placeholder="例如: 2024-01" required />
+          <Form.Input field="channel" title="渠道" placeholder="例如: openai" />
+          <Form.Input field="model" title="模型" placeholder="例如: gpt-4" />
+          <Form.Input field="quota" title="额度" placeholder="请输入额度" type="number" step="0.01" />
+          <Form.Input field="tokens" title="Token数量" placeholder="请输入Token数量" type="number" />
+          <Form.Input field="pricing_method" title="计费方式" placeholder="例如: token, call" />
+          <Form.Input field="status" title="状态" placeholder="例如: pending" initialValue="pending" />
         </Form>
       </Modal>
 
@@ -824,64 +712,20 @@ export default function SupplierSettlement() {
         width={600}
       >
         <Form form={rebateForm} labelPosition="left">
-          <Form.Input
-            field="vendor_id"
-            title="供应商ID"
-            placeholder="请输入供应商ID"
-            required
-            initialValue={filterVendorId || undefined}
-          />
-          <Form.Input
-            field="vendor_name"
-            title="供应商名称"
-            placeholder="请输入供应商名称"
-            required
-          />
-          <Form.Input
-            field="period"
-            title="返点周期"
-            placeholder="例如: 2024-01"
-            required
-          />
-          <Form.Select
-            field="rebate_type"
-            title="返点类型"
-            placeholder="请选择返点类型"
-            required
-            initialValue="manual"
-          >
+          <Form.Input field="vendor_id" title="供应商ID" placeholder="请输入供应商ID" required initialValue={filterVendorId || undefined} />
+          <Form.Input field="vendor_name" title="供应商名称" placeholder="请输入供应商名称" required />
+          <Form.Input field="period" title="返点周期" placeholder="例如: 2024-01" required />
+          <Form.Select field="rebate_type" title="返点类型" placeholder="请选择返点类型" required initialValue="manual">
             <Select.Option value="manual">手动</Select.Option>
             <Select.Option value="automatic">自动</Select.Option>
             <Select.Option value="promotion">活动返点</Select.Option>
           </Form.Select>
-          <Form.Input
-            field="rebate_amount"
-            title="返点金额"
-            placeholder="请输入返点金额"
-            type="number"
-            step="0.01"
-            required
-          />
-          <Form.Input
-            field="rebate_tokens"
-            title="返点Token"
-            placeholder="请输入返点Token数量"
-            type="number"
-          />
-          <Form.Input
-            field="source"
-            title="来源"
-            placeholder="例如: manual"
-            initialValue="manual"
-          />
-          <Form.TextArea
-            field="remark"
-            title="备注"
-            placeholder="请输入备注"
-            style={{ minHeight: 80 }}
-          />
+          <Form.Input field="rebate_amount" title="返点金额" placeholder="请输入返点金额" type="number" step="0.01" required />
+          <Form.Input field="rebate_tokens" title="返点Token" placeholder="请输入返点Token数量" type="number" />
+          <Form.Input field="source" title="来源" placeholder="例如: manual" initialValue="manual" />
+          <Form.TextArea field="remark" title="备注" placeholder="请输入备注" style={{ minHeight: 80 }} />
         </Form>
       </Modal>
-    </Layout>
+    </>
   );
 }

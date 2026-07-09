@@ -21,39 +21,40 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { API, showError, showSuccess } from '../../helpers';
 import { StatusContext } from '../../context/Status';
-import {
-  NativeRow,
-  NativeCol,
-  NativeCard,
-  NativeSpace,
-  NativeButton,
-  NativeTable,
-  NativeTag,
-  NativeSelect,
-  NativeDatePicker,
-  NativeText,
-  NativeSpin,
-} from './NativeLayout';
+import CardPro from '../../components/common/ui/CardPro';
+import { formatTimestamp, getStatusTag } from './utils';
+import { createCardProPagination } from '../../helpers/utils';
+import { useIsMobile } from '../../hooks/common/useIsMobile';
 
-// 格式化时间
-const formatTimestamp = (ts) => {
-  if (!ts) return '-';
-  return new Date(ts * 1000).toLocaleString('zh-CN');
+// 对账状态映射
+const reconcileStatusMap = {
+  matched: { text: '已匹配', color: 'green' },
+  unmatched: { text: '未匹配', color: 'red' },
+  partial: { text: '部分匹配', color: 'orange' },
+  processing: { text: '处理中', color: 'blue' },
+};
+
+// 对账类型映射
+const reconcileTypeMap = {
+  upstream: { text: '上游', color: 'blue' },
+  downstream: { text: '下游', color: 'purple' },
+  cross: { text: '交叉', color: 'cyan' },
 };
 
 export default function Reconciliation() {
   const { t } = useTranslation();
   const [statusState] = useContext(StatusContext);
+  const isMobile = useIsMobile();
   const isAdmin = statusState?.user?.is_admin === true;
 
   // 数据状态
   const [reconciliations, setReconciliations] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [autoReconcileLoading, setAutoReconcileLoading] = useState(false);
 
   // 筛选条件
   const [reconcileType, setReconcileType] = useState('');
-  const [period, setPeriod] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -67,12 +68,10 @@ export default function Reconciliation() {
           p: page,
           page_size: pageSize,
           ...(reconcileType && { type: reconcileType }),
-          ...(period && { period }),
           ...(statusFilter && { status: statusFilter }),
         },
       });
       if (res.data?.success) {
-        // 后端返回 { success: true, data: [...], total: 123 }
         setReconciliations(res.data?.data || []);
         setTotal(res.data?.total || 0);
       }
@@ -85,12 +84,13 @@ export default function Reconciliation() {
 
   useEffect(() => {
     fetchReconciliations();
-  }, [page, pageSize, reconcileType, period, statusFilter]);
+  }, [page, pageSize, reconcileType, statusFilter]);
 
   // 自动对账
-  const handleAutoReconcile = async (period) => {
+  const handleAutoReconcile = async (periodValue) => {
+    setAutoReconcileLoading(true);
     try {
-      const res = await API.post('/api/finance/reconcile', { period });
+      const res = await API.post('/api/finance/reconcile', { period: periodValue });
       if (res.data?.success) {
         showSuccess(t('自动对账成功'));
         fetchReconciliations();
@@ -100,85 +100,26 @@ export default function Reconciliation() {
     } catch (error) {
       console.error('自动对账失败:', error);
       showError(t('自动对账失败'));
+    } finally {
+      setAutoReconcileLoading(false);
     }
   };
 
-  // 对账状态标签
-  const getStatusTag = (status) => {
-    const statusMap = {
-      matched: { color: 'green', text: t('已匹配') },
-      unmatched: { color: 'red', text: t('未匹配') },
-      partial: { color: 'orange', text: t('部分匹配') },
-      processing: { color: 'blue', text: t('处理中') },
-    };
-    const config = statusMap[status] || { color: 'gray', text: status };
-    return <NativeTag color={config.color}>{config.text}</NativeTag>;
-  };
+  // 是否仅管理员可访问
+  if (!isAdmin) {
+    return (
+      <div style={{ padding: '40px', textAlign: 'center', color: '#999' }}>
+        {t('仅管理员可访问对账管理功能')}
+      </div>
+    );
+  }
 
-  // 对账类型标签
-  const getTypeTag = (type) => {
-    const typeMap = {
-      upstream: { color: 'blue', text: t('上游') },
-      downstream: { color: 'purple', text: t('下游') },
-      cross: { color: 'cyan', text: t('交叉') },
-    };
-    const config = typeMap[type] || { color: 'gray', text: type };
-    return <NativeTag color={config.color}>{config.text}</NativeTag>;
-  };
-
-  // 对账记录表格列
-  const columns = [
-    {
-      title: t('对账周期'),
-      dataIndex: 'period',
-      width: 120,
-    },
-    {
-      title: t('类型'),
-      dataIndex: 'type',
-      width: 100,
-      render: (type) => getTypeTag(type),
-    },
-    {
-      title: t('状态'),
-      dataIndex: 'status',
-      width: 120,
-      render: (status) => getStatusTag(status),
-    },
-    {
-      title: t('上游金额'),
-      dataIndex: 'upstream_amount',
-      width: 120,
-      render: (val) => val ? `¥${parseFloat(val).toFixed(2)}` : '-',
-    },
-    {
-      title: t('下游金额'),
-      dataIndex: 'downstream_amount',
-      width: 120,
-      render: (val) => val ? `¥${parseFloat(val).toFixed(2)}` : '-',
-    },
-    {
-      title: t('差异金额'),
-      dataIndex: 'difference',
-      width: 120,
-      render: (val) => {
-        if (val == null) return '-';
-        const color = val > 0 ? 'red' : val < 0 ? 'orange' : 'green';
-        return <span style={{ color }}>{val > 0 ? '+' : ''}¥{parseFloat(val).toFixed(2)}</span>;
-      },
-    },
-    {
-      title: t('交易笔数'),
-      dataIndex: 'transaction_count',
-      width: 100,
-      render: (val) => val || 0,
-    },
-    {
-      title: t('对账时间'),
-      dataIndex: 'reconciled_at',
-      width: 180,
-      render: (ts) => formatTimestamp(ts),
-    },
+  // 快捷对账周期
+  const quickPeriods = [
+    { label: t('今天'), value: 'today' },
+    { label: t('昨天'), value: 'yesterday' },
+    { label: t('最近7天'), value: 'last_7d' },
+    { label: t('本月'), value: 'current_month' },
   ];
 
   // 对账类型选项
@@ -198,89 +139,240 @@ export default function Reconciliation() {
     { value: 'processing', label: t('处理中') },
   ];
 
-  // 快捷对账周期
-  const quickPeriods = [
-    { label: t('今天'), value: 'today' },
-    { label: t('昨天'), value: 'yesterday' },
-    { label: t('最近7天'), value: 'last_7d' },
-    { label: t('本月'), value: 'current_month' },
+  // 操作区域 - 快捷对账按钮
+  const actionsArea = (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+      <span style={{ fontSize: 14, fontWeight: 500, color: 'rgba(0, 0, 0, 0.65)', marginRight: 4 }}>
+        {t('快捷对账')}:
+      </span>
+      {quickPeriods.map((period) => (
+        <button
+          key={period.value}
+          onClick={() => handleAutoReconcile(period.value)}
+          disabled={autoReconcileLoading}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: 32,
+            padding: '0 12px',
+            border: '1px solid #1677ff',
+            borderRadius: 6,
+            fontSize: 12,
+            backgroundColor: '#fff',
+            color: '#1677ff',
+            cursor: autoReconcileLoading ? 'not-allowed' : 'pointer',
+            opacity: autoReconcileLoading ? 0.6 : 1,
+          }}
+        >
+          {period.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  // 搜索区域
+  const searchArea = (
+    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+      {/* 类型筛选 */}
+      <select
+        value={reconcileType}
+        onChange={(e) => {
+          setReconcileType(e.target.value);
+          setPage(1);
+        }}
+        style={{
+          height: 32,
+          padding: '0 12px',
+          border: '1px solid #d9d9d9',
+          borderRadius: 6,
+          fontSize: 12,
+          backgroundColor: '#fff',
+          minWidth: 120,
+          outline: 'none',
+        }}
+      >
+        {typeOptions.map((opt) => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+
+      {/* 状态筛选 */}
+      <select
+        value={statusFilter}
+        onChange={(e) => {
+          setStatusFilter(e.target.value);
+          setPage(1);
+        }}
+        style={{
+          height: 32,
+          padding: '0 12px',
+          border: '1px solid #d9d9d9',
+          borderRadius: 6,
+          fontSize: 12,
+          backgroundColor: '#fff',
+          minWidth: 120,
+          outline: 'none',
+        }}
+      >
+        {statusOptions.map((opt) => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+
+      {/* 查询按钮 */}
+      <button
+        onClick={fetchReconciliations}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: 32,
+          padding: '0 16px',
+          backgroundColor: '#1677ff',
+          color: '#fff',
+          border: '1px solid #1677ff',
+          borderRadius: 6,
+          fontSize: 12,
+          fontWeight: 500,
+          cursor: 'pointer',
+        }}
+      >
+        {t('查询')}
+      </button>
+    </div>
+  );
+
+  // 对账记录表格列
+  const columns = [
+    { title: t('对账周期'), dataIndex: 'period', width: 120 },
+    {
+      title: t('类型'), dataIndex: 'type', width: 100,
+      render: (type) => getStatusTag(type, reconcileTypeMap, t),
+    },
+    {
+      title: t('状态'), dataIndex: 'status', width: 120,
+      render: (status) => getStatusTag(status, reconcileStatusMap, t),
+    },
+    {
+      title: t('上游金额'), dataIndex: 'upstream_amount', width: 120,
+      render: (val) => val ? `¥${parseFloat(val).toFixed(2)}` : '-',
+    },
+    {
+      title: t('下游金额'), dataIndex: 'downstream_amount', width: 120,
+      render: (val) => val ? `¥${parseFloat(val).toFixed(2)}` : '-',
+    },
+    {
+      title: t('差异金额'), dataIndex: 'difference', width: 120,
+      render: (val) => {
+        if (val == null) return '-';
+        const color = val > 0 ? 'red' : val < 0 ? 'orange' : 'green';
+        return <span style={{ color }}>{val > 0 ? '+' : ''}¥{parseFloat(val).toFixed(2)}</span>;
+      },
+    },
+    { title: t('交易笔数'), dataIndex: 'transaction_count', width: 100, render: (val) => val || 0 },
+    { title: t('对账时间'), dataIndex: 'reconciled_at', width: 180, render: (ts) => formatTimestamp(ts) },
   ];
 
-  if (!isAdmin) {
-    return (
-      <NativeCard bodyStyle={{ padding: '40px' }} style={{ borderRadius: 12, textAlign: 'center' }}>
-        <NativeText type="tertiary">{t('仅管理员可访问对账管理功能')}</NativeText>
-      </NativeCard>
-    );
-  }
+  // 表格
+  const tableContent = (
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead>
+          <tr style={{ backgroundColor: '#fafafa' }}>
+            {columns.map((col) => (
+              <th
+                key={col.dataIndex}
+                style={{
+                  padding: '12px 16px',
+                  textAlign: col.dataIndex === 'upstream_amount' || col.dataIndex === 'downstream_amount' || col.dataIndex === 'difference' || col.dataIndex === 'transaction_count' ? 'right' : 'left',
+                  borderBottom: '1px solid #f0f0f0',
+                  fontWeight: 600,
+                  color: 'rgba(0, 0, 0, 0.88)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {col.title}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {reconciliations.map((record) => (
+            <tr
+              key={record.id}
+              style={{ borderBottom: '1px solid #f0f0f0', transition: 'background-color 0.2s' }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f5f5f5')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+            >
+              {columns.map((col) => (
+                <td
+                  key={`${record.id}-${col.dataIndex}`}
+                  style={{
+                    padding: '12px 16px',
+                    textAlign: col.dataIndex === 'upstream_amount' || col.dataIndex === 'downstream_amount' || col.dataIndex === 'difference' || col.dataIndex === 'transaction_count' ? 'right' : 'left',
+                    color: 'rgba(0, 0, 0, 0.65)',
+                  }}
+                >
+                  {col.render ? col.render(record[col.dataIndex], record) : record[col.dataIndex]}
+                </td>
+              ))}
+            </tr>
+          ))}
+          {reconciliations.length === 0 && !loading && (
+            <tr>
+              <td
+                colSpan={columns.length}
+                style={{ padding: '40px 16px', textAlign: 'center', color: '#999' }}
+              >
+                {t('暂无数据')}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  // 分页
+  const paginationArea = createCardProPagination({
+    currentPage: page,
+    pageSize: pageSize,
+    total: total,
+    onPageChange: setPage,
+    onPageSizeChange: (size) => {
+      setPageSize(size);
+      setPage(1);
+    },
+    isMobile: isMobile,
+    t: t,
+  });
 
   return (
-    <div>
-      {/* 快捷对账 */}
-      <NativeCard title={t('快捷对账')} style={{ marginBottom: 16 }}>
-        <NativeSpace wrap size={12}>
-          {quickPeriods.map((period) => (
-            <NativeButton
-              key={period.value}
-              type="primary"
-              theme="light"
-              onClick={() => handleAutoReconcile(period.value)}
-              size="small"
-            >
-              {period.label}
-            </NativeButton>
-          ))}
-        </NativeSpace>
-      </NativeCard>
-
-      {/* 筛选栏 */}
-      <NativeCard bodyStyle={{ padding: '16px 20px' }} style={{ borderRadius: 12, marginBottom: 16 }}>
-        <NativeSpace wrap size={12}>
-          <NativeSelect
-            value={reconcileType}
-            onChange={setReconcileType}
-            options={typeOptions}
-            style={{ width: 120 }}
-            clearable
+    <CardPro
+      type='type2'
+      actionsArea={actionsArea}
+      searchArea={searchArea}
+      paginationArea={paginationArea}
+      t={t}
+    >
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '40px' }}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              border: '3px solid #f0f0f0',
+              borderTopColor: '#1677ff',
+              borderRadius: '50%',
+              animation: 'semi-spin 0.6s infinite linear',
+              margin: '0 auto',
+            }}
           />
-          <NativeSelect
-            value={statusFilter}
-            onChange={setStatusFilter}
-            options={statusOptions}
-            style={{ width: 120 }}
-            clearable
-          />
-          <NativeButton
-            theme="solid"
-            type="primary"
-            onClick={fetchReconciliations}
-          >
-            {t('查询')}
-          </NativeButton>
-        </NativeSpace>
-      </NativeCard>
-
-      {/* 对账记录表格 */}
-      <NativeCard bodyStyle={{ padding: '0 20px 20px' }} style={{ borderRadius: 12 }}>
-        <NativeTable
-          columns={columns}
-          dataSource={reconciliations}
-          loading={loading}
-          rowKey="id"
-          pagination={{
-            current: page,
-            pageSize: pageSize,
-            total: total,
-            onChange: (page) => setPage(page),
-            onPageSizeChange: (size) => {
-              setPageSize(size);
-              setPage(1);
-            },
-            showSizeChanger: true,
-            pageSizeActions: [10, 20, 50],
-          }}
-        />
-      </NativeCard>
-    </div>
+        </div>
+      ) : (
+        tableContent
+      )}
+    </CardPro>
   );
 }

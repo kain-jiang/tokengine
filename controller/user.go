@@ -1238,10 +1238,24 @@ func TopUp(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+
+	// 获取兑换码信息以判断是否是套餐模式
+	redemption, _ := model.GetRedemptionByKey(req.Key)
+	responseData := gin.H{
+		"quota": quota,
+	}
+	if redemption != nil && redemption.PlanId > 0 {
+		plan, _ := model.GetSubscriptionPlanById(redemption.PlanId)
+		responseData["plan_id"] = redemption.PlanId
+		if plan != nil {
+			responseData["plan_title"] = plan.Title
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    quota,
+		"data":    responseData,
 	})
 }
 

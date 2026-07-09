@@ -10,6 +10,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/pkg/cachex"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/samber/hot"
 	"gorm.io/gorm"
 )
@@ -586,7 +587,9 @@ func CompleteSubscriptionOrder(tradeNo string, providerPayload string) error {
 		_ = UpdateUserGroupCache(logUserId, upgradeGroup)
 	}
 	if logUserId > 0 {
-		msg := fmt.Sprintf("订阅购买成功，套餐: %s，支付金额: %.2f，支付方式: %s", logPlanTitle, logMoney, logPaymentMethod)
+		usdToCnyRate := operation_setting.USDExchangeRate
+		cnyAmount := logMoney * usdToCnyRate
+		msg := fmt.Sprintf("订阅购买成功，套餐: %s，支付金额: %.2f美元（约%.2f人民币），支付方式: %s", logPlanTitle, logMoney, cnyAmount, logPaymentMethod)
 		RecordLog(logUserId, LogTypeTopup, msg)
 	}
 	return nil

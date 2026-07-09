@@ -207,53 +207,31 @@ const SubscriptionPurchaseModal = ({
                     </Text>
                   )}
                 </div>
-                {values.plan?.plan_type === 'tokens' && plan?.applicable_models ? (
-                  <div className='flex justify-between items-center'>
-                    <Text strong className='text-slate-700 dark:text-slate-200'>
-                      {t('模型')}：
-                    </Text>
-                    <Tooltip content={plan.applicable_models}>
-                      <Text className='text-slate-900 dark:text-slate-100 max-w-[200px] truncate'>
-                        {plan.applicable_models}
-                      </Text>
-                    </Tooltip>
-                  </div>
-                ) : null}
               </div>
-            ) : (
-              <>
+              {/* 适用模型字段 */}
+              {plan?.applicable_models && plan.applicable_models.trim() ? (
                 <div className='flex justify-between items-center'>
                   <Text strong className='text-slate-700 dark:text-slate-200'>
-                    {t('实得价值')}：
+                    {t('适用模型')}：
                   </Text>
-                  <div className='flex items-center'>
-                    <Package size={14} className='mr-1 text-slate-500' />
-                    {totalAmount > 0 ? (
-                      <Tooltip content={`${t('原生额度')}：${totalAmount}`}>
-                        <Text className='text-slate-900 dark:text-slate-100'>
-                          {actualValueDisplay}
-                        </Text>
-                      </Tooltip>
-                    ) : (
-                      <Text className='text-slate-900 dark:text-slate-100'>
-                        {t('不限')}
-                      </Text>
-                    )}
-                  </div>
+                  <Tooltip content={plan.applicable_models}>
+                    <Text className='text-slate-900 dark:text-slate-100 max-w-[200px] truncate'>
+                      {plan.applicable_models}
+                    </Text>
+                  </Tooltip>
                 </div>
-                {plan?.upgrade_group ? (
-                  <div className='flex justify-between items-center'>
-                    <Text strong className='text-slate-700 dark:text-slate-200'>
-                      {t('升级分组')}：
-                    </Text>
-                    <Text className='text-slate-900 dark:text-slate-100'>
-                      {plan.upgrade_group}
-                    </Text>
-                  </div>
-                ) : null}
-              </>
-            )
-            <Divider margin={8} />
+              ) : null}
+              {plan?.upgrade_group ? (
+                <div className='flex justify-between items-center'>
+                  <Text strong className='text-slate-700 dark:text-slate-200'>
+                    {t('升级分组')}：
+                  </Text>
+                  <Text className='text-slate-900 dark:text-slate-100'>
+                    {plan.upgrade_group}
+                  </Text>
+                </div>
+              ) : null}
+              <Divider margin={8} />
               <div className='flex justify-between items-center'>
                 <Text strong className='text-slate-700 dark:text-slate-200'>
                   {t('应付金额')}：
