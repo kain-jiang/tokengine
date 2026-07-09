@@ -226,7 +226,7 @@ func Register(c *gin.Context) {
 		return
 	}
 	common.DeleteSMSCode(*user.TelePhone)
-	exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email)
+	exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email, *user.TelePhone)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgDatabaseError)
 		common.SysLog(fmt.Sprintf("CheckUserExistOrDeleted error: %v", err))

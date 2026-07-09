@@ -162,7 +162,7 @@ func generateDefaultSidebarConfigForRole(userRole int) string {
 }
 
 // CheckUserExistOrDeleted check if user exist or deleted, if not exist, return false, nil, if deleted or exist, return true, nil
-func CheckUserExistOrDeleted(username string, email string) (bool, error) {
+func CheckUserExistOrDeleted(username string, email string, telephone string) (bool, error) {
 	var user User
 
 	// err := DB.Unscoped().First(&user, "username = ? or email = ?", username, email).Error
@@ -171,7 +171,7 @@ func CheckUserExistOrDeleted(username string, email string) (bool, error) {
 	if email == "" {
 		err = DB.Unscoped().First(&user, "username = ?", username).Error
 	} else {
-		err = DB.Unscoped().First(&user, "username = ? or email = ?", username, email).Error
+		err = DB.Unscoped().First(&user, "username = ? or email = ? or telephone = ?", username, email, telephone).Error
 	}
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

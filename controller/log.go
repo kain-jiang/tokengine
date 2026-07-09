@@ -108,13 +108,16 @@ func GetLogsStat(c *gin.Context) {
 		return
 	}
 	//tokenNum := model.SumUsedToken(logType, startTimestamp, endTimestamp, modelName, username, "")
+	// 获取退款总额度
+	refundStat, _ := model.SumUsedQuota(6, startTimestamp, endTimestamp, modelName, username, tokenName, channel, group)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
 		"data": gin.H{
-			"quota": stat.Quota,
-			"rpm":   stat.Rpm,
-			"tpm":   stat.Tpm,
+			"quota":       stat.Quota,
+			"refundQuota": refundStat.Quota,
+			"rpm":         stat.Rpm,
+			"tpm":         stat.Tpm,
 		},
 	})
 	return
@@ -135,13 +138,16 @@ func GetLogsSelfStat(c *gin.Context) {
 		return
 	}
 	//tokenNum := model.SumUsedToken(logType, startTimestamp, endTimestamp, modelName, username, tokenName)
+	// 获取退款总额度
+	refundStat, _ := model.SumUsedQuota(6, startTimestamp, endTimestamp, modelName, username, tokenName, channel, group)
 	c.JSON(200, gin.H{
 		"success": true,
 		"message": "",
 		"data": gin.H{
-			"quota": quotaNum.Quota,
-			"rpm":   quotaNum.Rpm,
-			"tpm":   quotaNum.Tpm,
+			"quota":       quotaNum.Quota,
+			"refundQuota": refundStat.Quota,
+			"rpm":         quotaNum.Rpm,
+			"tpm":         quotaNum.Tpm,
 			//"token": tokenNum,
 		},
 	})
