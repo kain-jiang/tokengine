@@ -25,7 +25,6 @@ import {
   IconCoinMoneyStroked,
   IconArrowUp,
   IconClockStroked,
-  IconCursorStroked,
 } from '@douyinfe/semi-icons';
 import { API, showError } from '../../helpers';
 import { StatusContext } from '../../context/Status';
