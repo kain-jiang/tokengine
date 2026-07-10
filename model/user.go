@@ -1016,6 +1016,16 @@ func updateUserUsedQuotaAndRequestCount(id int, quota int, count int) {
 	//}
 }
 
+// 根据模型消费实际，更新用户使用额度
+// https://github.com/QuantumNous/new-api/pull/4323/changes#diff-6a7077094ec53d15472a577dfe35da587a08847e8e9af2c7de229e7968438b56R965-R976
+func UpdateUserUsedQuota(id int, quota int) {
+	if common.BatchUpdateEnabled {
+		addNewRecord(BatchUpdateTypeUsedQuota, id, quota)
+		return
+	}
+	updateUserUsedQuota(id, quota)
+}
+
 func updateUserUsedQuota(id int, quota int) {
 	err := DB.Model(&User{}).Where("id = ?", id).Updates(
 		map[string]interface{}{
