@@ -118,7 +118,7 @@ func SubscriptionRequestWalletPay(c *gin.Context) {
 	usdToCnyRate := operation_setting.USDExchangeRate
 	cnyAmount := plan.PriceAmount * usdToCnyRate
 	msg := fmt.Sprintf("订阅购买成功，套餐: %s，支付金额: %.2f美元（约%.2f人民币），支付方式: 钱包余额", plan.Title, plan.PriceAmount, cnyAmount)
-	model.RecordLog(userId, model.LogTypeConsume, msg)
+	model.RecordLog(userId, model.LogTypeTopup, msg) //  todo  LogTypeTopup  这个有问题，值得商榷！！！！
 
 	common.ApiSuccess(c, gin.H{
 		"message":    "购买成功",

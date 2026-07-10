@@ -180,10 +180,10 @@ func Redeem(key string, userId int) (quota int, err error) {
 	if redemption.PlanId > 0 {
 		plan, _ := GetSubscriptionPlanById(redemption.PlanId)
 		planName := plan.Title
-		RecordLog(userId, LogTypeSystem, fmt.Sprintf("通过兑换码充值套餐 %s，兑换码ID %d", planName, redemption.Id))
+		RecordLog(userId, LogTypeSystem, fmt.Sprintf("兑换码兑换套餐 %s，兑换码ID %d", planName, redemption.Id))
 		return redemption.PlanId, nil
 	}
-	RecordLog(userId, LogTypeSystem, fmt.Sprintf("通过兑换码充值 %s，兑换码ID %d", logger.LogQuota(redemption.Quota), redemption.Id))
+	RecordLog(userId, LogTypeSystem, fmt.Sprintf("兑换码充值 %s，兑换码ID %d", logger.LogQuota(redemption.Quota), redemption.Id))
 	return redemption.Quota, nil
 }
 
