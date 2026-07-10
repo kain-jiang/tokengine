@@ -658,37 +658,40 @@ const RegisterForm = () => {
                   prefix={<IconPhone />}
                 />
 
-                <Button
-                  theme='light'
-                  className='w-full !rounded-full font-semibold transition-colors duration-200'
-                  type='tertiary'
-                  onClick={sendSMSVerificationCode}
-                  loading={verificationCodeLoading}
-                  disabled={
-                    disableButton ||
-                    verificationCodeLoading
-                  }
-                  style={{
-                    fontWeight: '600',
-                    backgroundColor: disableButton || verificationCodeLoading ? '#e5e7eb' : '#f3f4f6',
-                    color: disableButton || verificationCodeLoading ? '#CCCED0' : '#2563eb',
-                    cursor: disableButton || verificationCodeLoading ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {disableButton
-                    ? `${t('重新发送')} (${countdown})`
-                    : t('获取验证码')}
-                </Button>
-
-                <Form.Input
-                  field='verification_code'
-                  label={t('短信验证码')}
-                  placeholder={t('输入6位验证码')}
-                  name='verification_code'
-                  onChange={(value) => handleChange('verification_code', value)}
-                  prefix={<IconKey />}
-                  maxLength={6}
-                />
+                <div className='flex gap-3'>
+                  <Form.Input
+                    field='verification_code'
+                    label={t('短信验证码')}
+                    placeholder={t('输入6位验证码')}
+                    name='verification_code'
+                    onChange={(value) => handleChange('verification_code', value)}
+                    prefix={<IconKey />}
+                    maxLength={6}
+                    className='flex-1'
+                  />
+                  <Button
+                    theme='light'
+                    className='!rounded-full font-semibold whitespace-nowrap h-10'
+                    type='tertiary'
+                    onClick={sendSMSVerificationCode}
+                    loading={verificationCodeLoading}
+                    disabled={
+                      disableButton ||
+                      verificationCodeLoading
+                    }
+                    style={{
+                      fontWeight: '600',
+                      backgroundColor: disableButton || verificationCodeLoading ? '#e5e7eb' : '#f3f4f6',
+                      color: disableButton || verificationCodeLoading ? '#CCCED0' : '#2563eb',
+                      cursor: disableButton || verificationCodeLoading ? 'not-allowed' : 'pointer',
+                      height: '40px',
+                    }}
+                  >
+                    {disableButton
+                      ? `${t('重新发送')} (${countdown})`
+                      : t('获取验证码')}
+                  </Button>
+                </div>
 
                 {showEmailVerification && (
                   <>
