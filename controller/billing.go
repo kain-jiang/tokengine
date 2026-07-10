@@ -7,7 +7,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/service"
-
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/gin-gonic/gin"
 )
 
@@ -66,7 +66,7 @@ func ExportModelSummary(c *gin.Context) {
 		}
 	}
 
-	items, err := service.GetBillingSummaryService().GetModelSummaryExport(userId, req)
+	data, err := service.GetBillingSummaryService().GetModelSummary(userId, req)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -83,13 +83,13 @@ func ExportModelSummary(c *gin.Context) {
 	c.Writer.WriteString("用户名,模型名称,调用次数,Token总数,消费金额\n")
 
 	// 写入数据
-	for _, item := range items {
+	for _, item := range data.Items.([]dto.ModelSummaryItem) {
 		c.Writer.WriteString(fmt.Sprintf("%s,%s,%d,%d,%.6f\n",
 			item.Username,
 			item.ModelName,
 			item.RequestCount,
 			item.TotalTokens,
-			item.QuotaConsumed,
+			item.QuotaConsumed*operation_setting.USDExchangeRate,
 		))
 	}
 }
@@ -115,7 +115,7 @@ func ExportTokenSummary(c *gin.Context) {
 		}
 	}
 
-	items, err := service.GetBillingSummaryService().GetTokenSummaryExport(userId, req)
+	data, err := service.GetBillingSummaryService().GetTokenSummary(userId, req)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -132,13 +132,13 @@ func ExportTokenSummary(c *gin.Context) {
 	c.Writer.WriteString("用户名,令牌名称,调用次数/用量,Token总数,消费金额\n")
 
 	// 写入数据
-	for _, item := range items {
+	for _, item := range data.Items.([]dto.TokenSummaryItem) {
 		c.Writer.WriteString(fmt.Sprintf("%s,%s,%d,%d,%.6f\n",
 			item.Username,
 			item.TokenName,
 			item.RequestCount,
 			item.TotalTokens,
-			item.QuotaConsumed,
+			item.QuotaConsumed*operation_setting.USDExchangeRate,
 		))
 	}
 }

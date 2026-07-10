@@ -58,6 +58,17 @@ const LogsActions = ({
             {t('消耗额度')}: {renderQuota(stat.quota)}
           </Tag>
           <Tag
+            color='amber'
+            style={{
+              fontWeight: 500,
+              boxShadow: '0 2px 8px rgba(1, 1, 32, 0.1)',
+              padding: 13,
+            }}
+            className='!rounded-lg'
+          >
+            {t('退款额度')}: {renderQuota(stat.refundQuota)}
+          </Tag>
+          <Tag
             color='pink'
             style={{
               fontWeight: 500,

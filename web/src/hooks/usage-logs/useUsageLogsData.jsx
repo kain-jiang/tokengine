@@ -88,6 +88,7 @@ export const useLogsData = () => {
   const [stat, setStat] = useState({
     quota: 0,
     token: 0,
+    refundQuota: 0,
   });
 
   // Form state
