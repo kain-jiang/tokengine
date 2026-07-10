@@ -164,7 +164,12 @@ func RefundTaskQuota(ctx context.Context, task *model.Task, reason string) {
 	// 2. 退还令牌额度
 	taskAdjustTokenQuota(ctx, task, -quota)
 
-	// 3. 记录日志
+	// 3. 减少已用额度统计
+	// https://github.com/QuantumNous/new-api/pull/4323/changes#diff-6a7077094ec53d15472a577dfe35da587a08847e8e9af2c7de229e7968438b56R965-R976
+	model.UpdateUserUsedQuota(task.UserId, -quota)
+	model.UpdateChannelUsedQuota(task.ChannelId, -quota)
+
+	// 4. 记录日志
 	other := taskBillingOther(task)
 	other["task_id"] = task.TaskID
 	other["reason"] = reason
@@ -226,6 +231,10 @@ func RecalculateTaskQuota(ctx context.Context, task *model.Task, actualQuota int
 	} else {
 		logType = model.LogTypeRefund
 		logQuota = -quotaDelta
+
+		// https://github.com/QuantumNous/new-api/pull/4323/changes#diff-54bf81bc3f78b014e46af4666096040097e5a6c1868e4c7cf56ea9987d276d9c
+		model.UpdateUserUsedQuota(task.UserId, quotaDelta)
+		model.UpdateChannelUsedQuota(task.ChannelId, quotaDelta)
 	}
 	other := taskBillingOther(task)
 	other["task_id"] = task.TaskID

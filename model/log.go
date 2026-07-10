@@ -41,13 +41,13 @@ type Log struct {
 
 // don't use iota, avoid change log type value
 const (
-	LogTypeUnknown = 0
-	LogTypeTopup   = 1
-	LogTypeConsume = 2
-	LogTypeManage  = 3
-	LogTypeSystem  = 4
-	LogTypeError   = 5
-	LogTypeRefund  = 6
+	LogTypeUnknown = 0 // 全部
+	LogTypeTopup   = 1 // 充值
+	LogTypeConsume = 2 // 消费
+	LogTypeManage  = 3 // 管理
+	LogTypeSystem  = 4 // 系统
+	LogTypeError   = 5 // 错误
+	LogTypeRefund  = 6 // 退款
 )
 
 func formatUserLogs(logs []*Log, startIdx int) {
@@ -417,8 +417,8 @@ func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelNa
 		rpmTpmQuery = rpmTpmQuery.Where(logGroupCol+" = ?", group)
 	}
 
-	tx = tx.Where("type = ?", LogTypeConsume)
-	rpmTpmQuery = rpmTpmQuery.Where("type = ?", LogTypeConsume)
+	tx = tx.Where("type = ?", logType)
+	rpmTpmQuery = rpmTpmQuery.Where("type = ?", logType)
 
 	// 只统计最近60秒的rpm和tpm
 	rpmTpmQuery = rpmTpmQuery.Where("created_at >= ?", time.Now().Add(-60*time.Second).Unix())
