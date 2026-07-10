@@ -86,6 +86,17 @@ const Home = () => {
   const [endpointIndex, setEndpointIndex] = useState(0);
   const isChinese = i18n.language.startsWith('zh');
 
+  const fetchExternalPage = async (url) => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Fetch failed');
+      return await response.text();
+    } catch (error) {
+      console.error('Failed to fetch external page:', error);
+      return null;
+    }
+  };
+
   const displayHomePageContent = async () => {
     // 先读取缓存
     const cachedContent = localStorage.getItem('home_page_content') || '';
@@ -99,22 +110,18 @@ const Home = () => {
     const { success, message, data } = res.data;
     if (success) {
       let content = data;
-      if (!data.startsWith('https://') && !data.startsWith('http://')) {
+      if (data.startsWith('https://') || data.startsWith('http://')) {
+        const fetchedHtml = await fetchExternalPage(data);
+        if (fetchedHtml) {
+          content = fetchedHtml;
+        } else {
+          content = `<div style="padding: 40px; text-align: center; color: #999;">⚠️ 无法加载外部页面内容，CORS 限制可能导致此问题</div>`;
+        }
+      } else {
         content = marked.parse(data);
       }
       setHomePageContent(content);
       localStorage.setItem('home_page_content', content);
-
-      // 如果内容是 URL，则发送主题模式
-      if (data.startsWith('https://') || data.startsWith('http://')) {
-        const iframe = document.querySelector('iframe');
-        if (iframe) {
-          iframe.onload = () => {
-            iframe.contentWindow.postMessage({ themeMode: actualTheme }, '*');
-            iframe.contentWindow.postMessage({ lang: i18n.language }, '*');
-          };
-        }
-      }
     } else {
       if (!cachedContent) {
         showError(message);
@@ -352,17 +359,10 @@ const Home = () => {
         </div>
       ) : (
         <div className='overflow-x-hidden w-full'>
-          {homePageContent.startsWith('https://') || homePageContent.startsWith('http://') ? (
-            <iframe
-              src={homePageContent}
-              className='w-full h-screen border-none'
-            />
-          ) : (
-            <div
-              className='mt-[60px]'
-              dangerouslySetInnerHTML={{ __html: homePageContent }}
-            />
-          )}
+          <div
+            className='mt-[60px]'
+            dangerouslySetInnerHTML={{ __html: homePageContent }}
+          />
         </div>
       )}
     </div>
