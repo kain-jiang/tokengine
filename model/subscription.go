@@ -590,7 +590,7 @@ func CompleteSubscriptionOrder(tradeNo string, providerPayload string) error {
 		usdToCnyRate := operation_setting.USDExchangeRate
 		cnyAmount := logMoney * usdToCnyRate
 		msg := fmt.Sprintf("订阅购买成功，套餐: %s，支付金额: %.2f美元（约%.2f人民币），支付方式: %s", logPlanTitle, logMoney, cnyAmount, logPaymentMethod)
-		RecordLog(logUserId, LogTypeTopup, msg)
+		RecordLog(logUserId, LogTypeConsume, msg)
 	}
 	return nil
 }
