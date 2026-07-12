@@ -163,6 +163,7 @@ type SyncTaskQueryParams struct {
 	ChannelID      string
 	TaskID         string
 	UserID         string
+	Username       string
 	Action         string
 	Status         string
 	StartTimestamp int64
@@ -258,6 +259,9 @@ func TaskGetAllTasks(startIdx int, num int, queryParams SyncTaskQueryParams) []*
 	}
 	if queryParams.Platform != "" {
 		query = query.Where("platform = ?", queryParams.Platform)
+	}
+	if queryParams.Username != "" {
+		query = query.Joins("JOIN users ON users.id = tasks.user_id").Where("users.username LIKE ?", "%"+queryParams.Username+"%")
 	}
 	if queryParams.UserID != "" {
 		query = query.Where("user_id = ?", queryParams.UserID)
@@ -458,6 +462,9 @@ func TaskCountAllTasks(queryParams SyncTaskQueryParams) int64 {
 	}
 	if queryParams.Platform != "" {
 		query = query.Where("platform = ?", queryParams.Platform)
+	}
+	if queryParams.Username != "" {
+		query = query.Joins("JOIN users ON users.id = tasks.user_id").Where("users.username LIKE ?", "%"+queryParams.Username+"%")
 	}
 	if queryParams.UserID != "" {
 		query = query.Where("user_id = ?", queryParams.UserID)

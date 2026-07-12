@@ -83,15 +83,6 @@ const SiderBar = ({ onNavigate = () => {} }) => {
   const workspaceItems = useMemo(() => {
     const items = [
       {
-        text: t('数据看板'),
-        itemKey: 'detail',
-        to: '/detail',
-        className:
-          localStorage.getItem('enable_data_export') === 'true'
-            ? ''
-            : 'tableHiddle',
-      },
-      {
         text: t('Token Plan'),
         itemKey: 'tokenPlan',
         to: '/token-plan',
@@ -100,6 +91,15 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         text: t('令牌管理'),
         itemKey: 'token',
         to: '/token',
+      },
+      {
+        text: t('数据看板'),
+        itemKey: 'detail',
+        to: '/detail',
+        className:
+          localStorage.getItem('enable_data_export') === 'true'
+            ? ''
+            : 'tableHiddle',
       },
       {
         text: t('使用日志'),
