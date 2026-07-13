@@ -19,7 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@douyinfe/semi-ui';
-import { ShieldCheck } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { API, showError } from '../../../helpers';
 
 const RealNameAuthPrompt = ({ userState, navigate, t }) => {
@@ -61,34 +61,34 @@ const RealNameAuthPrompt = ({ userState, navigate, t }) => {
     return null;
   }
 
-  // 未实名认证，显示提示
-  const buttonText = t('当前账号未认证，去认证');
-
   const handleClick = () => {
     navigate('/console/personal?tab=realname');
   };
 
   return (
     <Button
-      theme='solid'
-      type='primary'
       onClick={handleClick}
       style={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: '#FFF7E6',
         border: 'none',
-        fontWeight: 'bold',
-        fontSize: '13px',
-        padding: '0 16px',
+        fontWeight: '500',
+        fontSize: '14px',
+        color: '#FF8C00',
+        padding: '0 12px 0 8px',
         height: '36px',
         borderRadius: '18px',
         display: 'flex',
         alignItems: 'center',
         gap: '6px',
-        boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
+        boxShadow: 'none',
+        cursor: 'pointer',
       }}
     >
-      <ShieldCheck size={16} />
-      <span>{buttonText}</span>
+      <AlertCircle size={18} color='#FF8C00' />
+      <span>未认证</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF8C00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 18l6-6-6-6" />
+      </svg>
     </Button>
   );
 };
