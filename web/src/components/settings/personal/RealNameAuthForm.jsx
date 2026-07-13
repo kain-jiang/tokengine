@@ -233,7 +233,7 @@ const RealNameAuthForm = () => {
                 ? t('个人实名认证')
                 : t('企业实名认证')}
           </Typography.Title>
-          <Typography.Text className='text-gray-500'>
+          <Typography.Text className='text-gray-500' style={{color: "#1c1f23cc", fontSize: '12px'}}>
             {authType === 'personal'
               ? t('请填写您的真实身份信息')
               : t('请填写企业认证信息')}
