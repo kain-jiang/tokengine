@@ -40,6 +40,7 @@ import {
   Divider,
   Form,
   Icon,
+  Input,
   Modal,
 } from '@douyinfe/semi-ui';
 import Title from '@douyinfe/semi-ui/lib/es/typography/title';
@@ -658,37 +659,36 @@ const RegisterForm = () => {
                   prefix={<IconPhone />}
                 />
 
-                <Button
-                  theme='light'
-                  className='w-full !rounded-full font-semibold transition-colors duration-200'
-                  type='tertiary'
-                  onClick={sendSMSVerificationCode}
-                  loading={verificationCodeLoading}
-                  disabled={
-                    disableButton ||
-                    verificationCodeLoading
-                  }
-                  style={{
-                    fontWeight: '600',
-                    backgroundColor: disableButton || verificationCodeLoading ? '#e5e7eb' : '#f3f4f6',
-                    color: disableButton || verificationCodeLoading ? '#CCCED0' : '#2563eb',
-                    cursor: disableButton || verificationCodeLoading ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {disableButton
-                    ? `${t('重新发送')} (${countdown})`
-                    : t('获取验证码')}
-                </Button>
-
-                <Form.Input
-                  field='verification_code'
-                  label={t('短信验证码')}
-                  placeholder={t('输入6位验证码')}
-                  name='verification_code'
-                  onChange={(value) => handleChange('verification_code', value)}
-                  prefix={<IconKey />}
-                  maxLength={6}
-                />
+                <div>
+                  <div className='mb-1 text-sm text-gray-700'>{t('短信验证码')}</div>
+                  <div className='flex gap-3 items-center'>
+                    <div className='flex-1'>
+                      <Input
+                        placeholder={t('输入6位验证码')}
+                        value={inputs.verification_code}
+                        onChange={(value) => handleChange('verification_code', value)}
+                        prefix={<IconKey />}
+                        maxLength={6}
+                        size='large'
+                      />
+                    </div>
+                    <Button
+                      theme='light'
+                      className='!rounded-full font-semibold whitespace-nowrap'
+                      type='tertiary'
+                      onClick={sendSMSVerificationCode}
+                      loading={verificationCodeLoading}
+                      disabled={
+                        disableButton ||
+                        verificationCodeLoading
+                      }
+                    >
+                      {disableButton
+                        ? `${t('重新发送')} (${countdown})`
+                        : t('获取验证码')}
+                    </Button>
+                  </div>
+                </div>
 
                 {showEmailVerification && (
                   <>

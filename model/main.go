@@ -228,26 +228,52 @@ func CheckSetup() {
 	}
 }
 
+func getDSNPrefix(dsn string) string {
+	if len(dsn) < 10 {
+		return dsn
+	}
+	return dsn[:10] + "..."
+}
+
 func chooseDB(envName string, isLog bool) (*gorm.DB, error) {
 	defer func() {
 		initCol()
 	}()
 	dsn := os.Getenv(envName)
+	common.SysLog(fmt.Sprintf("[DIAG] chooseDB called for env=%s, isLog=%v, dsn_prefix=%s", envName, isLog, getDSNPrefix(dsn)))
 	if dsn != "" {
 		if strings.HasPrefix(dsn, "postgres://") || strings.HasPrefix(dsn, "postgresql://") {
 			// Use PostgreSQL
-			common.SysLog("using PostgreSQL as database")
+			common.SysLog("[DIAG] using PostgreSQL as database with PrepareStmt=true and PreferSimpleProtocol=true")
+			common.SysLog("[DIAG] WARNING: This combination may cause nil pointer panic on some PostgreSQL drivers")
 			if !isLog {
 				common.UsingPostgreSQL = true
 			} else {
 				common.LogSqlType = common.DatabaseTypePostgreSQL
 			}
-			return gorm.Open(postgres.New(postgres.Config{
+			common.SysLog("[DIAG] attempting to open PostgreSQL connection...")
+			result, err := gorm.Open(postgres.New(postgres.Config{
 				DSN:                  dsn,
 				PreferSimpleProtocol: true, // disables implicit prepared statement usage
 			}), &gorm.Config{
 				PrepareStmt: true, // precompile SQL
 			})
+			if err != nil {
+				common.SysLog(fmt.Sprintf("[DIAG] PostgreSQL connection failed: %v", err))
+				return nil, err
+			}
+			sqlDB, err := result.DB()
+			if err != nil {
+				common.SysLog(fmt.Sprintf("[DIAG] failed to get underlying sql.DB: %v", err))
+				return nil, err
+			}
+			if err := sqlDB.Ping(); err != nil {
+				common.SysLog(fmt.Sprintf("[DIAG] PostgreSQL ping failed: %v", err))
+			} else {
+				common.SysLog("[DIAG] PostgreSQL ping successful")
+			}
+			common.SysLog("[DIAG] PostgreSQL connection established successfully")
+			return result, nil
 		}
 		if strings.HasPrefix(dsn, "local") {
 			common.SysLog("SQL_DSN not set, using SQLite as database")
@@ -400,6 +426,19 @@ func migrateDB() error {
 		&SubscriptionPreConsumeRecord{},
 		&CustomOAuthProvider{},
 		&UserOAuthBinding{},
+		&Invoice{},
+		&Reconciliation{},
+		&RevenueReport{},
+		&Media{},
+		&RealNameAuth{},
+		&InvoiceTitle{},
+		&InvoiceRecord{},
+		// Supplier settlement tables
+		&SupplierPricing{},
+		&SupplierSettlement{},
+		&SupplierSettlementDetail{},
+		&SupplierAccount{},
+		&SupplierRecharge{},
 	)
 	if err != nil {
 		return err
@@ -448,6 +487,9 @@ func migrateDBFast() error {
 		{&SubscriptionPreConsumeRecord{}, "SubscriptionPreConsumeRecord"},
 		{&CustomOAuthProvider{}, "CustomOAuthProvider"},
 		{&UserOAuthBinding{}, "UserOAuthBinding"},
+		{&Invoice{}, "Invoice"},
+		{&Reconciliation{}, "Reconciliation"},
+		{&RevenueReport{}, "RevenueReport"},
 	}
 	// 动态计算migration数量，确保errChan缓冲区足够大
 	errChan := make(chan error, len(migrations))

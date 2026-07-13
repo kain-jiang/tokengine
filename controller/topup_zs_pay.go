@@ -194,7 +194,7 @@ func ZSPayNotify(c *gin.Context) {
 		}
 
 		log.Printf("招商银行聚合支付回调成功: %s, 用户: %d, 充值: %d", orderNo, topUp.UserId, quotaToAdd)
-		model.RecordLog(topUp.UserId, model.LogTypeTopup, fmt.Sprintf("使用招商银行聚合支付成功，充值金额: %v", quotaToAdd))
+		model.RecordLog(topUp.UserId, model.LogTypeTopup, fmt.Sprintf("使用招商银行聚合支付成功，充值金额: %v", topUp.Money))
 	} else {
 		log.Printf("招商银行聚合支付回调时，本次订单状态是: %s", topUp.Status)
 	}
@@ -259,7 +259,7 @@ func QueryZSPayStatus(c *gin.Context) {
 					log.Printf("招商银行聚合支付查询更新用户额度失败: %s, 错误: %v", tradeNo, err)
 				} else {
 					log.Printf("招商银行聚合支付查询自动更新订单成功: %s, 用户: %d, 充值: %d", tradeNo, topUp.UserId, quotaToAdd)
-					model.RecordLog(topUp.UserId, model.LogTypeTopup, fmt.Sprintf("查询支付状态发现已支付，充值金额: %d tokens", quotaToAdd))
+					model.RecordLog(topUp.UserId, model.LogTypeTopup, fmt.Sprintf("查询支付状态发现已支付，充值金额: %d ", topUp.Money))
 				}
 			}
 		}

@@ -109,7 +109,7 @@ func GetTokenStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"object":          "credit_summary",
 		"total_granted":   token.RemainQuota,
-		"total_used":      0, // not supported currently
+		"total_used":      0,
 		"total_available": token.RemainQuota,
 		"expires_at":      expiredAt * 1000,
 	})
@@ -175,7 +175,6 @@ func AddToken(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgTokenNameTooLong)
 		return
 	}
-	// 非无限额度时，检查额度值是否超出有效范围
 	if !token.UnlimitedQuota {
 		if token.RemainQuota < 0 {
 			common.ApiErrorI18n(c, i18n.MsgTokenQuotaNegative)
@@ -187,7 +186,6 @@ func AddToken(c *gin.Context) {
 			return
 		}
 	}
-	// 检查用户令牌数量是否已达上限
 	maxTokens := operation_setting.GetMaxUserTokens()
 	count, err := model.CountUserTokens(c.GetInt("id"))
 	if err != nil {
@@ -289,7 +287,6 @@ func UpdateToken(c *gin.Context) {
 	if statusOnly != "" {
 		cleanToken.Status = token.Status
 	} else {
-		// If you add more fields, please also update token.Update()
 		cleanToken.Name = token.Name
 		cleanToken.ExpiredTime = token.ExpiredTime
 		cleanToken.RemainQuota = token.RemainQuota
@@ -356,4 +353,18 @@ func GetTokenKeysBatch(c *gin.Context) {
 		keysMap[t.Id] = t.GetFullKey()
 	}
 	common.ApiSuccess(c, gin.H{"keys": keysMap})
+}
+
+func GetSubscriptionToken(c *gin.Context) {
+	userId := c.GetInt("id")
+	token, err := model.GetSubscriptionToken(userId)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if token == nil {
+		common.ApiSuccess(c, gin.H{"key": ""})
+		return
+	}
+	common.ApiSuccess(c, gin.H{"key": token.GetFullKey()})
 }

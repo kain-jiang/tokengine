@@ -47,6 +47,7 @@ const PageLayout = () => {
   const isMobile = useIsMobile();
   const [collapsed, , setCollapsed] = useSidebarCollapsed();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [bannerVisible, setBannerVisible] = useState(true);
   const { i18n } = useTranslation();
   const location = useLocation();
 
@@ -155,22 +156,21 @@ const PageLayout = () => {
         overflow: isMobile ? 'visible' : 'hidden',
       }}
     >
-      <Header
+      <div
         style={{
-          padding: 0,
-          height: 'auto',
-          lineHeight: 'normal',
           position: 'fixed',
-          width: '100%',
           top: 0,
+          left: 0,
+          right: 0,
           zIndex: 100,
         }}
       >
         <HeaderBar
           onMobileMenuToggle={() => setDrawerOpen((prev) => !prev)}
           drawerOpen={drawerOpen}
+          onBannerVisibilityChange={setBannerVisible}
         />
-      </Header>
+      </div>
       <Layout
         style={{
           overflow: isMobile ? 'visible' : 'auto',
@@ -184,7 +184,7 @@ const PageLayout = () => {
             style={{
               position: 'fixed',
               left: 0,
-              top: '64px',
+              top: `${bannerVisible ? 108 : 64}px`,
               zIndex: 99,
               border: 'none',
               paddingRight: '0',
@@ -215,6 +215,7 @@ const PageLayout = () => {
               flex: '1 0 auto',
               overflowY: isMobile ? 'visible' : 'hidden',
               WebkitOverflowScrolling: 'touch',
+              marginTop: bannerVisible ? '44px' : '0px',
               padding: shouldInnerPadding ? (isMobile ? '5px' : '24px') : '0',
               position: 'relative',
             }}

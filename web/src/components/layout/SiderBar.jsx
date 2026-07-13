@@ -25,7 +25,7 @@ import { ChevronLeft } from 'lucide-react';
 import { useSidebarCollapsed } from '../../hooks/common/useSidebarCollapsed';
 import { useSidebar } from '../../hooks/common/useSidebar';
 import { useMinimumLoadingTime } from '../../hooks/common/useMinimumLoadingTime';
-import { isAdmin, isRoot, showError } from '../../helpers';
+import { isAdmin, isRoot, showError, isFinanceAdmin } from '../../helpers';
 import SkeletonWrapper from './components/SkeletonWrapper';
 
 import { Nav, Divider, Button } from '@douyinfe/semi-ui';
@@ -33,6 +33,7 @@ import { Nav, Divider, Button } from '@douyinfe/semi-ui';
 const routerMap = {
   home: '/',
   channel: '/console/channel',
+  tokenPlan: '/console/token-plan',
   token: '/console/token',
   redemption: '/console/redemption',
   topup: '/console/topup',
@@ -52,6 +53,13 @@ const routerMap = {
   playground: '/console/playground',
   textToImage: '/console/text-to-image',
   personal: '/console/personal',
+  dashboardBoard: '/console/dashboard',
+  finance: '/console/finance',
+  financeDashboard: '/console/finance',
+  orders: '/console/finance/orders',
+  revenue: '/console/finance/revenue',
+  invoices: '/console/finance/invoices',
+  supplier: '/console/finance/supplier-settlement',
 };
 
 const SiderBar = ({ onNavigate = () => {} }) => {
@@ -75,6 +83,16 @@ const SiderBar = ({ onNavigate = () => {} }) => {
   const workspaceItems = useMemo(() => {
     const items = [
       {
+        text: t('Token Plan'),
+        itemKey: 'tokenPlan',
+        to: '/token-plan',
+      },
+      {
+        text: t('令牌管理'),
+        itemKey: 'token',
+        to: '/token',
+      },
+      {
         text: t('数据看板'),
         itemKey: 'detail',
         to: '/detail',
@@ -82,11 +100,6 @@ const SiderBar = ({ onNavigate = () => {} }) => {
           localStorage.getItem('enable_data_export') === 'true'
             ? ''
             : 'tableHiddle',
-      },
-      {
-        text: t('令牌管理'),
-        itemKey: 'token',
-        to: '/token',
       },
       {
         text: t('使用日志'),
@@ -129,14 +142,47 @@ const SiderBar = ({ onNavigate = () => {} }) => {
   const financeItems = useMemo(() => {
     const items = [
       {
+        text: t('财务概览'),
+        itemKey: 'finance',
+        to: '/console/finance',
+      },
+      {
+        text: t('订单管理'),
+        itemKey: 'orders',
+        to: '/console/finance/orders',
+      },
+      {
+        text: t('营收分析'),
+        itemKey: 'revenue',
+        to: '/console/finance/revenue',
+      },
+      {
+        text: t('发票管理'),
+        itemKey: 'invoices',
+        to: '/console/finance/invoices',
+      },
+      {
+        text: t('供应商结算'),
+        itemKey: 'supplier',
+        to: '/console/finance/supplier-settlement',
+      },
+    ];
+
+    // 根据配置过滤项目
+    const filteredItems = items.filter((item) => {
+      const configVisible = isModuleVisible('finance', item.itemKey);
+      return configVisible;
+    });
+
+    return filteredItems;
+  }, [t, isModuleVisible]);
+
+  const personalItems = useMemo(() => {
+    const items = [
+      {
         text: t('钱包管理'),
         itemKey: 'topup',
         to: '/topup',
-      },
-      {
-        text: t('我的套餐'),
-        itemKey: 'myPlan',
-        to: '/my-plan',
       },
       {
         text: t('用户账单'),
@@ -192,6 +238,12 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         className: isAdmin() ? '' : 'tableHiddle',
       },
       {
+        text: t('大屏数据中心'),
+        itemKey: 'dashboardBoard',
+        to: '/console/dashboard',
+        className: isAdmin() ? '' : 'tableHiddle',
+      },
+      {
         text: t('系统设置'),
         itemKey: 'setting',
         to: '/setting',
@@ -207,6 +259,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
 
     return filteredItems;
   }, [isAdmin(), isRoot(), t, isModuleVisible]);
+
 
   const chatMenuItems = useMemo(() => {
     const items = [
@@ -303,6 +356,13 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         matchingKey = 'chat' + chatIndex;
       } else {
         matchingKey = 'chat';
+      }
+    }
+
+    // 处理财务路由：当访问 /console/finance 及其子路由时，确保财务运营菜单保持展开
+    if (currentPath === '/console/finance' || currentPath.startsWith('/console/finance/')) {
+      if (!openedKeys.includes('finance')) {
+        setOpenedKeys(prev => [...prev, 'finance']);
       }
     }
 
@@ -462,6 +522,63 @@ const SiderBar = ({ onNavigate = () => {} }) => {
               return;
             }
 
+            // 财务概览导航（itemKey 与父菜单相同，需要特殊处理）
+            if (itemKey === 'finance') {
+              navigate('/console/finance');
+              onNavigate();
+              setSelectedKeys([itemKey]);
+              // 确保财务运营菜单保持展开（不要触发收起逻辑）
+              if (!openedKeys.includes('finance')) {
+                setOpenedKeys(prev => [...prev, 'finance']);
+              }
+              return; // 重要：不要继续执行到后面的收起逻辑
+            }
+
+            // 财务子路由导航
+            if (itemKey === 'orders') {
+              navigate('/console/finance/orders');
+              onNavigate();
+              setSelectedKeys([itemKey]);
+              // 确保财务运营菜单保持展开
+              if (!openedKeys.includes('finance')) {
+                setOpenedKeys(prev => [...prev, 'finance']);
+              }
+              return;
+            }
+
+            if (itemKey === 'revenue') {
+              navigate('/console/finance/revenue');
+              onNavigate();
+              setSelectedKeys([itemKey]);
+              // 确保财务运营菜单保持展开
+              if (!openedKeys.includes('finance')) {
+                setOpenedKeys(prev => [...prev, 'finance']);
+              }
+              return;
+            }
+
+            if (itemKey === 'invoices') {
+              navigate('/console/finance/invoices');
+              onNavigate();
+              setSelectedKeys([itemKey]);
+              // 确保财务运营菜单保持展开
+              if (!openedKeys.includes('finance')) {
+                setOpenedKeys(prev => [...prev, 'finance']);
+              }
+              return;
+            }
+
+            if (itemKey === 'supplier') {
+              navigate('/console/finance/supplier-settlement');
+              onNavigate();
+              setSelectedKeys([itemKey]);
+              // 确保财务运营菜单保持展开
+              if (!openedKeys.includes('finance')) {
+                setOpenedKeys(prev => [...prev, 'finance']);
+              }
+              return;
+            }
+
             // 如果点击的是已经展开的子菜单的父项，则收起子菜单
             if (openedKeys.includes(itemKey)) {
               setOpenedKeys(openedKeys.filter((k) => k !== itemKey));
@@ -471,7 +588,16 @@ const SiderBar = ({ onNavigate = () => {} }) => {
           }}
           openKeys={openedKeys}
           onOpenChange={(data) => {
-            setOpenedKeys(data.openKeys);
+            // 底部菜单手风琴效果：只允许 finance 和 admin 同时只有一个展开
+            const bottomMenuKeys = ['finance', 'admin'];
+            const currentOpenKeys = data.openKeys?.filter((k) => bottomMenuKeys.includes(k)) || [];
+            
+            if (currentOpenKeys.length > 1) {
+              // 只保留最后一个展开的
+              setOpenedKeys([currentOpenKeys[currentOpenKeys.length - 1]]);
+            } else {
+              setOpenedKeys(data.openKeys);
+            }
           }}
         >
           {/* 聊天区域 */}
@@ -505,21 +631,55 @@ const SiderBar = ({ onNavigate = () => {} }) => {
                 {!collapsed && (
                   <div className='sidebar-group-label'>{t('个人中心')}</div>
                 )}
-                {financeItems.map((item) => renderNavItem(item))}
+                {personalItems.map((item) => renderNavItem(item))}
               </div>
             </>
           )}
 
-          {/* 管理员区域 - 只在管理员时显示且配置允许时显示 */}
-          {isAdmin() && hasSectionVisibleModules('admin') && (
+          {/* 底部折叠菜单 - 财务 + 管理员 */}
+          {((isAdmin() && hasSectionVisibleModules('finance')) || (isAdmin() && hasSectionVisibleModules('admin'))) && (
             <>
               <Divider className='sidebar-divider' />
-              <div>
-                {!collapsed && (
-                  <div className='sidebar-group-label'>{t('管理员')}</div>
-                )}
-                {adminItems.map((item) => renderNavItem(item))}
-              </div>
+              {/* 财务模块折叠菜单 */}
+              {isAdmin() && hasSectionVisibleModules('finance') && (
+                <Nav.Sub
+                  key='finance'
+                  itemKey='finance'
+                  className='sidebar-bottom-sub-menu'
+                  text={
+                    <span className='truncate font-medium text-sm'>
+                      {t('财务运营')}
+                    </span>
+                  }
+                  icon={
+                    <div className='sidebar-icon-container flex-shrink-0' style={{ visibility: 'hidden' }}>
+                      <div style={{ width: 16, height: 16 }} />
+                    </div>
+                  }
+                >
+                  {financeItems.map((item) => renderNavItem(item))}
+                </Nav.Sub>
+              )}
+              {/* 管理员模块折叠菜单 */}
+              {isAdmin() && hasSectionVisibleModules('admin') && (
+                <Nav.Sub
+                  key='admin'
+                  itemKey='admin'
+                  className='sidebar-bottom-sub-menu'
+                  text={
+                    <span className='truncate font-medium text-sm'>
+                      {t('管理员')}
+                    </span>
+                  }
+                  icon={
+                    <div className='sidebar-icon-container flex-shrink-0' style={{ visibility: 'hidden' }}>
+                      <div style={{ width: 16, height: 16 }} />
+                    </div>
+                  }
+                >
+                  {adminItems.map((item) => renderNavItem(item))}
+                </Nav.Sub>
+              )}
             </>
           )}
         </Nav>
@@ -528,36 +688,36 @@ const SiderBar = ({ onNavigate = () => {} }) => {
       {/* 底部折叠按钮 */}
       <div className='sidebar-collapse-button'>
         <SkeletonWrapper
-          loading={showSkeleton}
-          type='button'
-          width={collapsed ? 36 : 156}
-          height={24}
-          className='w-full'
+        loading={showSkeleton}
+        type='button'
+        width={collapsed ? 36 : 156}
+        height={24}
+        className='w-full'
+      >
+        <Button
+          theme='outline'
+          type='tertiary'
+          size='small'
+          icon={
+            <ChevronLeft
+              size={16}
+              strokeWidth={2.5}
+              color='var(--semi-color-text-2)'
+              style={{
+                transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)',
+              }}
+            />
+          }
+          onClick={toggleCollapsed}
+          icononly={collapsed ? '' : undefined}
+          style={
+            collapsed
+              ? { width: 36, height: 24, padding: 0 }
+              : { padding: '4px 12px', width: '100%' }
+          }
         >
-          <Button
-            theme='outline'
-            type='tertiary'
-            size='small'
-            icon={
-              <ChevronLeft
-                size={16}
-                strokeWidth={2.5}
-                color='var(--semi-color-text-2)'
-                style={{
-                  transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)',
-                }}
-              />
-            }
-            onClick={toggleCollapsed}
-            icononly={collapsed}
-            style={
-              collapsed
-                ? { width: 36, height: 24, padding: 0 }
-                : { padding: '4px 12px', width: '100%' }
-            }
-          >
-            {!collapsed ? t('收起侧边栏') : null}
-          </Button>
+          {!collapsed ? t('收起侧边栏') : null}
+        </Button>
         </SkeletonWrapper>
       </div>
     </div>

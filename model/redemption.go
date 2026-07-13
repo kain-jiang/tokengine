@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
@@ -23,7 +24,8 @@ type Redemption struct {
 	Count        int            `json:"count" gorm:"-:all"` // only for api request
 	UsedUserId   int            `json:"used_user_id"`
 	DeletedAt    gorm.DeletedAt `gorm:"index"`
-	ExpiredTime  int64          `json:"expired_time" gorm:"bigint"` // 过期时间，0 表示不过期
+	ExpiredTime  int64          `json:"expired_time" gorm:"bigint"`              // 过期时间，0 表示不过期
+	PlanId       int            `json:"plan_id" gorm:"type:int;default:0;index"` // 关联的套餐 ID，0 表示不使用套餐（直接充值）
 }
 
 func GetAllRedemptions(startIdx int, num int) (redemptions []*Redemption, total int64, err error) {
@@ -112,6 +114,20 @@ func GetRedemptionById(id int) (*Redemption, error) {
 	return &redemption, err
 }
 
+// GetRedemptionByKey 根据 key 获取兑换码
+func GetRedemptionByKey(key string) (*Redemption, error) {
+	if key == "" {
+		return nil, errors.New("兑换码不能为空")
+	}
+	redemption := &Redemption{}
+	keyCol := "`key`"
+	if common.UsingPostgreSQL {
+		keyCol = `"key"`
+	}
+	err := DB.Where(keyCol+" = ?", key).First(redemption).Error
+	return redemption, err
+}
+
 func Redeem(key string, userId int) (quota int, err error) {
 	if key == "" {
 		return 0, errors.New("未提供兑换码")
@@ -137,6 +153,14 @@ func Redeem(key string, userId int) (quota int, err error) {
 		if redemption.ExpiredTime != 0 && redemption.ExpiredTime < common.GetTimestamp() {
 			return errors.New("该兑换码已过期")
 		}
+
+		// 检查是否关联套餐
+		if redemption.PlanId > 0 {
+			// 套餐模式：创建 UserSubscription
+			return redeemAsSubscription(tx, redemption, userId)
+		}
+
+		// 传统模式：直接增加用户 quota
 		err = tx.Model(&User{}).Where("id = ?", userId).Update("quota", gorm.Expr("quota + ?", redemption.Quota)).Error
 		if err != nil {
 			return err
@@ -151,8 +175,77 @@ func Redeem(key string, userId int) (quota int, err error) {
 		common.SysError("redemption failed: " + err.Error())
 		return 0, ErrRedeemFailed
 	}
-	RecordLog(userId, LogTypeTopup, fmt.Sprintf("通过兑换码充值 %s，兑换码ID %d", logger.LogQuota(redemption.Quota), redemption.Id))
+
+	// 根据兑换模式记录日志
+	if redemption.PlanId > 0 {
+		plan, _ := GetSubscriptionPlanById(redemption.PlanId)
+		planName := plan.Title
+		RecordLog(userId, LogTypeSystem, fmt.Sprintf("兑换码兑换套餐 %s，兑换码ID %d", planName, redemption.Id))
+		return redemption.PlanId, nil
+	}
+	RecordLog(userId, LogTypeSystem, fmt.Sprintf("兑换码充值 %s，兑换码ID %d", logger.LogQuota(redemption.Quota), redemption.Id))
 	return redemption.Quota, nil
+}
+
+// redeemAsSubscription 以套餐形式兑换（创建 UserSubscription）
+func redeemAsSubscription(tx *gorm.DB, redemption *Redemption, userId int) error {
+	// 1. 获取套餐信息
+	plan, err := getSubscriptionPlanByIdTx(tx, redemption.PlanId)
+	if err != nil {
+		return errors.New("关联的套餐不存在")
+	}
+	if !plan.Enabled {
+		return errors.New("关联的套餐已禁用")
+	}
+
+	// 2. 计算套餐有效期
+	startTime := common.GetTimestamp()
+	endTime, err := calcPlanEndTime(time.Unix(startTime, 0), plan)
+	if err != nil {
+		return err
+	}
+
+	// 3. 如果兑换码有独立的过期时间，且早于套餐结束时间，则使用兑换码的过期时间
+	if redemption.ExpiredTime > 0 && redemption.ExpiredTime < endTime {
+		endTime = redemption.ExpiredTime
+	}
+
+	// 4. 计算重置时间
+	lastResetTime := startTime
+	nextResetTime := calcNextResetTime(time.Unix(startTime, 0), plan, endTime)
+
+	// 5. 创建 UserSubscription
+	subscription := &UserSubscription{
+		UserId:           userId,
+		PlanId:           plan.Id,
+		AmountTotal:      plan.TotalAmount,
+		AmountUsed:       0,
+		StartTime:        startTime,
+		EndTime:          endTime,
+		Status:           "active",
+		Source:           "redemption", // 标记来源为兑换
+		LastResetTime:    lastResetTime,
+		NextResetTime:    nextResetTime,
+		UpgradeGroup:     plan.UpgradeGroup,
+		PrevUserGroup:    "",
+		TokensUsed:       0,
+		TokensLimit:      plan.TokensLimit,
+		ApplicableModels: plan.ApplicableModels,
+	}
+
+	// 使用 DB.Create 而不是 tx.Create，因为 UserSubscription.BeforeCreate 会使用 DB
+	err = DB.Create(subscription).Error
+	if err != nil {
+		return err
+	}
+
+	// 6. 更新兑换码状态
+	redemption.RedeemedTime = common.GetTimestamp()
+	redemption.Status = common.RedemptionCodeStatusUsed
+	redemption.UsedUserId = userId
+	err = tx.Save(redemption).Error
+
+	return err
 }
 
 func (redemption *Redemption) Insert() error {
@@ -169,7 +262,7 @@ func (redemption *Redemption) SelectUpdate() error {
 // Update Make sure your token's fields is completed, because this will update non-zero values
 func (redemption *Redemption) Update() error {
 	var err error
-	err = DB.Model(redemption).Select("name", "status", "quota", "redeemed_time", "expired_time").Updates(redemption).Error
+	err = DB.Model(redemption).Select("name", "status", "quota", "redeemed_time", "expired_time", "plan_id").Updates(redemption).Error
 	return err
 }
 

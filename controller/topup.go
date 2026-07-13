@@ -408,14 +408,41 @@ func GetUserTopUps(c *gin.Context) {
 	pageInfo := common.GetPageQuery(c)
 	keyword := c.Query("keyword")
 	status := c.Query("status")
+	startTimeStr := c.Query("start_time")
+	endTimeStr := c.Query("end_time")
+
+	var startTime, endTime int64 = 0, 0
 
 	var (
 		topups []*model.TopUp
 		total  int64
 		err    error
 	)
-	if keyword != "" || status != "" {
-		topups, total, err = model.SearchUserTopUps(userId, keyword, status, pageInfo)
+
+	if startTimeStr != "" {
+		startTime, err = strconv.ParseInt(startTimeStr, 10, 64)
+		if err != nil {
+			common.ApiErrorMsg(c, "无效的开始时间")
+			return
+		}
+	}
+
+	if endTimeStr != "" {
+		endTime, err = strconv.ParseInt(endTimeStr, 10, 64)
+		if err != nil {
+			common.ApiErrorMsg(c, "无效的结束时间")
+			return
+		}
+	}
+	if endTime >= 0 || startTime >= 0 {
+		if endTime < startTime {
+			common.ApiErrorMsg(c, "结束时间不能早于开始时间")
+			return
+		}
+	}
+
+	if keyword != "" || status != "" || startTimeStr != "" || endTimeStr != "" {
+		topups, total, err = model.SearchUserTopUps(userId, keyword, status, pageInfo, startTime, endTime)
 	} else {
 		topups, total, err = model.GetUserTopUps(userId, pageInfo)
 	}
@@ -434,14 +461,41 @@ func GetAllTopUps(c *gin.Context) {
 	pageInfo := common.GetPageQuery(c)
 	keyword := c.Query("keyword")
 	status := c.Query("status")
+	startTimeStr := c.Query("start_time")
+	endTimeStr := c.Query("end_time")
 
 	var (
 		topups []*model.TopUpWithUsername
 		total  int64
 		err    error
 	)
-	if keyword != "" || status != "" {
-		topups, total, err = model.SearchAllTopUpsWithUsername(keyword, status, pageInfo)
+
+	var startTime, endTime int64 = 0, 0
+
+	if startTimeStr != "" {
+		startTime, err = strconv.ParseInt(startTimeStr, 10, 64)
+		if err != nil {
+			common.ApiErrorMsg(c, "无效的开始时间")
+			return
+		}
+	}
+
+	if endTimeStr != "" {
+		endTime, err = strconv.ParseInt(endTimeStr, 10, 64)
+		if err != nil {
+			common.ApiErrorMsg(c, "无效的结束时间")
+			return
+		}
+	}
+	if endTime >= 0 || startTime >= 0 {
+		if endTime < startTime {
+			common.ApiErrorMsg(c, "结束时间不能早于开始时间")
+			return
+		}
+	}
+
+	if keyword != "" || status != "" || startTimeStr != "" || endTimeStr != "" {
+		topups, total, err = model.SearchAllTopUpsWithUsername(keyword, status, pageInfo, startTime, endTime)
 	} else {
 		topups, total, err = model.GetAllTopUpsWithUsername(pageInfo)
 	}

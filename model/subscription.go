@@ -10,6 +10,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/pkg/cachex"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/samber/hot"
 	"gorm.io/gorm"
 )
@@ -176,8 +177,19 @@ type SubscriptionPlan struct {
 	QuotaResetPeriod        string `json:"quota_reset_period" gorm:"type:varchar(16);default:'never'"`
 	QuotaResetCustomSeconds int64  `json:"quota_reset_custom_seconds" gorm:"type:bigint;default:0"`
 
-	CreatedAt int64 `json:"created_at" gorm:"bigint"`
-	UpdatedAt int64 `json:"updated_at" gorm:"bigint"`
+	// Plan type: "quota" for quota-based plans, "tokens" for tokens-based plans
+	PlanType string `json:"plan_type" gorm:"type:varchar(16);default:'quota'"`
+
+	// ApplicableModels is a JSON array of model names, used when plan_type is "tokens"
+	ApplicableModels string `json:"applicable_models" gorm:"type:text;default:''"`
+
+	// TokensLimit is the tokens上限 for tokens-type plans (0 = unlimited)
+	TokensLimit int64 `json:"tokens_limit" gorm:"type:bigint;default:0"`
+
+	// VisibleToUser indicates whether this plan is visible to end users (default false)
+	VisibleToUser bool  `json:"visible_to_user" gorm:"default:false"`
+	CreatedAt     int64 `json:"created_at" gorm:"bigint"`
+	UpdatedAt     int64 `json:"updated_at" gorm:"bigint"`
 }
 
 func (p *SubscriptionPlan) BeforeCreate(tx *gorm.DB) error {
@@ -251,6 +263,11 @@ type UserSubscription struct {
 	UpgradeGroup  string `json:"upgrade_group" gorm:"type:varchar(64);default:''"`
 	PrevUserGroup string `json:"prev_user_group" gorm:"type:varchar(64);default:''"`
 
+	// Tokens-related fields (for tokens-type plans)
+	TokensUsed       int64  `json:"tokens_used" gorm:"type:bigint;default:0"`
+	TokensLimit      int64  `json:"tokens_limit" gorm:"type:bigint;default:0"`
+	ApplicableModels string `json:"applicable_models" gorm:"type:text;default:''"`
+
 	CreatedAt int64 `json:"created_at" gorm:"bigint"`
 	UpdatedAt int64 `json:"updated_at" gorm:"bigint"`
 }
@@ -269,6 +286,7 @@ func (s *UserSubscription) BeforeUpdate(tx *gorm.DB) error {
 
 type SubscriptionSummary struct {
 	Subscription *UserSubscription `json:"subscription"`
+	Plan         *SubscriptionPlan `json:"plan"`
 }
 
 func calcPlanEndTime(start time.Time, plan *SubscriptionPlan) (int64, error) {
@@ -484,20 +502,23 @@ func CreateUserSubscriptionFromPlanTx(tx *gorm.DB, userId int, plan *Subscriptio
 		}
 	}
 	sub := &UserSubscription{
-		UserId:        userId,
-		PlanId:        plan.Id,
-		AmountTotal:   plan.TotalAmount,
-		AmountUsed:    0,
-		StartTime:     now.Unix(),
-		EndTime:       endUnix,
-		Status:        "active",
-		Source:        source,
-		LastResetTime: lastReset,
-		NextResetTime: nextReset,
-		UpgradeGroup:  upgradeGroup,
-		PrevUserGroup: prevGroup,
-		CreatedAt:     common.GetTimestamp(),
-		UpdatedAt:     common.GetTimestamp(),
+		UserId:           userId,
+		PlanId:           plan.Id,
+		AmountTotal:      plan.TotalAmount,
+		AmountUsed:       0,
+		StartTime:        now.Unix(),
+		EndTime:          endUnix,
+		Status:           "active",
+		Source:           source,
+		LastResetTime:    lastReset,
+		NextResetTime:    nextReset,
+		UpgradeGroup:     upgradeGroup,
+		PrevUserGroup:    prevGroup,
+		TokensUsed:       0,
+		TokensLimit:      plan.TokensLimit,
+		ApplicableModels: plan.ApplicableModels,
+		CreatedAt:        common.GetTimestamp(),
+		UpdatedAt:        common.GetTimestamp(),
 	}
 	if err := tx.Create(sub).Error; err != nil {
 		return nil, err
@@ -566,8 +587,10 @@ func CompleteSubscriptionOrder(tradeNo string, providerPayload string) error {
 		_ = UpdateUserGroupCache(logUserId, upgradeGroup)
 	}
 	if logUserId > 0 {
-		msg := fmt.Sprintf("订阅购买成功，套餐: %s，支付金额: %.2f，支付方式: %s", logPlanTitle, logMoney, logPaymentMethod)
-		RecordLog(logUserId, LogTypeTopup, msg)
+		usdToCnyRate := operation_setting.USDExchangeRate
+		cnyAmount := logMoney * usdToCnyRate
+		msg := fmt.Sprintf("订阅购买成功，套餐: %s，支付金额: %.2f美元（约%.2f人民币），支付方式: %s", logPlanTitle, logMoney, cnyAmount, logPaymentMethod)
+		RecordLog(logUserId, LogTypeConsume, msg)
 	}
 	return nil
 }
@@ -705,8 +728,11 @@ func buildSubscriptionSummaries(subs []UserSubscription) []SubscriptionSummary {
 	result := make([]SubscriptionSummary, 0, len(subs))
 	for _, sub := range subs {
 		subCopy := sub
+		var plan SubscriptionPlan
+		DB.Where("id = ?", sub.PlanId).First(&plan)
 		result = append(result, SubscriptionSummary{
 			Subscription: &subCopy,
+			Plan:         &plan,
 		})
 	}
 	return result
@@ -1009,6 +1035,20 @@ func PreConsumeUserSubscription(requestId string, userId int, modelName string, 
 			if err := maybeResetUserSubscriptionWithPlanTx(tx, &sub, plan, now); err != nil {
 				return err
 			}
+			// Check if model is applicable (both quota and tokens types support this)
+			if sub.ApplicableModels != "" {
+				applicableModels := strings.Split(sub.ApplicableModels, ",")
+				modelAllowed := false
+				for _, m := range applicableModels {
+					if strings.TrimSpace(m) == modelName {
+						modelAllowed = true
+						break
+					}
+				}
+				if !modelAllowed {
+					continue
+				}
+			}
 			usedBefore := sub.AmountUsed
 			if sub.AmountTotal > 0 {
 				remain := sub.AmountTotal - usedBefore
@@ -1141,6 +1181,17 @@ type SubscriptionPlanInfo struct {
 	PlanTitle string
 }
 
+func GetUserSubscriptionById(id int) (*UserSubscription, error) {
+	if id <= 0 {
+		return nil, errors.New("invalid userSubscription id")
+	}
+	var sub UserSubscription
+	if err := DB.Where("id = ?", id).First(&sub).Error; err != nil {
+		return nil, err
+	}
+	return &sub, nil
+}
+
 func GetSubscriptionPlanInfoByUserSubscriptionId(userSubscriptionId int) (*SubscriptionPlanInfo, error) {
 	if userSubscriptionId <= 0 {
 		return nil, errors.New("invalid userSubscriptionId")
@@ -1190,4 +1241,259 @@ func PostConsumeUserSubscriptionDelta(userSubscriptionId int, delta int64) error
 		sub.AmountUsed = newUsed
 		return tx.Save(&sub).Error
 	})
+}
+
+// ---------------------------------------------------------------------------
+// Tokens-based subscription functions (for plan_type == "tokens")
+// ---------------------------------------------------------------------------
+
+// SubscriptionTokensPreConsumeResult stores the result of tokens pre-consume operation.
+type SubscriptionTokensPreConsumeResult struct {
+	UserSubscriptionId int
+	PreConsumed        int64  // tokens pre-consumed
+	TokensTotal        int64  // tokens_limit from subscription
+	TokensUsedBefore   int64  // tokens_used before pre-consume
+	TokensUsedAfter    int64  // tokens_used after pre-consume
+	PlanType           string // "quota" or "tokens"
+	ApplicableModels   string // comma-separated model names
+}
+
+// PreConsumeUserSubscriptionTokens pre-consumes tokens from a tokens-type subscription.
+// For tokens-type plans, we track tokens_used directly instead of amount_used.
+// Returns error if subscription is not tokens-type or tokens insufficient.
+func PreConsumeUserSubscriptionTokens(requestId string, userId int, modelName string, tokensToConsume int64) (*SubscriptionTokensPreConsumeResult, error) {
+	if userId <= 0 {
+		return nil, errors.New("invalid userId")
+	}
+	if strings.TrimSpace(requestId) == "" {
+		return nil, errors.New("requestId is empty")
+	}
+	if tokensToConsume <= 0 {
+		return nil, errors.New("tokensToConsume must be > 0")
+	}
+	now := GetDBTimestamp()
+
+	returnValue := &SubscriptionTokensPreConsumeResult{}
+
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		// Check for existing pre-consume record (idempotency)
+		var existing SubscriptionPreConsumeRecord
+		query := tx.Where("request_id = ?", requestId).Limit(1).Find(&existing)
+		if query.Error != nil {
+			return query.Error
+		}
+		if query.RowsAffected > 0 {
+			if existing.Status == "refunded" {
+				return errors.New("subscription pre-consume already refunded")
+			}
+			var sub UserSubscription
+			if err := tx.Where("id = ?", existing.UserSubscriptionId).First(&sub).Error; err != nil {
+				return err
+			}
+			returnValue.UserSubscriptionId = sub.Id
+			returnValue.PreConsumed = existing.PreConsumed
+			returnValue.TokensTotal = sub.TokensLimit
+			returnValue.TokensUsedBefore = sub.TokensUsed
+			returnValue.TokensUsedAfter = sub.TokensUsed
+			returnValue.PlanType = "tokens"
+			returnValue.ApplicableModels = sub.ApplicableModels
+			return nil
+		}
+
+		// Find active tokens-type subscriptions
+		var subs []UserSubscription
+		if err := tx.Set("gorm:query_option", "FOR UPDATE").
+			Where("user_id = ? AND status = ? AND end_time > ?", userId, "active", now).
+			Order("end_time asc, id asc").
+			Find(&subs).Error; err != nil {
+			return errors.New("no active subscription")
+		}
+		if len(subs) == 0 {
+			return errors.New("no active subscription")
+		}
+
+		for _, candidate := range subs {
+			sub := candidate
+			plan, err := getSubscriptionPlanByIdTx(tx, sub.PlanId)
+			if err != nil {
+				return err
+			}
+
+			// Only process tokens-type plans
+			if plan.PlanType != "tokens" {
+				continue
+			}
+
+			// Check if model is applicable
+			if sub.ApplicableModels != "" {
+				applicableModels := strings.Split(sub.ApplicableModels, ",")
+				modelAllowed := false
+				for _, m := range applicableModels {
+					if strings.TrimSpace(m) == modelName {
+						modelAllowed = true
+						break
+					}
+				}
+				if !modelAllowed {
+					continue
+				}
+			}
+
+			// Check tokens limit
+			tokensUsedBefore := sub.TokensUsed
+			if sub.TokensLimit > 0 {
+				tokensRemaining := sub.TokensLimit - tokensUsedBefore
+				if tokensRemaining < tokensToConsume {
+					continue // Not enough tokens, try next subscription
+				}
+			}
+
+			// Create pre-consume record
+			record := &SubscriptionPreConsumeRecord{
+				RequestId:          requestId,
+				UserId:             userId,
+				UserSubscriptionId: sub.Id,
+				PreConsumed:        tokensToConsume,
+				Status:             "consumed",
+			}
+			if err := tx.Create(record).Error; err != nil {
+				var dup SubscriptionPreConsumeRecord
+				if err2 := tx.Where("request_id = ?", requestId).First(&dup).Error; err2 == nil {
+					if dup.Status == "refunded" {
+						return errors.New("subscription pre-consume already refunded")
+					}
+					returnValue.UserSubscriptionId = sub.Id
+					returnValue.PreConsumed = dup.PreConsumed
+					returnValue.TokensTotal = sub.TokensLimit
+					returnValue.TokensUsedBefore = sub.TokensUsed
+					returnValue.TokensUsedAfter = sub.TokensUsed
+					returnValue.PlanType = "tokens"
+					returnValue.ApplicableModels = sub.ApplicableModels
+					return nil
+				}
+				return err
+			}
+
+			// Update tokens_used
+			sub.TokensUsed += tokensToConsume
+			if err := tx.Save(&sub).Error; err != nil {
+				return err
+			}
+
+			returnValue.UserSubscriptionId = sub.Id
+			returnValue.PreConsumed = tokensToConsume
+			returnValue.TokensTotal = sub.TokensLimit
+			returnValue.TokensUsedBefore = tokensUsedBefore
+			returnValue.TokensUsedAfter = sub.TokensUsed
+			returnValue.PlanType = "tokens"
+			returnValue.ApplicableModels = sub.ApplicableModels
+			return nil
+		}
+		return fmt.Errorf("tokens subscription quota insufficient or model not applicable, need=%d tokens", tokensToConsume)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return returnValue, nil
+}
+
+// PostConsumeUserSubscriptionTokensDelta adjusts tokens_used by delta (positive consume more, negative refund).
+func PostConsumeUserSubscriptionTokensDelta(userSubscriptionId int, delta int64) error {
+	if userSubscriptionId <= 0 {
+		return errors.New("invalid userSubscriptionId")
+	}
+	if delta == 0 {
+		return nil
+	}
+	return DB.Transaction(func(tx *gorm.DB) error {
+		var sub UserSubscription
+		if err := tx.Set("gorm:query_option", "FOR UPDATE").
+			Where("id = ?", userSubscriptionId).
+			First(&sub).Error; err != nil {
+			return err
+		}
+		newUsed := sub.TokensUsed + delta
+		if newUsed < 0 {
+			newUsed = 0
+		}
+		if sub.TokensLimit > 0 && newUsed > sub.TokensLimit {
+			return fmt.Errorf("tokens used exceeds limit, used=%d limit=%d", newUsed, sub.TokensLimit)
+		}
+		sub.TokensUsed = newUsed
+		return tx.Save(&sub).Error
+	})
+}
+
+// RefundSubscriptionTokensPreConsume refunds pre-consumed tokens by requestId.
+func RefundSubscriptionTokensPreConsume(requestId string) error {
+	if strings.TrimSpace(requestId) == "" {
+		return errors.New("requestId is empty")
+	}
+	return DB.Transaction(func(tx *gorm.DB) error {
+		var record SubscriptionPreConsumeRecord
+		if err := tx.Set("gorm:query_option", "FOR UPDATE").
+			Where("request_id = ?", requestId).First(&record).Error; err != nil {
+			return err
+		}
+		if record.Status == "refunded" {
+			return nil
+		}
+		if record.PreConsumed <= 0 {
+			record.Status = "refunded"
+			return tx.Save(&record).Error
+		}
+		if err := PostConsumeUserSubscriptionTokensDelta(record.UserSubscriptionId, -record.PreConsumed); err != nil {
+			return err
+		}
+		record.Status = "refunded"
+		return tx.Save(&record).Error
+	})
+}
+
+// HasActiveTokensSubscription checks if user has an active tokens-type subscription.
+func HasActiveTokensSubscription(userId int) (bool, *UserSubscription, error) {
+	now := GetDBTimestamp()
+
+	// 获取所有活跃订阅
+	var subs []UserSubscription
+	err := DB.Where("user_id = ? AND status = ? AND end_time > ?", userId, "active", now).
+		Order("end_time asc, id asc").
+		Find(&subs).Error
+	if err != nil {
+		return false, nil, err
+	}
+
+	// 遍历所有活跃订阅，查找 tokens 类型
+	for _, sub := range subs {
+		plan, err := GetSubscriptionPlanById(sub.PlanId)
+		if err != nil {
+			continue
+		}
+		if plan.PlanType == "tokens" {
+			// 如果是 debug 模式，记录日志
+			if common.DebugEnabled {
+				println(fmt.Sprintf("[HAS_TOKENS_SUB] userId=%d, found tokens subscription id=%d, planId=%d, planType=%s", userId, sub.Id, sub.PlanId, plan.PlanType))
+			}
+			return true, &sub, nil
+		}
+	}
+
+	return false, nil, nil
+}
+
+// IsModelApplicableForTokensSubscription checks if the model is applicable for the tokens subscription.
+func IsModelApplicableForTokensSubscription(sub *UserSubscription, modelName string) bool {
+	if sub == nil {
+		return false
+	}
+	if sub.ApplicableModels == "" {
+		return true // Empty means all models allowed
+	}
+	applicableModels := strings.Split(sub.ApplicableModels, ",")
+	for _, m := range applicableModels {
+		if strings.TrimSpace(m) == modelName {
+			return true
+		}
+	}
+	return false
 }

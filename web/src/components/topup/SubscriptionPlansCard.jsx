@@ -430,7 +430,7 @@ const SubscriptionPlansCard = ({
                 </div>
               </div>
               <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5 w-full px-1'>
-                {plans.map((p, index) => {
+                {plans.filter(p => p.plan?.visible_to_user !== false).map((p, index) => {
                   const plan = p?.plan;
                   const totalAmount = Number(plan?.total_amount || 0);
                   const { symbol, rate } = getCurrencyConfig();
@@ -471,6 +471,22 @@ const SubscriptionPlansCard = ({
                     formatSubscriptionResetPeriod(plan, t) === t('不重置')
                       ? null
                       : `${t('额度重置')}: ${formatSubscriptionResetPeriod(plan, t)}`;
+                  // 适用模型
+                  const applicableModels = plan?.applicable_models?.trim();
+                  let modelsLabel = null;
+                  if (applicableModels) {
+                    const modelList = applicableModels.split(',').map(m => m.trim()).filter(Boolean);
+                    if (modelList.length > 0) {
+                      if (modelList.length <= 3) {
+                        modelsLabel = `${t('适用模型')}: ${modelList.join(', ')}`;
+                      } else {
+                        modelsLabel = `${t('适用模型')}: ${modelList.slice(0, 3).join(', ')} 等${modelList.length}个`;
+                      }
+                    }
+                  }
+                  if (!modelsLabel) {
+                    modelsLabel = `${t('适用模型')}: ${t('全部模型')}`;
+                  }
                   const planBenefits = [
                     {
                       label: `${t('有效期')}: ${formatSubscriptionDuration(plan, t)}`,
@@ -482,6 +498,7 @@ const SubscriptionPlansCard = ({
                           tooltip: `${t('原生额度')}：${totalAmount}`,
                         }
                       : { label: totalLabel },
+                    { label: modelsLabel },
                     limitLabel ? { label: limitLabel } : null,
                     upgradeLabel ? { label: upgradeLabel } : null,
                   ].filter(Boolean);

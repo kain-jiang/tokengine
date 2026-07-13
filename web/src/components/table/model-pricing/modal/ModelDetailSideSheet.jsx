@@ -64,7 +64,7 @@ const ModelDetailSideSheet = ({
       closeIcon={
         <Button
           className='semi-button-tertiary semi-button-size-small semi-button-borderless'
-          type='button'
+          htmlType='button'
           icon={<IconClose />}
           onClick={onClose}
         />

@@ -208,6 +208,19 @@ const SubscriptionPurchaseModal = ({
                   )}
                 </div>
               </div>
+              {/* 适用模型字段 */}
+              {plan?.applicable_models && plan.applicable_models.trim() ? (
+                <div className='flex justify-between items-center'>
+                  <Text strong className='text-slate-700 dark:text-slate-200'>
+                    {t('适用模型')}：
+                  </Text>
+                  <Tooltip content={plan.applicable_models}>
+                    <Text className='text-slate-900 dark:text-slate-100 max-w-[200px] truncate'>
+                      {plan.applicable_models}
+                    </Text>
+                  </Tooltip>
+                </div>
+              ) : null}
               {plan?.upgrade_group ? (
                 <div className='flex justify-between items-center'>
                   <Text strong className='text-slate-700 dark:text-slate-200'>

@@ -215,6 +215,11 @@ func Register(c *gin.Context) {
 			return
 		}
 	}
+	// 先检查 TelePhone 是否为 nil，避免 nil 指针解引用 panic
+	if user.TelePhone == nil {
+		common.ApiErrorMsg(c, "请填写手机号")
+		return
+	}
 	if *user.TelePhone == "" || len(*user.TelePhone) != 11 {
 		common.ApiErrorMsg(c, "请填写11位的手机号")
 		return
@@ -226,7 +231,7 @@ func Register(c *gin.Context) {
 		return
 	}
 	common.DeleteSMSCode(*user.TelePhone)
-	exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email)
+	exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email, *user.TelePhone)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgDatabaseError)
 		common.SysLog(fmt.Sprintf("CheckUserExistOrDeleted error: %v", err))
@@ -447,7 +452,7 @@ func GetSelf(c *gin.Context) {
 	user.Remark = ""
 
 	// 计算用户权限信息
-	permissions := calculateUserPermissions(userRole)
+	permissions := calculateUserPermissions(id, userRole)
 
 	// 获取用户设置并提取sidebar_modules
 	userSetting := user.GetSetting()
@@ -491,8 +496,11 @@ func GetSelf(c *gin.Context) {
 }
 
 // 计算用户权限的辅助函数
-func calculateUserPermissions(userRole int) map[string]interface{} {
+func calculateUserPermissions(userId int, userRole int) map[string]interface{} {
 	permissions := map[string]interface{}{}
+
+	// 检查是否是财务运营人员
+	isFinanceAdmin := model.IsFinanceAdmin(userId)
 
 	// 根据用户角色计算权限
 	if userRole == common.RoleRootUser {
@@ -512,6 +520,23 @@ func calculateUserPermissions(userRole int) map[string]interface{} {
 		permissions["sidebar_settings"] = true
 		permissions["sidebar_modules"] = map[string]interface{}{
 			"admin": false, // 普通用户不能访问管理员区域
+		}
+	}
+
+	// 财务模块权限：仅财务运营人员（admin用户和张籽琪）可访问
+	if isFinanceAdmin {
+		permissions["finance_modules"] = map[string]interface{}{
+			"enabled":  true,
+			"finance":  true,
+			"orders":   true,
+			"revenue":  true,
+			"invoices": true,
+			"supplier": true,
+		}
+	} else {
+		// 非财务运营人员：隐藏整个财务模块
+		permissions["finance_modules"] = map[string]interface{}{
+			"enabled": false,
 		}
 	}
 
@@ -1213,10 +1238,24 @@ func TopUp(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+
+	// 获取兑换码信息以判断是否是套餐模式
+	redemption, _ := model.GetRedemptionByKey(req.Key)
+	responseData := gin.H{
+		"quota": quota,
+	}
+	if redemption != nil && redemption.PlanId > 0 {
+		plan, _ := model.GetSubscriptionPlanById(redemption.PlanId)
+		responseData["plan_id"] = redemption.PlanId
+		if plan != nil {
+			responseData["plan_title"] = plan.Title
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
-		"data":    quota,
+		"data":    responseData,
 	})
 }
 
@@ -1390,7 +1429,6 @@ func UpdateUserSetting(c *gin.Context) {
 
 	// 更新用户设置
 	user.SetSetting(settings)
-	fmt.Println(settings, "-------------")
 	if err := user.Update(false); err != nil {
 		common.ApiErrorI18n(c, i18n.MsgUpdateFailed)
 		return

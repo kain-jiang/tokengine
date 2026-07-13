@@ -46,6 +46,15 @@ export function isRoot() {
   return user.role >= 100;
 }
 
+// 检查是否是财务运营人员（admin 或 张籽琪）
+export function isFinanceAdmin() {
+  let user = localStorage.getItem('user');
+  if (!user) return false;
+  user = JSON.parse(user);
+  // 检查用户名或显示名称是否匹配财务运营人员
+  return user.username === 'admin' || user.display_name === '张籽琪' || user.username === '张籽琪';
+}
+
 export function getSystemName() {
   let system_name = localStorage.getItem('system_name');
   if (!system_name) return 'Tokengine';
@@ -56,6 +65,12 @@ export function getLogo() {
   let logo = localStorage.getItem('logo');
   if (!logo) return '/logo.png';
   return logo;
+}
+
+export function getIcpVersion() {
+  let icpVersion = localStorage.getItem('icp_version');
+  if (!icpVersion) return '';
+  return icpVersion;
 }
 
 export function getUserIdFromLocalStorage() {
@@ -121,8 +136,31 @@ if (isMobileScreen) {
 
 export function showError(error) {
   console.error(error);
-  if (error.message) {
-    if (error.name === 'AxiosError') {
+  
+  // 处理 error 为 undefined、null 或非对象的情况
+  if (!error) {
+    Toast.error('错误：未知错误');
+    return;
+  }
+  
+  // 处理 error 没有 message 属性的情况（例如字符串、数字等）
+  if (typeof error === 'string') {
+    Toast.error('错误：' + error);
+    return;
+  }
+  
+  if (typeof error !== 'object') {
+    Toast.error('错误：' + error);
+    return;
+  }
+  
+  if (!error.message) {
+    Toast.error('错误：未知错误');
+    return;
+  }
+  
+  if (error.name === 'AxiosError') {
+    if (error.response && error.response.status) {
       switch (error.response.status) {
         case 401:
           // 清除用户状态
@@ -142,11 +180,11 @@ export function showError(error) {
         default:
           Toast.error('错误：' + error.message);
       }
-      return;
+    } else {
+      Toast.error('错误：' + error.message);
     }
-    Toast.error('错误：' + error.message);
   } else {
-    Toast.error('错误：' + error);
+    Toast.error('错误：' + error.message);
   }
 }
 

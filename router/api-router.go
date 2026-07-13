@@ -24,6 +24,10 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/uptime/status", controller.GetUptimeKumaStatus)
 		apiRouter.GET("/models", middleware.UserAuth(), controller.DashboardListModels)
 		apiRouter.GET("/status/test", middleware.AdminAuth(), controller.TestStatus)
+		// Dashboard Board API (大屏数据接口)
+		apiRouter.GET("/dashboard/board/stats", middleware.AdminAuth(), controller.GetDashboardBoardStats)
+		apiRouter.GET("/dashboard/board/realtime", middleware.AdminAuth(), controller.GetDashboardBoardRealtime)
+		apiRouter.GET("/dashboard/board/chart-data", middleware.AdminAuth(), controller.GetDashboardBoardChartData)
 		apiRouter.GET("/notice", controller.GetNotice)
 		apiRouter.GET("/user-agreement", controller.GetUserAgreement)
 		apiRouter.GET("/privacy-policy", controller.GetPrivacyPolicy)
@@ -85,6 +89,7 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.PUT("/self", controller.UpdateSelf)
 				selfRoute.DELETE("/self", controller.DeleteSelf)
 				selfRoute.GET("/token", controller.GenerateAccessToken)
+				selfRoute.GET("/token/subscription", controller.GetSubscriptionToken)
 				selfRoute.GET("/passkey", controller.PasskeyStatus)
 				selfRoute.POST("/passkey/register/begin", controller.PasskeyRegisterBegin)
 				selfRoute.POST("/passkey/register/finish", controller.PasskeyRegisterFinish)
@@ -95,6 +100,11 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.GET("/topup/info", controller.GetTopUpInfo)
 				selfRoute.GET("/topup/self", controller.GetUserTopUps)
 				selfRoute.GET("/topup/self/export", controller.ExportUserTopUps)
+				selfRoute.GET("/invoice/title", controller.GetInvoiceTitle)
+				selfRoute.POST("/invoice/title", controller.SaveInvoiceTitle)
+				selfRoute.GET("/invoice/records", controller.GetInvoiceRecords)
+				selfRoute.POST("/invoice/apply", controller.SubmitInvoiceApply)
+				//selfRoute.POST("/invoice/apply", controller.ApplyInvoice)
 				selfRoute.POST("/topup", middleware.CriticalRateLimit(), controller.TopUp)
 				selfRoute.POST("/pay", middleware.CriticalRateLimit(), controller.RequestEpay)
 				selfRoute.POST("/zs_pay/pay", middleware.CriticalRateLimit(), controller.RequestZSPay)
@@ -110,6 +120,8 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/waffo/pay", middleware.CriticalRateLimit(), controller.RequestWaffoPay)
 				selfRoute.POST("/aff_transfer", controller.TransferAffQuota)
 				selfRoute.PUT("/setting", controller.UpdateUserSetting)
+				selfRoute.POST("/upload", controller.UploadMedia)
+				selfRoute.GET("/media/:id", controller.GetMedia)
 
 				// 2FA routes
 				selfRoute.GET("/2fa/status", controller.Get2FAStatus)
@@ -117,6 +129,10 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/2fa/enable", controller.Enable2FA)
 				selfRoute.POST("/2fa/disable", controller.Disable2FA)
 				selfRoute.POST("/2fa/backup_codes", controller.RegenerateBackupCodes)
+
+				// Real-name authentication routes
+				selfRoute.GET("/realname/auth", controller.GetRealNameAuth)
+				selfRoute.POST("/realname/auth", controller.SubmitRealNameAuth)
 
 				// Check-in routes
 				selfRoute.GET("/checkin", controller.GetCheckinStatus)
@@ -244,8 +260,8 @@ func SetApiRouter(router *gin.Engine) {
 			channelRoute.POST("/", controller.AddChannel)
 			channelRoute.PUT("/", controller.UpdateChannel)
 			channelRoute.DELETE("/disabled", controller.DeleteDisabledChannel)
-			channelRoute.POST("/tag/disabled", controller.DisableTagChannels)
 			channelRoute.POST("/tag/enabled", controller.EnableTagChannels)
+			channelRoute.POST("/tag/disabled", controller.DisableTagChannels)
 			channelRoute.PUT("/tag", controller.EditTagChannels)
 			channelRoute.DELETE("/:id", controller.DeleteChannel)
 			channelRoute.POST("/batch", controller.DeleteChannelBatch)
@@ -331,6 +347,23 @@ func SetApiRouter(router *gin.Engine) {
 			billingRoute.GET("/self/token-summary/export", controller.ExportTokenSummary)
 		}
 
+		// Finance routes
+		financeRoute := apiRouter.Group("/finance")
+		financeRoute.Use(middleware.UserAuth())
+		{
+			financeRoute.GET("/dashboard", controller.GetFinanceDashboard)
+			financeRoute.GET("/orders", controller.GetOrders)
+			financeRoute.GET("/orders/export", controller.ExportOrders)
+			financeRoute.GET("/reports", controller.GetRevenueReports)
+			financeRoute.GET("/trend", controller.GetRevenueTrend)
+			financeRoute.POST("/invoice", controller.ApplyInvoice)
+			financeRoute.GET("/invoices", controller.GetInvoices)
+			financeRoute.PUT("/invoice/:id", controller.ApproveInvoice)
+			financeRoute.GET("/reconciliations", controller.GetReconciliations)
+			financeRoute.POST("/reconcile", controller.AutoReconcile)
+			financeRoute.POST("/report/daily", controller.GenerateDailyReport)
+		}
+
 		logRoute.Use(middleware.CORS(), middleware.CriticalRateLimit())
 		{
 			logRoute.GET("/token", middleware.TokenAuthReadOnly(), controller.GetLogByKey)
@@ -369,6 +402,67 @@ func SetApiRouter(router *gin.Engine) {
 			vendorRoute.POST("/", controller.CreateVendorMeta)
 			vendorRoute.PUT("/", controller.UpdateVendorMeta)
 			vendorRoute.DELETE("/:id", controller.DeleteVendorMeta)
+		}
+
+		// Supplier settlement routes
+		supplierRoute := apiRouter.Group("/supplier")
+		supplierRoute.Use(middleware.AdminAuth())
+		{
+			// Pricing management
+			supplierRoute.GET("/pricing", controller.GetAllSupplierPricings)
+			supplierRoute.GET("/pricing/search", controller.SearchSupplierPricings)
+			supplierRoute.GET("/pricing/:id", controller.GetSupplierPricing)
+			supplierRoute.POST("/pricing", controller.CreateSupplierPricing)
+			supplierRoute.PUT("/pricing", controller.UpdateSupplierPricing)
+			supplierRoute.DELETE("/pricing/:id", controller.DeleteSupplierPricing)
+			supplierRoute.POST("/pricing/import", controller.ImportSupplierPricings)
+			supplierRoute.POST("/pricing/batch", controller.BatchUpdateSupplierPricings)
+
+			// Settlement management
+			supplierRoute.GET("/settlement", controller.GetAllSupplierSettlements)
+			supplierRoute.GET("/settlement/search", controller.SearchSupplierSettlements)
+			supplierRoute.GET("/settlement/:id", controller.GetSupplierSettlement)
+			supplierRoute.GET("/settlement/:id/details", controller.GetSupplierSettlementDetails)
+			supplierRoute.POST("/settlement/generate", controller.GenerateSupplierSettlement)
+			supplierRoute.POST("/settlement/generate-all", controller.GenerateAllSupplierSettlements)
+			supplierRoute.PUT("/settlement/:id/confirm", controller.ConfirmSupplierSettlement)
+			supplierRoute.PUT("/settlement/:id/paid", controller.MarkSupplierSettlementPaid)
+			supplierRoute.PUT("/settlement/:id/cancel", controller.CancelSupplierSettlement)
+			supplierRoute.GET("/settlement/export", controller.ExportSupplierSettlements)
+			supplierRoute.GET("/settlement/statistics", controller.GetSupplierSettlementStatistics)
+
+			// Settlement aggregation (for supplier settlement page)
+			supplierRoute.GET("/settlement/aggregation", controller.GetSupplierSettlementList)
+			supplierRoute.POST("/settlement/manual", controller.CreateManualSettlement)
+
+			// Account management
+			supplierRoute.GET("/account", controller.GetAllSupplierAccounts)
+			supplierRoute.GET("/account/:vendor_id", controller.GetSupplierAccount)
+			supplierRoute.POST("/account/recharge", controller.RechargeSupplierAccount)
+			supplierRoute.GET("/account/:vendor_id/statistics", controller.GetSupplierAccountStatistics)
+
+			// Recharge records
+			supplierRoute.GET("/recharge", controller.GetAllSupplierRecharges)
+			supplierRoute.GET("/recharge/:id", controller.GetSupplierRecharge)
+			supplierRoute.GET("/recharge/export", controller.ExportSupplierRecharges)
+			supplierRoute.GET("/recharge/statistics", controller.GetSupplierRechargeStatistics)
+
+			// Rebate management
+			supplierRoute.GET("/rebates", controller.GetRebateList)
+			supplierRoute.GET("/rebates/statistics", controller.GetRebateStatistics)
+			supplierRoute.GET("/rebates/:id", controller.GetRebateById)
+			supplierRoute.POST("/rebates", controller.CreateManualRebate)
+			supplierRoute.PUT("/rebates/:id", controller.UpdateRebate)
+			supplierRoute.PUT("/rebates/:id/status", controller.UpdateRebateStatus)
+			supplierRoute.DELETE("/rebates/:id", controller.DeleteRebate)
+			supplierRoute.GET("/rebates/export", controller.ExportRebateList)
+
+			// Rebate config management
+			supplierRoute.GET("/rebate-configs", controller.GetRebateConfigList)
+			supplierRoute.POST("/rebate-configs", controller.CreateRebateConfig)
+			supplierRoute.PUT("/rebate-configs/:id", controller.UpdateRebateConfig)
+			supplierRoute.DELETE("/rebate-configs/:id", controller.DeleteRebateConfig)
+			supplierRoute.PUT("/rebate-configs/:id/toggle", controller.ToggleRebateConfig)
 		}
 
 		modelsRoute := apiRouter.Group("/models")

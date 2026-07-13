@@ -46,6 +46,7 @@ import {
   Row,
   Col,
   InputNumber,
+  Select,
 } from '@douyinfe/semi-ui';
 import {
   IconCreditCard,
@@ -56,6 +57,12 @@ import {
 
 const { Text, Title } = Typography;
 
+// 下发方式选项
+const ISSUE_TYPE_OPTIONS = [
+  { value: 'direct', label: '额度充值' },
+  { value: 'package', label: '套餐包' },
+];
+
 const EditRedemptionModal = (props) => {
   const { t } = useTranslation();
   const isEdit = props.editingRedemption.id !== undefined;
@@ -63,17 +70,46 @@ const EditRedemptionModal = (props) => {
   const isMobile = useIsMobile();
   const formApiRef = useRef(null);
   const [showQuotaInput, setShowQuotaInput] = useState(false);
+  
+  // 下发方式状态
+  const [issueType, setIssueType] = useState('direct');
+  // 套餐相关状态
+  const [plans, setPlans] = useState([]);
+  const [selectedPlanId, setSelectedPlanId] = useState(null);
+  const [selectedPlanInfo, setSelectedPlanInfo] = useState(null);
+  const [plansLoading, setPlansLoading] = useState(false);
 
   const getInitValues = () => ({
     name: '',
+    issue_type: 'direct',
     quota: 100000,
     amount: Number(quotaToDisplayAmount(100000).toFixed(6)),
     count: 1,
     expired_time: null,
+    plan_id: 0,
   });
 
   const handleCancel = () => {
     props.handleClose();
+  };
+
+  // 加载可用套餐列表
+  const loadPlans = async () => {
+    setPlansLoading(true);
+    try {
+      const res = await API.get('/api/subscription/plans');
+      if (res.data?.success) {
+        // 过滤出 plan_type='quota' 且 visible_to_user=false 的套餐
+        const filteredPlans = (res.data.data || []).filter(
+          p => p.plan?.plan_type === 'quota' && p.plan?.visible_to_user === false
+        );
+        setPlans(filteredPlans);
+      }
+    } catch (e) {
+      // ignore
+    } finally {
+      setPlansLoading(false);
+    }
   };
 
   const loadRedemption = async () => {
@@ -87,11 +123,33 @@ const EditRedemptionModal = (props) => {
         data.expired_time = new Date(data.expired_time * 1000);
       }
       data.amount = Number(quotaToDisplayAmount(data.quota || 0).toFixed(6));
-      formApiRef.current?.setValues({ ...getInitValues(), ...data });
+      
+      // 设置下发方式
+      const initialIssueType = (data.plan_id > 0) ? 'package' : 'direct';
+      setIssueType(initialIssueType);
+      setSelectedPlanId(data.plan_id || null);
+      
+      // 如果是套餐模式，加载套餐信息
+      if (data.plan_id > 0) {
+        await loadPlans();
+        const plan = plans.find(p => p.plan?.id === data.plan_id);
+        if (plan) {
+          setSelectedPlanInfo(plan.plan);
+        }
+      }
+      
+      formApiRef.current?.setValues({ ...getInitValues(), ...data, issue_type: initialIssueType });
     } else {
       showError(message);
     }
     setLoading(false);
+  };
+
+  // 选择套餐后更新状态
+  const handlePlanChange = (planId) => {
+    setSelectedPlanId(planId || null);
+    const plan = plans.find(p => p.plan?.id === planId);
+    setSelectedPlanInfo(plan?.plan || null);
   };
 
   useEffect(() => {
@@ -100,6 +158,8 @@ const EditRedemptionModal = (props) => {
         loadRedemption();
       } else {
         formApiRef.current.setValues(getInitValues());
+        // 新建时加载套餐列表
+        loadPlans();
       }
     }
   }, [props.editingRedemption.id]);
@@ -111,13 +171,31 @@ const EditRedemptionModal = (props) => {
     }
     setLoading(true);
     let localInputs = { ...values };
-    localInputs.count = parseInt(localInputs.count) || 0;
-    localInputs.quota = displayAmountToQuota(localInputs.amount);
-    if (localInputs.quota <= 0) {
-      showError(t('请输入金额'));
-      setLoading(false);
-      return;
+    
+    // 根据下发方式处理数据
+    if (issueType === 'package') {
+      // 套餐模式
+      if (!selectedPlanId) {
+        showError(t('请选择套餐'));
+        setLoading(false);
+        return;
+      }
+      localInputs.plan_id = selectedPlanId || 0;
+      localInputs.count = parseInt(localInputs.count) || 1;
+      localInputs.quota = 0; // 套餐模式不需要 quota
+      localInputs.amount = 0;
+    } else {
+      // 直接充值模式
+      localInputs.plan_id = 0;
+      localInputs.count = parseInt(localInputs.count) || 0;
+      localInputs.quota = displayAmountToQuota(localInputs.amount);
+      if (localInputs.quota <= 0) {
+        showError(t('请输入金额'));
+        setLoading(false);
+        return;
+      }
     }
+    
     localInputs.name = name;
     if (!localInputs.expired_time) {
       localInputs.expired_time = 0;
@@ -147,6 +225,9 @@ const EditRedemptionModal = (props) => {
         showSuccess(t('兑换码创建成功！'));
         props.refresh();
         formApiRef.current?.setValues(getInitValues());
+        setSelectedPlanId(null);
+        setSelectedPlanInfo(null);
+        setIssueType('direct');
         props.handleClose();
       }
     } else {
@@ -299,85 +380,180 @@ const EditRedemptionModal = (props) => {
 
                   <Row gutter={12}>
                     <Col span={24}>
-                      <Form.InputNumber
-                        field='amount'
-                        label={t('金额')}
-                        prefix={getCurrencyConfig().symbol}
-                        placeholder={t('输入金额')}
-                        precision={6}
-                        min={0}
-                        step={0.000001}
-                        style={{ width: '100%' }}
+                      {/* 下发方式选择 */}
+                      <Form.Select
+                        field='issue_type'
+                        label={t('下发方式')}
+                        placeholder={t('选择下发方式')}
+                        style={{ width: '100%', marginBottom: 16 }}
+                        optionList={ISSUE_TYPE_OPTIONS}
                         onChange={(val) => {
-                          const amount = val === '' || val == null ? 0 : val;
-                          formApiRef.current?.setValue('amount', amount);
-                          formApiRef.current?.setValue(
-                            'quota',
-                            displayAmountToQuota(amount),
-                          );
+                          setIssueType(val);
+                          if (val === 'direct') {
+                            setSelectedPlanId(null);
+                            setSelectedPlanInfo(null);
+                          } else {
+                            // 切换到套餐模式时，如果套餐列表为空则加载
+                            if (plans.length === 0) {
+                              loadPlans();
+                            }
+                          }
                         }}
-                        showClear
                       />
-                      <div
-                        className='text-xs cursor-pointer mt-1'
-                        style={{ color: 'var(--semi-color-text-2)' }}
-                        onClick={() => setShowQuotaInput((v) => !v)}
-                      >
-                        {showQuotaInput
-                          ? `▾ ${t('收起原生额度输入')}`
-                          : `▸ ${t('使用原生额度输入')}`}
-                      </div>
-                      <div style={{ display: showQuotaInput ? 'block' : 'none' }} className='mt-2'>
-                        <Form.InputNumber
-                          field='quota'
-                          label={t('额度')}
-                          placeholder={t('输入额度')}
-                          rules={[
-                            { required: true, message: t('请输入额度') },
-                            {
-                              validator: (rule, v) => {
-                                const num = parseInt(v, 10);
-                                return num > 0
-                                  ? Promise.resolve()
-                                  : Promise.reject(t('额度必须大于0'));
-                              },
-                            },
-                          ]}
-                          onChange={(val) => {
-                            const quota = val === '' || val == null ? 0 : val;
-                            formApiRef.current?.setValue('quota', quota);
-                            formApiRef.current?.setValue(
-                              'amount',
-                              Number(quotaToDisplayAmount(quota).toFixed(6)),
-                            );
-                          }}
-                          style={{ width: '100%' }}
-                          showClear
-                        />
-                      </div>
+
+                      {issueType === 'direct' && (
+                        // 直接充值模式：显示额度输入
+                        <>
+                          <Form.InputNumber
+                            field='amount'
+                            label={t('金额')}
+                            prefix={getCurrencyConfig().symbol}
+                            placeholder={t('输入金额')}
+                            precision={6}
+                            min={0}
+                            step={0.000001}
+                            style={{ width: '100%' }}
+                            onChange={(val) => {
+                              const amount = val === '' || val == null ? 0 : val;
+                              formApiRef.current?.setValue('amount', amount);
+                              formApiRef.current?.setValue(
+                                'quota',
+                                displayAmountToQuota(amount),
+                              );
+                            }}
+                            showClear
+                          />
+                          <div
+                            className='text-xs cursor-pointer mt-1'
+                            style={{ color: 'var(--semi-color-text-2)' }}
+                            onClick={() => setShowQuotaInput((v) => !v)}
+                          >
+                            {showQuotaInput
+                              ? `▾ ${t('收起原生额度输入')}`
+                              : `▸ ${t('使用原生额度输入')}`}
+                          </div>
+                          <div style={{ display: showQuotaInput ? 'block' : 'none' }} className='mt-2'>
+                            <Form.InputNumber
+                              field='quota'
+                              label={t('额度')}
+                              placeholder={t('输入额度')}
+                              rules={[
+                                { required: true, message: t('请输入额度') },
+                                {
+                                  validator: (rule, v) => {
+                                    const num = parseInt(v, 10);
+                                    return num > 0
+                                      ? Promise.resolve()
+                                      : Promise.reject(t('额度必须大于0'));
+                                  },
+                                },
+                              ]}
+                              onChange={(val) => {
+                                const quota = val === '' || val == null ? 0 : val;
+                                formApiRef.current?.setValue('quota', quota);
+                                formApiRef.current?.setValue(
+                                  'amount',
+                                  Number(quotaToDisplayAmount(quota).toFixed(6)),
+                                );
+                              }}
+                              style={{ width: '100%' }}
+                              showClear
+                            />
+                          </div>
+                          {!isEdit && (
+                            <Col span={24} style={{ marginTop: 16 }}>
+                              <Form.InputNumber
+                                field='count'
+                                label={t('生成数量')}
+                                min={1}
+                                rules={[
+                                  { required: true, message: t('请输入生成数量') },
+                                  {
+                                    validator: (rule, v) => {
+                                      const num = parseInt(v, 10);
+                                      return num > 0
+                                        ? Promise.resolve()
+                                        : Promise.reject(t('生成数量必须大于0'));
+                                    },
+                                  },
+                                ]}
+                                style={{ width: '100%' }}
+                                showClear
+                              />
+                            </Col>
+                          )}
+                        </>
+                      )}
+
+                      {issueType === 'package' && (
+                        // 套餐模式：显示套餐选择器
+                        <div>
+                          <Select
+                            placeholder={t('选择套餐')}
+                            value={selectedPlanId}
+                            onChange={handlePlanChange}
+                            style={{ width: '100%' }}
+                            loading={plansLoading}
+                            optionList={plans.map(p => ({
+                              label: `${p.plan?.title || ''} - ${renderQuota(p.plan?.total_amount || 0)}`,
+                              value: p.plan?.id,
+                            }))}
+                          />
+                          
+                          {/* 显示套餐详情 */}
+                          {selectedPlanInfo && (
+                            <Card className='!mt-4 !border-0 bg-slate-50'>
+                              <div className='space-y-2 text-sm'>
+                                <div>
+                                  <Text type='tertiary'>{t('额度')}：</Text>
+                                  <Text strong>{renderQuota(selectedPlanInfo.total_amount || 0)}</Text>
+                                </div>
+                                <div>
+                                  <Text type='tertiary'>{t('有效期')}：</Text>
+                                  <Text strong>
+                                    {selectedPlanInfo.duration_unit === 'custom' 
+                                      ? `${selectedPlanInfo.custom_seconds || 0} 秒`
+                                      : `${selectedPlanInfo.duration_value || 1} ${
+                                          { year: '年', month: '月', day: '日', hour: '小时' }[selectedPlanInfo.duration_unit] || '月'
+                                        }`}
+                                  </Text>
+                                </div>
+                                {selectedPlanInfo.applicable_models && selectedPlanInfo.applicable_models !== '' && (
+                                  <div>
+                                    <Text type='tertiary'>{t('可用模型')}：</Text>
+                                    <Text strong>{selectedPlanInfo.applicable_models}</Text>
+                                  </div>
+                                )}
+                              </div>
+                            </Card>
+                          )}
+                          
+                          {/* 生成数量 - 套餐模式也显示 */}
+                          {!isEdit && (
+                            <Col span={24} style={{ marginTop: 16 }}>
+                              <Form.InputNumber
+                                field='count'
+                                label={t('生成数量')}
+                                min={1}
+                                rules={[
+                                  { required: true, message: t('请输入生成数量') },
+                                  {
+                                    validator: (rule, v) => {
+                                      const num = parseInt(v, 10);
+                                      return num > 0
+                                        ? Promise.resolve()
+                                        : Promise.reject(t('生成数量必须大于0'));
+                                    },
+                                  },
+                                ]}
+                                style={{ width: '100%' }}
+                                showClear
+                              />
+                            </Col>
+                          )}
+                        </div>
+                      )}
                     </Col>
-                    {!isEdit && (
-                      <Col span={12}>
-                        <Form.InputNumber
-                          field='count'
-                          label={t('生成数量')}
-                          min={1}
-                          rules={[
-                            { required: true, message: t('请输入生成数量') },
-                            {
-                              validator: (rule, v) => {
-                                const num = parseInt(v, 10);
-                                return num > 0
-                                  ? Promise.resolve()
-                                  : Promise.reject(t('生成数量必须大于0'));
-                              },
-                            },
-                          ]}
-                          style={{ width: '100%' }}
-                          showClear
-                        />
-                      </Col>
-                    )}
                   </Row>
                 </Card>
               </div>

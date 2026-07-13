@@ -162,7 +162,7 @@ func generateDefaultSidebarConfigForRole(userRole int) string {
 }
 
 // CheckUserExistOrDeleted check if user exist or deleted, if not exist, return false, nil, if deleted or exist, return true, nil
-func CheckUserExistOrDeleted(username string, email string) (bool, error) {
+func CheckUserExistOrDeleted(username string, email string, telephone string) (bool, error) {
 	var user User
 
 	// err := DB.Unscoped().First(&user, "username = ? or email = ?", username, email).Error
@@ -171,7 +171,7 @@ func CheckUserExistOrDeleted(username string, email string) (bool, error) {
 	if email == "" {
 		err = DB.Unscoped().First(&user, "username = ?", username).Error
 	} else {
-		err = DB.Unscoped().First(&user, "username = ? or email = ?", username, email).Error
+		err = DB.Unscoped().First(&user, "username = ? or email = ? or telephone = ?", username, email, telephone).Error
 	}
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -768,6 +768,25 @@ func IsAdmin(userId int) bool {
 	return user.Role >= common.RoleAdminUser
 }
 
+// IsFinanceAdmin checks if the user is a finance administrator.
+// A user is considered a finance administrator if their role is at least RoleAdminUser.
+// This ensures that role-based access control is enforced server-side, independent of
+// any client-side data (e.g., localStorage) that could be tampered with.
+func IsFinanceAdmin(userId int) bool {
+	if userId == 0 {
+		return false
+	}
+	var user User
+	err := DB.Where("id = ?", userId).Select("role").Find(&user).Error
+	if err != nil {
+		common.SysLog("IsFinanceAdmin: " + err.Error())
+		return false
+	}
+	// 基于数据库中的 role 字段判断是否为财务管理员
+	// role >= RoleAdminUser (10) 的用户具有财务管理员权限
+	return user.Role >= common.RoleAdminUser
+}
+
 //// IsUserEnabled checks user status from Redis first, falls back to DB if needed
 //func IsUserEnabled(id int, fromDB bool) (status bool, err error) {
 //	defer func() {
@@ -1014,6 +1033,16 @@ func updateUserUsedQuotaAndRequestCount(id int, quota int, count int) {
 	//if err := invalidateUserCache(id); err != nil {
 	//	common.SysError("failed to invalidate user cache: " + err.Error())
 	//}
+}
+
+// 根据模型消费实际，更新用户使用额度
+// https://github.com/QuantumNous/new-api/pull/4323/changes#diff-6a7077094ec53d15472a577dfe35da587a08847e8e9af2c7de229e7968438b56R965-R976
+func UpdateUserUsedQuota(id int, quota int) {
+	if common.BatchUpdateEnabled {
+		addNewRecord(BatchUpdateTypeUsedQuota, id, quota)
+		return
+	}
+	updateUserUsedQuota(id, quota)
 }
 
 func updateUserUsedQuota(id int, quota int) {

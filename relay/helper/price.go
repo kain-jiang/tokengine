@@ -67,6 +67,7 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 	groupRatioInfo := HandleGroupRatio(c, info)
 
 	var preConsumedQuota int
+	var preConsumedTokens int64 // tokens 预消耗数量
 	var modelRatio float64
 	var completionRatio float64
 	var cacheRatio float64
@@ -77,11 +78,32 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 	var audioRatio float64
 	var audioCompletionRatio float64
 	var freeModel bool
-	if !usePrice {
-		preConsumedTokens := common.Max(promptTokens, common.PreConsumedQuota)
-		if meta.MaxTokens != 0 {
-			preConsumedTokens += meta.MaxTokens
+	var billingMode string = "quota" // 默认 quota 模式
+
+	// 检查当前请求的 token 是否关联了 tokens 类型的订阅
+	// 通过 RelayInfo 中的 TokenId 获取 token，检查其 SubscriptionId 是否 > 0
+	// 并且该 subscription 对应的 plan 是 tokens 类型
+	if info.TokenId > 0 {
+		token, err := model.GetTokenById(info.TokenId)
+		if err == nil && token != nil && token.SubscriptionId > 0 {
+			// 检查该 subscription 是否是 tokens 类型
+			sub, subErr := model.GetUserSubscriptionById(token.SubscriptionId)
+			if subErr == nil && sub != nil {
+				plan, planErr := model.GetSubscriptionPlanById(sub.PlanId)
+				if planErr == nil && plan != nil && plan.PlanType == "tokens" {
+					billingMode = "tokens"
+				}
+			}
 		}
+	}
+
+	if !usePrice {
+		preConsumedTokensInt := common.Max(promptTokens, common.PreConsumedQuota)
+		if meta.MaxTokens != 0 {
+			preConsumedTokensInt += meta.MaxTokens
+		}
+		preConsumedTokens = int64(preConsumedTokensInt)
+
 		var success bool
 		var matchName string
 		modelRatio, success, matchName = ratio_setting.GetModelRatio(info.OriginModelName)
@@ -104,12 +126,14 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 		audioRatio = ratio_setting.GetAudioRatio(info.OriginModelName)
 		audioCompletionRatio = ratio_setting.GetAudioCompletionRatio(info.OriginModelName)
 		ratio := modelRatio * groupRatioInfo.GroupRatio
-		preConsumedQuota = int(float64(preConsumedTokens) * ratio)
+		preConsumedQuota = int(float64(preConsumedTokensInt) * ratio)
 	} else {
 		if meta.ImagePriceRatio != 0 {
 			modelPrice = modelPrice * meta.ImagePriceRatio
 		}
 		preConsumedQuota = int(modelPrice * common.QuotaPerUnit * groupRatioInfo.GroupRatio)
+		// tokens 模式下，按次计费也使用 1 token
+		preConsumedTokens = 1
 	}
 
 	// check if free model pre-consume is disabled
@@ -146,6 +170,8 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 		CacheCreation5mRatio: cacheCreationRatio5m,
 		CacheCreation1hRatio: cacheCreationRatio1h,
 		QuotaToPreConsume:    preConsumedQuota,
+		TokensToPreConsume:   preConsumedTokens,
+		BillingMode:          billingMode,
 	}
 
 	if common.DebugEnabled {

@@ -28,6 +28,8 @@ const ModelsFilters = ({
   loading,
   searching,
   channels,
+  channelFilter,
+  setChannelFilter,
   t,
 }) => {
   // Handle form reset and immediate search
@@ -36,13 +38,13 @@ const ModelsFilters = ({
   const handleReset = () => {
     if (!formApiRef.current) return;
     formApiRef.current.reset();
+    setChannelFilter('');
     setTimeout(() => {
       searchModels();
     }, 100);
   };
 
   return (
-    <div className='flex flex-col gap-2 w-full'>
       <Form
         initValues={formInitValues}
         getFormApi={(api) => {
@@ -120,7 +122,6 @@ const ModelsFilters = ({
           </div>
         </div>
       </Form>
-    </div>
   );
 };
 

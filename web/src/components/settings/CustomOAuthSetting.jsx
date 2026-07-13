@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   Button,
   Form,
@@ -528,7 +528,7 @@ const CustomOAuthSetting = ({ serverAddress }) => {
     showSuccess(t('已填充提示模板'));
   };
 
-  const columns = [
+  const columns = useMemo(() => [
     {
       title: t('图标'),
       dataIndex: 'icon',
@@ -589,11 +589,13 @@ const CustomOAuthSetting = ({ serverAddress }) => {
         </Space>
       ),
     },
-  ];
+  ], [t]);
 
-  const discoveryAutoFilledLabels = (discoveryInfo?.autoFilledFields || [])
-    .map((field) => DISCOVERY_FIELD_LABELS[field] || field)
-    .join(', ');
+  const discoveryAutoFilledLabels = useMemo(() => {
+    return (discoveryInfo?.autoFilledFields || [])
+      .map((field) => DISCOVERY_FIELD_LABELS[field] || field)
+      .join(', ');
+  }, [discoveryInfo]);
 
   return (
     <Card>

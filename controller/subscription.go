@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 
@@ -179,6 +180,21 @@ func AdminCreateSubscriptionPlan(c *gin.Context) {
 		common.ApiErrorMsg(c, "自定义重置周期需大于0秒")
 		return
 	}
+	// Validate plan_type
+	if req.Plan.PlanType == "" {
+		req.Plan.PlanType = "quota"
+	}
+	if req.Plan.PlanType != "quota" && req.Plan.PlanType != "tokens" {
+		common.ApiErrorMsg(c, "套餐类型必须是 quota 或 tokens")
+		return
+	}
+	// For tokens type, validate tokens_limit (applicable_models is optional)
+	if req.Plan.PlanType == "tokens" {
+		if req.Plan.TokensLimit < 0 {
+			common.ApiErrorMsg(c, "Tokens上限不能为负数")
+			return
+		}
+	}
 	err := model.DB.Create(&req.Plan).Error
 	if err != nil {
 		common.ApiError(c, err)
@@ -244,6 +260,18 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 	}
 
 	err := model.DB.Transaction(func(tx *gorm.DB) error {
+		// validate plan_type
+		if req.Plan.PlanType == "" {
+			req.Plan.PlanType = "quota"
+		}
+		if req.Plan.PlanType != "quota" && req.Plan.PlanType != "tokens" {
+			return errors.New("套餐类型必须是 quota 或 tokens")
+		}
+		if req.Plan.PlanType == "tokens" {
+			if req.Plan.TokensLimit < 0 {
+				return errors.New("Tokens上限不能为负数")
+			}
+		}
 		// update plan (allow zero values updates with map)
 		updateMap := map[string]interface{}{
 			"title":                      req.Plan.Title,
@@ -255,6 +283,7 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 			"duration_value":             req.Plan.DurationValue,
 			"custom_seconds":             req.Plan.CustomSeconds,
 			"enabled":                    req.Plan.Enabled,
+			"visible_to_user":            req.Plan.VisibleToUser,
 			"sort_order":                 req.Plan.SortOrder,
 			"stripe_price_id":            req.Plan.StripePriceId,
 			"creem_product_id":           req.Plan.CreemProductId,
@@ -263,6 +292,9 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 			"upgrade_group":              req.Plan.UpgradeGroup,
 			"quota_reset_period":         req.Plan.QuotaResetPeriod,
 			"quota_reset_custom_seconds": req.Plan.QuotaResetCustomSeconds,
+			"plan_type":                  req.Plan.PlanType,
+			"applicable_models":          req.Plan.ApplicableModels,
+			"tokens_limit":               req.Plan.TokensLimit,
 			"updated_at":                 common.GetTimestamp(),
 		}
 		if err := tx.Model(&model.SubscriptionPlan{}).Where("id = ?", id).Updates(updateMap).Error; err != nil {

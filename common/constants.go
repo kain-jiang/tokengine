@@ -12,7 +12,8 @@ import (
 
 var StartTime = time.Now().Unix() // unit: second
 var Version = "v0.0.0"            // this hard coding will be replaced automatically when building, no need to manually change
-var SystemName = "New API"
+var SystemName = "Tokengine"
+var IcpVersion = "" // 网页底部备案号
 var Footer = ""
 var Logo = ""
 var TopUpLink = ""
@@ -216,9 +217,18 @@ const (
 )
 
 const (
-	TopUpStatusPending  = "pending"
-	TopUpStatusSuccess = "success"
-	TopUpStatusFailed  = "failed"
-	TopUpStatusExpired = "expired"
+	TopUpStatusPending   = "pending"
+	TopUpStatusSuccess   = "success"
+	TopUpStatusFailed    = "failed"
+	TopUpStatusExpired   = "expired"
 	TopUpStatusCancelled = "cancelled"
 )
+
+// CostRatio 每配额单位（Token）的成本系数，用于计算成本
+// 默认值 0.001 表示每1000配额单位成本约0.001元
+var CostRatio = 0.001
+
+// GetCostRatio 获取成本系数
+func GetCostRatio() float64 {
+	return CostRatio
+}

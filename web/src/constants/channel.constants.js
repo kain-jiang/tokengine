@@ -192,12 +192,12 @@ export const CHANNEL_OPTIONS = [
   {
     value: 58,
     color: 'purple',
-    label: '字节seedance代理',
+    label: '字节seedacne代理',
   },
   {
     value: 59,
     color: 'pink',
-    label: 'Agnes官方渠道',
+    label: 'Agnes 官方渠道',
   },
 ];
 

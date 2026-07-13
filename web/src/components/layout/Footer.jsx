@@ -20,13 +20,14 @@ For commercial licensing, please contact support@quantumnous.com
 import React, { useEffect, useState, useMemo, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Typography } from '@douyinfe/semi-ui';
-import { getFooterHTML, getLogo, getSystemName } from '../../helpers';
+import { getFooterHTML, getLogo, getSystemName, getIcpVersion } from '../../helpers';
 import { StatusContext } from '../../context/Status';
 
 const FooterBar = () => {
   const { t } = useTranslation();
   const [footer, setFooter] = useState(getFooterHTML());
   const systemName = getSystemName();
+  const icpVersion = getIcpVersion();
   const logo = getLogo();
   const [statusState] = useContext(StatusContext);
   const isDemoSiteMode = statusState?.status?.demo_site_enabled || false;
@@ -184,7 +185,7 @@ const FooterBar = () => {
             </Typography.Text>
 
              <Typography.Text className='text-sm text-white/80 caption'>
-              <a href='https://beian.miit.gov.cn' target={'_blank'}>蜀ICP备2026023568号</a>
+              <a href='https://beian.miit.gov.cn' target={'_blank'}> {icpVersion}</a>
             </Typography.Text>
 
           </div>
