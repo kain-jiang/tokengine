@@ -658,7 +658,7 @@ const RegisterForm = () => {
                   prefix={<IconPhone />}
                 />
 
-                <div className='flex gap-3'>
+                <div className='flex gap-3 items-center'>
                   <Form.Input
                     field='verification_code'
                     label={t('短信验证码')}
@@ -668,6 +668,8 @@ const RegisterForm = () => {
                     prefix={<IconKey />}
                     maxLength={6}
                     className='flex-1'
+                    size='default'
+                    style={{ height: '40px' }}
                   />
                   <Button
                     theme='light'
