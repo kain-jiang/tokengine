@@ -117,7 +117,7 @@ const Invoice = () => {
   const loadTopups = async (currentPage, currentPageSize) => {
     setTopupLoading(true);
     try {
-      let qs = `p=${currentPage}&page_size=${currentPageSize}`;
+      let qs = `p=${currentPage}&page_size=${currentPageSize}&status=success`;
       if (topupKeyword) {
         qs += `&keyword=${encodeURIComponent(topupKeyword)}`;
       }
