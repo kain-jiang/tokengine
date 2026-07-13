@@ -396,7 +396,7 @@ const Invoice = () => {
         title: t('充值额度'),
         dataIndex: 'amount',
         key: 'amount',
-        render: (amount) => renderQuota(amount),
+        render: (amount) => <Text>¥{amount.toFixed(2)}</Text>,
       },
       {
         title: t('支付金额'),
