@@ -24,7 +24,7 @@ import CardPro from '../../components/common/ui/CardPro';
 import { formatMoney, formatTimestamp, getStatusTag, getTypeTag } from './utils';
 import { createCardProPagination } from '../../helpers/utils';
 import { useIsMobile } from '../../hooks/common/useIsMobile';
-import { DatePicker, Empty, Table, Typography, Modal, Tag } from '@douyinfe/semi-ui';
+import { DatePicker, Empty, Table, Typography, Modal, Tag, Image } from '@douyinfe/semi-ui';
 import { IllustrationNoResult, IllustrationNoResultDark } from '@douyinfe/semi-illustrations';
 
 const { Text } = Typography;
@@ -72,6 +72,8 @@ export default function Invoices() {
     remark: '',
   });
   const fileInputRef = React.createRef();
+
+  const [imageBase64, setImageBase64] = useState('');
 
   // 获取发票列表
   const fetchInvoices = async () => {
@@ -124,7 +126,13 @@ export default function Invoices() {
   };
 
   // 打开更新弹窗
-  const openUpdateModal = (record) => {
+  const openUpdateModal = async (record) => {
+    if (record.invoice_url) {
+          const mediaRes = await API.get(record.invoice_url);
+          if (mediaRes.data.success && mediaRes.data.data.content) {
+            setImageBase64(`data:image/png;base64,${mediaRes.data.data.content}`);
+          }
+        }
     setCurrentInvoice(record);
     setUpdateForm({
       status: record.status || '',
@@ -807,8 +815,50 @@ export default function Invoices() {
               onClick={() => fileInputRef.current?.click()}
             >
               {updateForm.invoice_url ? (
-                <div style={{ fontSize: 12, color: '#1677ff' }}>
-                  {t('已上传')}
+                <div
+                  style={{ position: 'relative', width: '100%' }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {updateForm.invoice_url.startsWith('data:image') ? (
+                    <Image 
+                      src={updateForm.invoice_url}
+                      width={300}
+                      height={200}
+                    />
+                  ) : (
+                    <Image 
+                      src={imageBase64 ? imageBase64 : updateForm.invoice_url}
+                      width={300}
+                      height={200} 
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setUpdateForm({ ...updateForm, invoice_url: '' });
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#8c8c8c')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#bfbfbf')}
+                    style={{
+                      position: 'absolute',
+                      top: -8,
+                      right: -8,
+                      width: 22,
+                      height: 22,
+                      borderRadius: '50%',
+                      border: 'none',
+                      backgroundColor: '#bfbfbf',
+                      color: '#fff',
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      lineHeight: '22px',
+                      padding: 0,
+                    }}
+                    title={t('删除')}
+                  >
+                    ×
+                  </button>
                 </div>
               ) : (
                 <div>

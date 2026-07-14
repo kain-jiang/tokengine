@@ -59,7 +59,7 @@ type User struct {
 	Remark           string         `json:"remark,omitempty" gorm:"type:varchar(255)" validate:"max=255"`
 	StripeCustomer   string         `json:"stripe_customer" gorm:"type:varchar(64);column:stripe_customer;index"`
 	TelePhone        *string        `json:"telephone" gorm:"type:varchar(11);column:telephone;unique"` // 手机号
-	UserType         int            `json:"user_type" gorm:"type:tinyint;default:0;column:user_type"`  // 用户类型 0 个人, 1 企业
+	UserType         int            `json:"user_type" gorm:"type:smallint;default:0;column:user_type"` // 用户类型 0 个人, 1 企业
 }
 
 func (user *User) ToBaseUser() *UserBase {
@@ -1116,4 +1116,12 @@ func RootUserExists() bool {
 		return false
 	}
 	return true
+}
+
+func UpdateUserType(id int, userType int) error {
+	err := DB.Model(&User{}).Where("id = ?", id).Update("user_type", userType).Error
+	if err != nil {
+		return err
+	}
+	return nil
 }

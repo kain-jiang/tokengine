@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
@@ -256,4 +258,74 @@ func SubmitInvoiceApply(c *gin.Context) {
 	}
 
 	common.ApiSuccess(c, invoiceRecord)
+}
+
+// GetInvoiceRecordDetail 获取发票详情
+func GetInvoiceRecordDetail(c *gin.Context) {
+	userId := c.GetInt("id")
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		common.ApiErrorMsg(c, "无效的ID")
+		return
+	}
+
+	invoice, err := model.GetInvoiceRecordById(id)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if invoice == nil {
+		common.ApiErrorMsg(c, "发票不存在")
+		return
+	}
+	if invoice.UserId != userId {
+		common.ApiErrorMsg(c, "没有权限查看此发票")
+		return
+	}
+
+	var orderIds []int
+	if invoice.OrderIds != "" {
+		for _, idStr := range strings.Split(invoice.OrderIds, ",") {
+			idStr = strings.TrimSpace(idStr)
+			if idStr == "" {
+				continue
+			}
+			var orderId int
+			if _, err := fmt.Sscanf(idStr, "%d", &orderId); err == nil {
+				orderIds = append(orderIds, orderId)
+			}
+		}
+	}
+
+	var orders []*model.TopUp
+	if len(orderIds) > 0 {
+		orders, err = model.GetTopUpListByIds(orderIds)
+		if err != nil {
+			common.ApiError(c, err)
+			return
+		}
+	}
+
+	var invoiceTitleInfo map[string]interface{}
+	if invoice.InvoiceTitleInfo != "" {
+		common.UnmarshalJsonStr(invoice.InvoiceTitleInfo, &invoiceTitleInfo)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"id":                 invoice.Id,
+			"user_id":            invoice.UserId,
+			"amount":             invoice.Amount,
+			"status":             invoice.Status,
+			"invoice_type":       invoice.InvoiceType,
+			"invoice_url":        invoice.InvoiceUrl,
+			"remark":             invoice.Remark,
+			"error_msg":          invoice.ErrorMsg,
+			"created_at":         invoice.CreatedAt.Format("2006-01-02 15:04:05"),
+			"invoice_title_info": invoiceTitleInfo,
+			"orders":             orders,
+		},
+	})
 }
