@@ -21,8 +21,8 @@ const UserNameMaxLength = 20
 
 // 用户类型
 const (
-	PersonalType = "personal" // 个人
-	CompanyType  = "company"  // 企业
+	PersonalType = 0 // 个人
+	CompanyType  = 1 // 企业
 )
 
 // User if you add sensitive fields, don't forget to clean them in setupLogin function.
@@ -59,7 +59,7 @@ type User struct {
 	Remark           string         `json:"remark,omitempty" gorm:"type:varchar(255)" validate:"max=255"`
 	StripeCustomer   string         `json:"stripe_customer" gorm:"type:varchar(64);column:stripe_customer;index"`
 	TelePhone        *string        `json:"telephone" gorm:"type:varchar(11);column:telephone;unique"` // 手机号
-	UserType         string         `json:"user_type" gorm:"type:varchar(10);column:user_type"`        // 用户类型 personal, company
+	UserType         int            `json:"user_type" gorm:"type:tinyint;default:0;column:user_type"`  // 用户类型 0 个人, 1 企业
 }
 
 func (user *User) ToBaseUser() *UserBase {
