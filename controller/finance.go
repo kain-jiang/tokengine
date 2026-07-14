@@ -498,3 +498,35 @@ func GenerateDailyReport(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": report})
 }
+
+// GetOrderStatistics 获取订单统计数据（用于 Orders 页面概览）
+// @Summary 获取订单统计数据
+// @Description 获取订单统计数据（有效充值金额、退款金额等）
+// @Tags finance
+// @Accept json
+// @Produce json
+// @Success 200 {object} object
+// @Router /finance/orders/statistics [get]
+// @Security ApiKeyAuth
+func GetOrderStatistics(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "未登录"})
+		return
+	}
+	// 检查是否是财务运营人员
+	if !model.IsFinanceAdmin(userId) {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无权限访问财务模块"})
+		return
+	}
+	isAdmin := model.IsAdmin(userId)
+
+	serviceInstance := service.GetFinanceService()
+	stats, err := serviceInstance.GetOrderStatistics(isAdmin, userId)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": stats})
+}

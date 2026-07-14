@@ -63,6 +63,20 @@ type OrderListResponse struct {
 	Items []*OrderItem `json:"items"`
 }
 
+// OrderStatistics 订单统计数据（用于 Orders 页面概览）
+type OrderStatistics struct {
+	TotalAmount  float64 `json:"total_amount"`  // 总充值金额（截止目前成功订单）
+	SuccessCount int64   `json:"success_count"` // 成功订单数
+	PendingCount int64   `json:"pending_count"` // 待处理订单数
+	FailedCount  int64   `json:"failed_count"`  // 失败订单数
+	TotalRefund  float64 `json:"total_refund"`  // 退款总金额
+	RefundCount  int64   `json:"refund_count"`  // 退款订单数
+	TodayAmount  float64 `json:"today_amount"`  // 今日充值金额
+	TodayCount   int64   `json:"today_count"`   // 今日充值订单数
+	MonthAmount  float64 `json:"month_amount"`  // 本月充值金额
+	MonthCount   int64   `json:"month_count"`   // 本月充值订单数
+}
+
 // ============================================
 // 营收报表相关 DTO
 // ============================================
