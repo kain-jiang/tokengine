@@ -3645,6 +3645,9 @@
     "请输入适用模型": "Please enter applicable models",
     "Tokens套餐必须指定适用模型": "Tokens plan must specify applicable models",
     "当前账号未认证，去认证": "Account not verified, go to verify",
-    "当前账号已认证": "Account verified"
+    "当前账号已认证": "Account verified",
+    "订单已取消": "Order cancelled",
+    "确定要取消该订单吗？取消后无法恢复。": "Are you sure you want to cancel this order? This action cannot be undone.",
+    "取消失败": "Failed to cancel"
  }
 }

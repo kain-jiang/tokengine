@@ -29,6 +29,7 @@ import {
   Input,
   Select,
   DatePicker,
+  Modal,
 } from '@douyinfe/semi-ui';
 import {
   IllustrationNoResult,
@@ -214,6 +215,23 @@ export default function FinanceOrders() {
     }
   }, [page, pageSize, keyword, statusFilter, dateRange]);
 
+  // 管理员补单
+  const handleAdminCompleteTopup = async (record) => {
+    try {
+      const res = await API.post('/admin/user/topup/complete', {
+        trade_no: record.trade_no,
+      });
+      if (res.data.success) {
+        Toast.success({ content: t('补单成功') });
+        loadTopups(page, pageSize);
+      } else {
+        Toast.error({ content: res.data.message || t('补单失败') });
+      }
+    } catch (error) {
+      Toast.error({ content: t('补单失败') });
+    }
+  };
+
   const handleStatusChange = (value) => {
     setStatusFilter(value);
     setPage(1);
@@ -383,8 +401,34 @@ export default function FinanceOrders() {
       },
     ];
 
+    // 管理员操作列
+    if (userIsAdmin) {
+      baseColumns.push({
+        title: t('操作'),
+        key: 'action',
+        width: 100,
+        fixed: 'right',
+        render: (_, record) => {
+          // 仅 pending 状态显示补单按钮
+          if (record.status === 'pending') {
+            return (
+              <Button
+                size='small'
+                theme='solid'
+                type='warning'
+                onClick={() => handleAdminCompleteTopup(record)}
+              >
+                {t('补单')}
+              </Button>
+            );
+          }
+          return null;
+        },
+      });
+    }
+
     return baseColumns;
-  }, [t]);
+  }, [t, userIsAdmin]);
 
   return (
     <CardPro

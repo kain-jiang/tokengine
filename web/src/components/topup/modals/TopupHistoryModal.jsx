@@ -29,6 +29,7 @@ import {
   Tag,
   Select,
   DatePicker,
+  Popconfirm,
 } from '@douyinfe/semi-ui';
 import {
   IllustrationNoResult,
@@ -188,6 +189,21 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
     }
   };
 
+  // 取消待支付订单
+  const handleCancelTopup = async (record) => {
+    try {
+      const res = await API.post(`/user/topup/helipay/cancel?trade_no=${record.trade_no}`);
+      if (res.data.success) {
+        Toast.success({ content: t('订单已取消') });
+        loadTopups(page, pageSize);
+      } else {
+        Toast.error({ content: res.data.data || t('取消失败') });
+      }
+    } catch (error) {
+      Toast.error({ content: t('取消失败') });
+    }
+  };
+
   // 清除日期筛选
   const clearDateFilter = () => {
     setDateRange({ startDate: null, endDate: null });
@@ -296,6 +312,30 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
       dataIndex: 'create_time',
       key: 'create_time',
       render: (time) => timestamp2string(time),
+    },
+    {
+      title: t('操作'),
+      key: 'action',
+      width: 100,
+      render: (_, record) => {
+        // 仅 pending 状态显示取消按钮
+        if (record.status === 'pending') {
+          return (
+            <Popconfirm
+              content={t('确定要取消该订单吗？取消后无法恢复。')}
+              onConfirm={() => handleCancelTopup(record)}
+              okText={t('确认')}
+              cancelText={t('取消')}
+              position='top'
+            >
+              <Button size='small' theme='solid' type='danger'>
+                {t('取消')}
+              </Button>
+            </Popconfirm>
+          );
+        }
+        return null;
+      },
     },
   ], [t]);
 
