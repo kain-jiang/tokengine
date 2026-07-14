@@ -37,7 +37,6 @@ import {
 import { Coins, Download } from 'lucide-react';
 import { IconSearch } from '@douyinfe/semi-icons';
 import { API, timestamp2string } from '../../../helpers';
-import { isAdmin } from '../../../helpers/utils';
 import { useIsMobile } from '../../../hooks/common/useIsMobile';
 const { Text } = Typography;
 
@@ -96,7 +95,6 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
   const loadTopups = async (currentPage, currentPageSize) => {
     setLoading(true);
     try {
-      const base = isAdmin() ? '/api/user/topup' : '/api/user/topup/self';
       let qs = `p=${currentPage}&page_size=${currentPageSize}`;
       if (keyword) {
         qs += `&keyword=${encodeURIComponent(keyword)}`;
@@ -110,7 +108,7 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
       if (dateRange.endDate) {
         qs += `&end_time=${Math.floor(dateRange.endDate.getTime() / 1000)}`;
       }
-      const endpoint = `${base}?${qs}`;
+      const endpoint = `/api/user/topup/self?${qs}`;
       const res = await API.get(endpoint);
       const { success, message, data } = res.data;
       if (success) {
@@ -139,7 +137,6 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
 
     setExportLoading(true);
     try {
-      const base = isAdmin() ? '/api/user/topup/export' : '/api/user/topup/self/export';
       let qs = '';
       if (keyword) {
         qs += `keyword=${encodeURIComponent(keyword)}`;
@@ -156,7 +153,7 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
         qs += qs ? '&' : '';
         qs += `end_time=${Math.floor(dateRange.endDate.getTime() / 1000)}`;
       }
-      const endpoint = qs ? `${base}?${qs}` : base;
+      const endpoint = qs ? `/api/user/topup/self/export?${qs}` : '/api/user/topup/self/export';
 
       const res = await API.get(endpoint, {
         responseType: 'blob',
@@ -227,32 +224,6 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
     setPage(1);
   };
 
-  // 管理员补单
-  const handleAdminComplete = async (tradeNo) => {
-    try {
-      const res = await API.post('/api/user/topup/complete', {
-        trade_no: tradeNo,
-      });
-      const { success, message } = res.data;
-      if (success) {
-        Toast.success({ content: t('补单成功') });
-        await loadTopups(page, pageSize);
-      } else {
-        Toast.error({ content: message || t('补单失败') });
-      }
-    } catch (e) {
-      Toast.error({ content: t('补单失败') });
-    }
-  };
-
-  const confirmAdminComplete = (tradeNo) => {
-    Modal.confirm({
-      title: t('确认补单'),
-      content: t('是否将该订单标记为成功并为用户入账？'),
-      onOk: () => handleAdminComplete(tradeNo),
-    });
-  };
-
   // 渲染状态徽章
   const renderStatusBadge = (status) => {
     const config = STATUS_CONFIG[status] || { type: 'primary', key: status };
@@ -275,101 +246,58 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
     return Number(record?.amount || 0) === 0 && tradeNo.startsWith('sub');
   };
 
-  // 检查是否为管理员
-  const userIsAdmin = useMemo(() => isAdmin(), []);
-
-  const columns = useMemo(() => {
-    const baseColumns = [
-      {
-        title: t('订单号'),
-        dataIndex: 'trade_no',
-        key: 'trade_no',
-        render: (text) => <Text copyable>{text}</Text>,
-      },
-      {
-        title: t('支付方式'),
-        dataIndex: 'payment_method',
-        key: 'payment_method',
-        render: renderPaymentMethod,
-      },
-      {
-        title: t('充值额度'),
-        dataIndex: 'amount',
-        key: 'amount',
-        render: (amount, record) => {
-          if (isSubscriptionTopup(record)) {
-            return (
-              <Tag color='purple' shape='circle' size='small'>
-                {t('订阅套餐')}
-              </Tag>
-            );
-          }
+  const columns = useMemo(() => [
+    {
+      title: t('订单号'),
+      dataIndex: 'trade_no',
+      key: 'trade_no',
+      render: (text) => <Text copyable>{text}</Text>,
+    },
+    {
+      title: t('支付方式'),
+      dataIndex: 'payment_method',
+      key: 'payment_method',
+      render: renderPaymentMethod,
+    },
+    {
+      title: t('充值额度'),
+      dataIndex: 'amount',
+      key: 'amount',
+      render: (amount, record) => {
+        if (isSubscriptionTopup(record)) {
           return (
-            <span className='flex items-center gap-1'>
-              <Coins size={16} />
-              <Text>{amount}</Text>
-            </span>
+            <Tag color='purple' shape='circle' size='small'>
+              {t('订阅套餐')}
+            </Tag>
           );
-        },
+        }
+        return (
+          <span className='flex items-center gap-1'>
+            <Coins size={16} />
+            <Text>{amount}</Text>
+          </span>
+        );
       },
-      {
-        title: t('支付金额'),
-        dataIndex: 'money',
-        key: 'money',
-        render: (money) => <Text type='danger'>¥{money.toFixed(2)}</Text>,
-      },
-      {
-        title: t('状态'),
-        dataIndex: 'status',
-        key: 'status',
-        render: renderStatusBadge,
-      },
-    ];
-
-    // 管理员才显示用户名列（放在最前面）
-    if (userIsAdmin) {
-      baseColumns.unshift({
-        title: t('用户'),
-        dataIndex: 'username',
-        key: 'username',
-        render: (username) => <Text>{username || '-'}</Text>,
-      });
-    }
-
-    // 管理员才显示操作列
-    if (userIsAdmin) {
-      baseColumns.push({
-        title: t('操作'),
-        key: 'action',
-        render: (_, record) => {
-          const actions = [];
-          if (record.status === 'pending') {
-            actions.push(
-              <Button
-                key="complete"
-                size='small'
-                type='primary'
-                theme='outline'
-                onClick={() => confirmAdminComplete(record.trade_no)}
-              >
-                {t('补单')}
-              </Button>
-            );
-          }
-          return actions.length > 0 ? <>{actions}</> : null;
-        },
-      });
-    }
-
-    baseColumns.push({
+    },
+    {
+      title: t('支付金额'),
+      dataIndex: 'money',
+      key: 'money',
+      render: (money) => <Text type='danger'>¥{money.toFixed(2)}</Text>,
+    },
+    {
+      title: t('状态'),
+      dataIndex: 'status',
+      key: 'status',
+      render: renderStatusBadge,
+    },
+    {
       title: t('创建时间'),
       dataIndex: 'create_time',
       key: 'create_time',
       render: (time) => timestamp2string(time),
-    });
-
-    return baseColumns;
-  }, [t, userIsAdmin]);
+    },
+  ], [t]);
 
   return (
     <Modal
@@ -378,6 +306,8 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
       onCancel={onCancel}
       footer={null}
       size={isMobile ? 'full-width' : 'large'}
+      closeOnEsc={true}
+      maskClosable={false}
     >
       {/* 日期范围和状态筛选 */}
       <div className='mb-3 p-3 bg-gray-50 rounded-lg'>
@@ -427,7 +357,7 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
       <div className='flex flex-wrap items-center gap-2 mb-3'>
         <Input
           prefix={<IconSearch />}
-          placeholder={t('订单号或用户名')}
+          placeholder={t('订单号')}
           value={keyword}
           onChange={handleKeywordChange}
           showClear

@@ -694,3 +694,114 @@ func (s *FinanceService) AutoReconcileDownstream(period string) (*model.Reconcil
 
 	return reconciliation, nil
 }
+
+// ============================================
+// 订单统计（用于 Orders 页面概览）
+// ============================================
+
+// GetOrderStatistics 获取订单统计数据
+func (s *FinanceService) GetOrderStatistics(isAdmin bool, userId int) (*dto.OrderStatistics, error) {
+	stats := &dto.OrderStatistics{}
+
+	now := time.Now()
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).Unix()
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location()).Unix()
+
+	var userCondition string
+
+	if !isAdmin {
+		userCondition = "AND user_id = ?"
+	}
+
+	// 1. 截止目前的有效充值订单统计（成功状态）
+	var successStats struct {
+		TotalAmount float64
+		Count       int64
+	}
+	successQuery := fmt.Sprintf(`
+		SELECT COALESCE(SUM(money), 0) as total_amount, COUNT(*) as count
+		FROM top_ups
+		WHERE status = 'success' %s`, userCondition)
+	if isAdmin {
+		model.DB.Raw(successQuery).Scan(&successStats)
+	} else {
+		model.DB.Raw(successQuery, userId).Scan(&successStats)
+	}
+	stats.TotalAmount = successStats.TotalAmount
+	stats.SuccessCount = successStats.Count
+
+	// 2. 待处理订单数
+	var pendingCount int64
+	pendingQuery := fmt.Sprintf(`
+		SELECT COUNT(*) FROM top_ups WHERE status = 'pending' %s`, userCondition)
+	if isAdmin {
+		model.DB.Raw(pendingQuery).Scan(&pendingCount)
+	} else {
+		model.DB.Raw(pendingQuery, userId).Scan(&pendingCount)
+	}
+	stats.PendingCount = pendingCount
+
+	// 3. 失败订单数
+	var failedCount int64
+	failedQuery := fmt.Sprintf(`
+		SELECT COUNT(*) FROM top_ups WHERE status = 'failed' %s`, userCondition)
+	if isAdmin {
+		model.DB.Raw(failedQuery).Scan(&failedCount)
+	} else {
+		model.DB.Raw(failedQuery, userId).Scan(&failedCount)
+	}
+	stats.FailedCount = failedCount
+
+	// 4. 退款统计（从 logs 表中 type=6 表示退款）
+	var refundStats struct {
+		TotalRefund float64
+		Count       int64
+	}
+	refundQuery := fmt.Sprintf(`
+		SELECT COALESCE(SUM(ABS(quota) / %d), 0) as total_refund, COUNT(*) as count
+		FROM logs
+		WHERE type = 6 %s`, common.QuotaPerUnit, userCondition)
+	if isAdmin {
+		model.DB.Raw(refundQuery).Scan(&refundStats)
+	} else {
+		model.DB.Raw(refundQuery, userId).Scan(&refundStats)
+	}
+	stats.TotalRefund = refundStats.TotalRefund
+	stats.RefundCount = refundStats.Count
+
+	// 5. 今日充值统计
+	var todayStats struct {
+		Amount float64
+		Count  int64
+	}
+	todayQuery := fmt.Sprintf(`
+		SELECT COALESCE(SUM(money), 0) as amount, COUNT(*) as count
+		FROM top_ups
+		WHERE status = 'success' AND create_time >= ? %s`, userCondition)
+	if isAdmin {
+		model.DB.Raw(todayQuery, todayStart).Scan(&todayStats)
+	} else {
+		model.DB.Raw(todayQuery, todayStart, userId).Scan(&todayStats)
+	}
+	stats.TodayAmount = todayStats.Amount
+	stats.TodayCount = todayStats.Count
+
+	// 6. 本月充值统计
+	var monthStats struct {
+		Amount float64
+		Count  int64
+	}
+	monthQuery := fmt.Sprintf(`
+		SELECT COALESCE(SUM(money), 0) as amount, COUNT(*) as count
+		FROM top_ups
+		WHERE status = 'success' AND create_time >= ? %s`, userCondition)
+	if isAdmin {
+		model.DB.Raw(monthQuery, monthStart).Scan(&monthStats)
+	} else {
+		model.DB.Raw(monthQuery, monthStart, userId).Scan(&monthStats)
+	}
+	stats.MonthAmount = monthStats.Amount
+	stats.MonthCount = monthStats.Count
+
+	return stats, nil
+}
