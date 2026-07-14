@@ -178,6 +178,7 @@ const RealNameAuthForm = () => {
 
     setLoading(true);
     try {
+      console.log(authType)
       const res = await API.post('/api/user/realname/auth', {
         auth_type: authType,
         ...formData,
@@ -321,11 +322,6 @@ const RealNameAuthForm = () => {
               <div className='space-y-2'>
                 <label
                   className='block text-sm font-medium text-gray-700'
-                  style={{
-                    color: '#1c1f23',
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                  }}
                 >
                   {t('营业执照')}
                   <span className='text-red-500 mr-1' style={{ color: 'red' }}>

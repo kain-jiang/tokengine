@@ -566,58 +566,29 @@ func (s *FinanceService) GetUserInvoices(userId int, req dto.InvoiceListRequest,
 }
 
 // GetAllInvoices 获取全部发票（管理员）
-func (s *FinanceService) GetAllInvoices(req dto.InvoiceListRequest, pageInfo *common.PageInfo) ([]*model.InvoiceWithUsername, int64, error) {
-	query := model.DB.Model(&model.Invoice{}).Select("invoices.*, users.username").
-		Joins("LEFT JOIN users ON invoices.user_id = users.id").Order("invoices.id desc")
-
-	if req.Status != "" {
-		query = query.Where("invoices.status = ?", req.Status)
-	}
+func (s *FinanceService) GetAllInvoices(req dto.InvoiceListRequest, pageInfo *common.PageInfo) ([]*model.InvoiceRecordWithDetails, int64, error) {
+	var startTime, endTime int64
 	if req.StartDate != "" {
-		t, _ := time.Parse("2006-01-02", req.StartDate)
-		query = query.Where("invoices.create_time >= ?", t.Unix())
+		if t, err := time.Parse("2006-01-02", req.StartDate); err == nil {
+			startTime = t.Unix()
+		}
 	}
 	if req.EndDate != "" {
-		t, _ := time.Parse("2006-01-02", req.EndDate)
-		query = query.Where("invoices.create_time <= ?", t.Unix()+86400)
+		if t, err := time.Parse("2006-01-02", req.EndDate); err == nil {
+			endTime = t.Add(24 * time.Hour).Unix()
+		}
 	}
-	if req.Keyword != "" {
-		query = query.Where("invoices.invoice_no LIKE ? OR users.username LIKE ?", "%"+req.Keyword+"%", "%"+req.Keyword+"%")
-	}
-
-	var total int64
-	query.Count(&total)
-
-	var invoices []*model.InvoiceWithUsername
-	query.Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&invoices)
-
-	return invoices, total, nil
+	return model.GetAllInvoiceRecords(req.Status, startTime, endTime, req.Keyword, pageInfo)
 }
 
 // ApproveInvoice 审批发票
-func (s *FinanceService) ApproveInvoice(id int, status string, approvedBy int, remark string) error {
-	invoice, err := model.GetInvoiceById(id)
-	if err != nil {
-		return err
-	}
-	if invoice.Status != model.InvoiceStatusPending {
-		return fmt.Errorf("当前发票状态不允许审批")
-	}
-
-	now := common.GetTimestamp()
-	updates := map[string]interface{}{
-		"status":      status,
-		"approved_by": approvedBy,
-		"approved_at": now,
-		"remark":      remark,
-		"update_time": now,
-	}
-
-	if status == model.InvoiceStatusApproved {
-		updates["issued_at"] = now
-	}
-
-	return model.DB.Model(&model.Invoice{}).Where("id = ?", id).Updates(updates).Error
+func (s *FinanceService) ApproveInvoice(id int, status string, remark string, invoiceUrl string) error {
+	return model.DB.Model(&model.InvoiceRecord{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"status":       status,
+		"remark":       remark,
+		"invoice_url":  invoiceUrl,
+		"updated_at":   time.Now(),
+	}).Error
 }
 
 // ============================================

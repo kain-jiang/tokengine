@@ -19,6 +19,12 @@ import (
 
 const UserNameMaxLength = 20
 
+// 用户类型
+const (
+	PersonalType = "personal" // 个人
+	CompanyType  = "company"  // 企业
+)
+
 // User if you add sensitive fields, don't forget to clean them in setupLogin function.
 // Otherwise, the sensitive information will be saved on local storage in plain text!
 type User struct {
@@ -53,6 +59,7 @@ type User struct {
 	Remark           string         `json:"remark,omitempty" gorm:"type:varchar(255)" validate:"max=255"`
 	StripeCustomer   string         `json:"stripe_customer" gorm:"type:varchar(64);column:stripe_customer;index"`
 	TelePhone        *string        `json:"telephone" gorm:"type:varchar(11);column:telephone;unique"` // 手机号
+	UserType         string         `json:"user_type" gorm:"type:varchar(10);column:user_type"`        // 用户类型 personal, company
 }
 
 func (user *User) ToBaseUser() *UserBase {
@@ -768,10 +775,7 @@ func IsAdmin(userId int) bool {
 	return user.Role >= common.RoleAdminUser
 }
 
-// IsFinanceAdmin checks if the user is a finance administrator.
-// A user is considered a finance administrator if their role is at least RoleAdminUser.
-// This ensures that role-based access control is enforced server-side, independent of
-// any client-side data (e.g., localStorage) that could be tampered with.
+// 判断用户是否是财务管理员
 func IsFinanceAdmin(userId int) bool {
 	if userId == 0 {
 		return false

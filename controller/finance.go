@@ -1,12 +1,16 @@
 package controller
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
+	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/gin-gonic/gin"
@@ -261,34 +265,15 @@ func ApplyInvoice(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": invoice})
 }
 
-// GetInvoices 获取发票列表
-// @Summary 获取发票列表
-// @Description 获取发票列表（管理员/用户）
-// @Tags finance
-// @Accept json
-// @Produce json
-// @Param status query string false "状态"
-// @Param start_date query string false "开始日期"
-// @Param end_date query string false "结束日期"
-// @Param keyword query string false "关键词"
-// @Param page query int false "页码"
-// @Param page_size query int false "每页数量"
-// @Success 200 {object} object
-// @Router /finance/invoices [get]
-// @Security ApiKeyAuth
+// 获取发票列表
 func GetInvoices(c *gin.Context) {
 	userId := c.GetInt("id")
-	if userId == 0 {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "未登录"})
-		return
-	}
+
 	// 检查是否是财务运营人员
 	if !model.IsFinanceAdmin(userId) {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无权限访问财务模块"})
+		common.ApiErrorMsg(c, "无权限访问财务模块")
 		return
 	}
-	isAdmin := model.IsAdmin(userId)
-
 	var req dto.InvoiceListRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
@@ -299,66 +284,111 @@ func GetInvoices(c *gin.Context) {
 
 	serviceInstance := service.GetFinanceService()
 
-	if isAdmin {
-		items, total, err := serviceInstance.GetAllInvoices(req, pageInfo)
-		if err != nil {
-			c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"success": true, "data": items, "total": total})
-	} else {
-		items, total, err := serviceInstance.GetUserInvoices(userId, req, pageInfo)
-		if err != nil {
-			c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"success": true, "data": items, "total": total})
-	}
-}
-
-// ApproveInvoice 审批发票（管理员）
-// @Summary 审批发票
-// @Description 审批发票（管理员）
-// @Tags finance
-// @Accept json
-// @Produce json
-// @Param id path int true "发票ID"
-// @Param body body dto.InvoiceUpdateRequest true "发票更新信息"
-// @Success 200 {object} object
-// @Router /finance/invoice/:id [put]
-// @Security ApiKeyAuth
-func ApproveInvoice(c *gin.Context) {
-	userId := c.GetInt("id")
-	if userId == 0 {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "未登录"})
+	items, total, err := serviceInstance.GetAllInvoices(req, pageInfo)
+	if err != nil {
+		common.ApiError(c, err)
 		return
 	}
+	pageInfo.SetTotal(int(total))
+	pageInfo.SetItems(items)
+	common.ApiSuccess(c, pageInfo)
+}
+
+// 获取发票详情（管理员）
+func GetInvoiceDetail(c *gin.Context) {
+	userId := c.GetInt("id")
+	if !model.IsFinanceAdmin(userId) {
+		common.ApiErrorMsg(c, "无权限访问财务模块")
+		return
+	}
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		common.ApiErrorMsg(c, "无效的ID")
+		return
+	}
+	invoice, err := model.GetInvoiceRecordById(id)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if invoice == nil {
+		common.ApiErrorMsg(c, "发票不存在")
+		return
+	}
+	var orderIds []int
+	if invoice.OrderIds != "" {
+		for _, idStr := range strings.Split(invoice.OrderIds, ",") {
+			idStr = strings.TrimSpace(idStr)
+			if idStr != "" {
+				var orderId int
+				if _, err := fmt.Sscanf(idStr, "%d", &orderId); err == nil {
+					orderIds = append(orderIds, orderId)
+				}
+			}
+		}
+	}
+	var orders []*model.TopUp
+	if len(orderIds) > 0 {
+		orders, err = model.GetTopUpListByIds(orderIds)
+		if err != nil {
+			common.ApiError(c, err)
+			return
+		}
+	}
+	var invoiceTitleInfo map[string]interface{}
+	if invoice.InvoiceTitleInfo != "" {
+		json.Unmarshal([]byte(invoice.InvoiceTitleInfo), &invoiceTitleInfo)
+	}
+	username, _ := model.GetUsernameById(invoice.UserId, false)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"id":                 invoice.Id,
+			"user_id":            invoice.UserId,
+			"username":           username,
+			"amount":             invoice.Amount,
+			"status":             invoice.Status,
+			"invoice_type":       invoice.InvoiceType,
+			"invoice_url":        invoice.InvoiceUrl,
+			"remark":             invoice.Remark,
+			"error_msg":          invoice.ErrorMsg,
+			"created_at":         invoice.CreatedAt.Format("2006-01-02 15:04:05"),
+			"invoice_title_info": invoiceTitleInfo,
+			"orders":             orders,
+		},
+	})
+}
+
+// 更新发票（管理员）
+func UpdateInvoice(c *gin.Context) {
+	userId := c.GetInt("id")
 	// 检查是否是财务运营人员
 	if !model.IsFinanceAdmin(userId) {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无权限访问财务模块"})
+		common.ApiErrorMsg(c, "无权限访问财务模块")
 		return
 	}
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无效的ID"})
+		common.ApiErrorMsg(c, "无效的ID")
 		return
 	}
 
 	var req dto.InvoiceUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		common.ApiErrorMsg(c, "参数错误")
 		return
 	}
 
 	serviceInstance := service.GetFinanceService()
-	err = serviceInstance.ApproveInvoice(id, req.Status, userId, req.Remark)
+	err = serviceInstance.ApproveInvoice(id, req.Status, req.Remark, req.InvoiceUrl)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		logger.LogError(c, fmt.Sprintf("更新发票失败，错误详情：%v", err.Error()))
+		common.ApiErrorMsg(c, "发票状态更新失败")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true})
+	common.ApiSuccess(c, "发票状态更新成功")
 }
 
 // GetReconciliations 获取对账记录列表（管理员）

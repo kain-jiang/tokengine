@@ -349,7 +349,7 @@ func SetApiRouter(router *gin.Engine) {
 
 		// Finance routes
 		financeRoute := apiRouter.Group("/finance")
-		financeRoute.Use(middleware.UserAuth())
+		financeRoute.Use(middleware.AdminAuth())
 		{
 			financeRoute.GET("/dashboard", controller.GetFinanceDashboard)
 			financeRoute.GET("/orders", controller.GetOrders)
@@ -357,8 +357,9 @@ func SetApiRouter(router *gin.Engine) {
 			financeRoute.GET("/reports", controller.GetRevenueReports)
 			financeRoute.GET("/trend", controller.GetRevenueTrend)
 			financeRoute.POST("/invoice", controller.ApplyInvoice)
+			financeRoute.GET("/invoice/:id", controller.GetInvoiceDetail)
 			financeRoute.GET("/invoices", controller.GetInvoices)
-			financeRoute.PUT("/invoice/:id", controller.ApproveInvoice)
+			financeRoute.PUT("/invoice/:id", controller.UpdateInvoice)
 			financeRoute.GET("/reconciliations", controller.GetReconciliations)
 			financeRoute.POST("/reconcile", controller.AutoReconcile)
 			financeRoute.POST("/report/daily", controller.GenerateDailyReport)

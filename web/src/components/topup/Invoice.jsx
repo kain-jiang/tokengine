@@ -585,9 +585,7 @@ const Invoice = () => {
   };
   return (
     <div className='w-full max-w-7xl mx-auto px-2'>
-      <div
-        className='flex items-center justify-end'
-      >
+      <div className='flex items-center justify-end'>
         <Button
           style={{ fontSize: '12px', width: '100px' }}
           type='primary'
@@ -598,13 +596,8 @@ const Invoice = () => {
         </Button>
       </div>
 
-      <div
-
-      >
-        <Tabs
-          activeKey={activeTab}
-          onChange={(key) => setActiveTab(key)}
-        >
+      <div>
+        <Tabs activeKey={activeTab} onChange={(key) => setActiveTab(key)}>
           <Tabs.TabPane tab={t('充值记录')} itemKey='topup'>
             <div
               className='flex justify-between items-center gap-3 mb-4'

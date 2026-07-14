@@ -26,8 +26,9 @@ type RealNameAuthRequest struct {
 // GetRealNameAuth 获取用户实名认证信息
 func GetRealNameAuth(c *gin.Context) {
 	userId := c.GetInt("id")
+	authType := c.Query("auth_type")
 
-	auth, err := model.GetRealNameAuthByUserId(userId)
+	auth, err := model.GetRealNameAuthByUserId(userId, authType)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -84,7 +85,7 @@ func SubmitRealNameAuth(c *gin.Context) {
 	}
 
 	// 检查是否已有认证记录
-	existing, err := model.GetRealNameAuthByUserId(userId)
+	existing, err := model.GetRealNameAuthByUserId(userId, req.AuthType)
 	if err != nil {
 		common.ApiError(c, err)
 		return

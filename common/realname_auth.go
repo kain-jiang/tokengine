@@ -166,7 +166,7 @@ func VerifyCompany(sceneCode, merchantBizId, merchantUserId, userAuthorization, 
 	runtime := &util.RuntimeOptions{}
 	resp, _err := client.EntElementVerifyWithOptions(entElementVerifyRequest, runtime)
 	SysLog(fmt.Sprintf("company[%s] auth result-->%s", companyName, resp.String()))
-	if err != nil {
+	if _err != nil {
 		return false, _err
 	}
 	if tea.StringValue(resp.Body.GetCode()) != "Success" {

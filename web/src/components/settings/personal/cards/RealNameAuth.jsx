@@ -22,7 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Card, Typography, Modal } from '@douyinfe/semi-ui';
 import { IconUser, IconGlobe, IconEdit, IconTickCircle, IconClock } from '@douyinfe/semi-icons';
 import { XCircle } from 'lucide-react';
-import { API, showError } from '../../../../helpers';
+import { API, showError, showWarning } from '../../../../helpers';
 
 const RealNameAuth = ({ t }) => {
   const navigate = useNavigate();
@@ -62,7 +62,20 @@ const RealNameAuth = ({ t }) => {
     }
   };
 
-  const handleStartAuth = (type) => {
+  const handleStartAuth = async (type) => {
+    if (type === 'company') {
+      const res = await API.get('/api/user/realname/auth', {
+        params: {
+          auth_type: 'personal',
+        },
+      });
+      if (res.data.success) {
+        if (!res.data.data) {
+          showWarning(t('请您先进行个人认证'));
+          return
+        }
+      }
+    }
     navigate(`/console/realname-auth?type=${type}`);
   };
 
@@ -195,33 +208,41 @@ const RealNameAuth = ({ t }) => {
         <div className='mt-4 bg-white rounded-lg p-6'>
           {authInfo.auth_type === 'personal' ? (
             <div className='space-y-4'>
-              <div className='flex items-center' style={{ gap: '20px' }}>
-                <Typography.Text
-                  style={{
-                    color: '#1c1f239e',
-                    minWidth: '100px',
-                    flexShrink: 0,
-                  }}
-                >
-                  {t('真实姓名')}
-                </Typography.Text>
-                <Typography.Text className='font-medium'>
-                  {authInfo.username}
-                </Typography.Text>
+              <div>
+                <div className='flex items-center' style={{ gap: '20px' }}>
+                  <Typography.Text
+                    style={{
+                      color: '#1c1f239e',
+                      minWidth: '100px',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {t('真实姓名')}
+                  </Typography.Text>
+                  <Typography.Text className='font-medium'>
+                    {authInfo.username}
+                  </Typography.Text>
+                </div>
+                <div className='flex items-center' style={{ gap: '20px' }}>
+                  <Typography.Text
+                    style={{
+                      color: '#1c1f239e',
+                      minWidth: '100px',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {t('身份证号码')}
+                  </Typography.Text>
+                  <Typography.Text className='font-medium'>
+                    {maskIdCard(authInfo.person_icard)}
+                  </Typography.Text>
+                </div>
               </div>
-              <div className='flex items-center' style={{ gap: '20px' }}>
-                <Typography.Text
-                  style={{
-                    color: '#1c1f239e',
-                    minWidth: '100px',
-                    flexShrink: 0,
-                  }}
-                >
-                  {t('身份证号码')}
-                </Typography.Text>
-                <Typography.Text className='font-medium'>
-                  {maskIdCard(authInfo.person_icard)}
-                </Typography.Text>
+
+              <div style={{ marginTop: '20px' }}>
+                <Button onClick={(e) => handleStartAuth("company")}>
+                  {t('企业认证>>')}
+                </Button>
               </div>
             </div>
           ) : (
@@ -335,22 +356,6 @@ const RealNameAuth = ({ t }) => {
               >
                 {t('重新认证')}
               </Button>
-
-              <Typography.Text
-                style={{
-                  color: '#979BA5',
-                  cursor: 'pointer',
-                }}
-                onClick={() =>
-                  handleStartAuth(
-                    authInfo.auth_type === 'personal' ? 'company' : 'personal',
-                  )
-                }
-              >
-                {authInfo.auth_type === 'personal'
-                  ? t('企业认证')
-                  : t('个人认证')}
-              </Typography.Text>
             </div>
           </div>
         )}

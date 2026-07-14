@@ -148,8 +148,9 @@ type InvoiceListRequest struct {
 
 // InvoiceUpdateRequest 发票更新请求（管理员审批）
 type InvoiceUpdateRequest struct {
-	Status string `json:"status" binding:"required"` // approved, rejected, issued
-	Remark string `json:"remark"`
+	Status     string `json:"status" binding:"required"` // approved, rejected, issued
+	Remark     string `json:"remark"`
+	InvoiceUrl string `json:"invoice_url"`
 }
 
 // ============================================
