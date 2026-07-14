@@ -189,6 +189,30 @@ type ReconciliationItem struct {
 	UpdateTime       int64   `json:"update_time"`
 }
 
+// ============================================
+// 订单图表相关 DTO
+// ============================================
+
+// TrendPoint 趋势数据点
+type TrendPoint struct {
+	Date   string  `json:"date"`   // 日期 YYYY-MM-DD
+	Amount float64 `json:"amount"` // 充值金额
+	Count  int     `json:"count"`  // 订单数
+}
+
+// UserTypeDistribution 用户类型分布
+type UserTypeDistribution struct {
+	Label string  `json:"label"` // 标签：企业用户/个人用户
+	Value float64 `json:"value"` // 充值金额
+	Count int     `json:"count"` // 订单数
+}
+
+// OrderChartStatistics 订单图表统计数据
+type OrderChartStatistics struct {
+	Trend                []TrendPoint           `json:"trend"`
+	UserTypeDistribution []UserTypeDistribution `json:"user_type_distribution"`
+}
+
 // ReconciliationListRequest 对账列表请求
 type ReconciliationListRequest struct {
 	Type   string `form:"type"`

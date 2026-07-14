@@ -3648,6 +3648,10 @@
     "当前账号已认证": "Account verified",
     "订单已取消": "Order cancelled",
     "确定要取消该订单吗？取消后无法恢复。": "Are you sure you want to cancel this order? This action cannot be undone.",
-    "取消失败": "Failed to cancel"
+    "取消失败": "Failed to cancel",
+    "充值趋势": "Recharge Trend",
+    "用户类型分布": "User Type Distribution",
+    "企业用户": "Enterprise User",
+    "个人用户": "Personal User"
  }
 }
