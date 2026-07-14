@@ -585,7 +585,7 @@ func (s *FinanceService) GetAllInvoices(req dto.InvoiceListRequest, pageInfo *co
 func (s *FinanceService) ApproveInvoice(id int, status string, remark string, invoiceUrl string) error {
 	return model.DB.Model(&model.InvoiceRecord{}).Where("id = ?", id).Updates(map[string]interface{}{
 		"status":      status,
-		"remark":      remark,
+		"error_msg":   remark,
 		"invoice_url": invoiceUrl,
 		"updated_at":  time.Now(),
 	}).Error

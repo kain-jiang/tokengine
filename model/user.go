@@ -1118,3 +1118,11 @@ func RootUserExists() bool {
 	}
 	return true
 }
+
+func UpdateUserType(id int, userType int) error {
+	err := DB.Model(&User{}).Where("id = ?", id).Update("user_type", userType).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}

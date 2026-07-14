@@ -32,6 +32,7 @@ import {
   Space,
   RadioGroup,
   TextArea,
+  Tag,
 } from '@douyinfe/semi-ui';
 import {
   IllustrationNoResult,
@@ -71,6 +72,24 @@ const INVOICE_TITLE_TYPE_MAP = {
   company: '企业',
 };
 
+const getMimeTypeFromBase64 = (base64) => {
+  const signatures = [
+    { prefix: 'JVBERi0', mimeType: 'application/pdf', ext: 'pdf' },
+    { prefix: 'iVBORw0KGgo', mimeType: 'image/png', ext: 'png' },
+    { prefix: '/9j/', mimeType: 'image/jpeg', ext: 'jpg' },
+    { prefix: 'R0lGOD', mimeType: 'image/gif', ext: 'gif' },
+    { prefix: 'UklGR', mimeType: 'image/webp', ext: 'webp' },
+    { prefix: 'Qk0', mimeType: 'image/bmp', ext: 'bmp' },
+    { prefix: 'PHN2', mimeType: 'image/svg+xml', ext: 'svg' },
+  ];
+  for (const sig of signatures) {
+    if (base64.startsWith(sig.prefix)) {
+      return sig;
+    }
+  }
+  return { mimeType: 'image/png', ext: 'png' };
+};
+
 const Invoice = () => {
   const { t } = useTranslation();
 
@@ -103,6 +122,8 @@ const Invoice = () => {
     bank_account: '',
     email: '',
   });
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const [username, setUsername] = useState(user.username || '--');
 
   const [selectedOrderIds, setSelectedOrderIds] = useState([]);
   const [allSelected, setAllSelected] = useState(false);
@@ -113,6 +134,11 @@ const Invoice = () => {
     invoice_type: 'general',
     remark: '',
   });
+
+    // 详情弹窗
+    const [showDetailModal, setShowDetailModal] = useState(false);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [detailData, setDetailData] = useState(null);
 
   const loadTopups = async (currentPage, currentPageSize) => {
     setTopupLoading(true);
@@ -193,6 +219,23 @@ const Invoice = () => {
     ]);
     if (topupData.length > 0) {
       injectInvoiceStatus(topupData, invoiceData);
+    }
+  };
+
+  // 获取发票详情
+  const fetchInvoiceDetail = async (id) => {
+    try {
+      setDetailLoading(true);
+      const res = await API.get(`/api/user/invoice/detail/${id}`);
+      if (res.data?.success) {
+        setDetailData(res.data.data);
+        setShowDetailModal(true);
+      }
+    } catch (error) {
+      console.error('获取发票详情失败:', error);
+      showError(t('获取发票详情失败'));
+    } finally {
+      setDetailLoading(false);
     }
   };
 
@@ -331,21 +374,56 @@ const Invoice = () => {
     }
   };
 
-  const handleViewInvoice = (invoice) => {
-    if (invoice.invoice_url) {
-      window.open(invoice.invoice_url, '_blank');
+  const handleDownloadInvoice = async (invoice) => {
+    if (!invoice.invoice_url) {
+      Toast.warning({ content: t('无可下载的发票') });
+      return;
     }
-  };
-
-  const handleDownloadInvoice = (invoice) => {
-    if (invoice.invoice_url) {
+    try {
+      const res = await API.get(invoice.invoice_url);
+      const base64 = res.data?.data?.content || res.data?.content;
+      if (!base64) {
+        Toast.error({ content: t('发票内容为空') });
+        return;
+      }
+      const { mimeType, ext } = getMimeTypeFromBase64(base64);
+      const blob = await fetch(`data:${mimeType};base64,${base64}`).then((r) => r.blob());
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = invoice.invoice_url;
-      link.download = `invoice_${invoice.id}.pdf`;
+      link.href = url;
+      link.download = `invoice_${invoice.id}.${ext}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+      Toast.error({ content: t('发票下载失败') });
     }
+  };
+
+   // 发票状态映射
+const invoiceStatusMap = {
+  pending: { text: '待开票', color: 'orange' },
+  running: { text: '开票中', color: 'blue' },
+  completed: { text: '已开票', color: 'green' },
+  failed: { text: '开票失败', color: 'red' },
+};
+
+// 发票类型映射
+const invoiceTypeMap = {
+  GENERAL_INVOICE: { text: '增值税普通发票', color: 'purple' },
+  SPECIAL_INVOICE: { text: '增值税专用发票', color: 'cyan' },
+};
+
+  const PAYMENT_METHOD_MAP = {
+    stripe: 'Stripe',
+    creem: 'Creem',
+    waffo: 'Waffo',
+    alipay: '支付宝',
+    wxpay: '微信',
+    zs_pay: '招商银行聚合支付',
+    helipay: '合利宝支付',
   };
 
   const renderPaymentMethod = (pm) => {
@@ -386,12 +464,12 @@ const Invoice = () => {
         key: 'trade_no',
         render: (text) => <Text copyable>{text}</Text>,
       },
-      {
-        title: t('支付方式'),
-        dataIndex: 'payment_method',
-        key: 'payment_method',
-        render: renderPaymentMethod,
-      },
+     {
+      title: t('支付方式'),
+      dataIndex: 'payment_method',
+      key: 'payment_method',
+      render: (method) => renderPaymentMethod(method),
+    },
       {
         title: t('充值额度'),
         dataIndex: 'amount',
@@ -488,10 +566,9 @@ const Invoice = () => {
             <>
               <Button
                 size='small'
-                onClick={() => handleViewInvoice(record)}
-                disabled={record.status !== 'completed'}
+                onClick={() => fetchInvoiceDetail(record.id)}
               >
-                {t('查看')}
+                {t('详情')}
               </Button>
               <Button
                 size='small'
@@ -583,6 +660,218 @@ const Invoice = () => {
       Toast.warning(t('请先完善开票信息'));
     }
   };
+
+  // 格式化时间（兼容 ISO 字符串和 Unix 时间戳）
+  const renderTime = (ts) => {
+    if (!ts) return '-';
+    let d;
+    if (typeof ts === 'number') {
+      d = new Date(ts * 1000);
+    } else {
+      d = new Date(ts);
+    }
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  };
+
+   // 关联订单表格列
+  const orderColumns = [
+    {
+      title: t('订单号'),
+      dataIndex: 'trade_no',
+      key: 'trade_no',
+      render: (text) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Text copyable>{text}</Text>
+        </div>
+      ),
+    },
+    {
+      title: t('支付金额'),
+      dataIndex: 'money',
+      key: 'money',
+      render: (money) => <Text type='danger'>¥{money.toFixed(2)}</Text>,
+    },
+    {
+      title: t('支付方式'),
+      dataIndex: 'payment_method',
+      key: 'payment_method',
+      render: (method) => renderPaymentMethod(method),
+    },
+    {
+      title: t('充值时间'),
+      dataIndex: 'create_time',
+      key: 'create_time',
+      render: (ts) => renderTime(ts),
+    },
+  ];
+
+  // 详情弹窗内容
+    const detailModalContent = () => {
+      if (!detailData) return null;
+      const titleInfo = detailData.invoice_title_info || {};
+      const invoiceTypeText = (invoiceTypeMap[detailData.invoice_type] || { text: detailData.invoice_type }).text;
+      // const statusTag = getStatusTag(detailData.status, invoiceStatusMap, t);
+      const statusTag = (
+        <Tag color={invoiceStatusMap[detailData.status].color}>
+          {t(invoiceStatusMap[detailData.status].text)}
+        </Tag>
+      );
+      const authTypeText = titleInfo.type === 'company' ? '(企业)' : '(个人)';
+  
+      return (
+        <div>
+          {/* 顶部信息栏 */}
+          <div
+            style={{
+              display: 'flex',
+              padding: '16px',
+              backgroundColor: '#fafafa',
+              borderRadius: '8px',
+              marginBottom: '16px',
+            }}
+          >
+            <div
+              style={{
+                flex: 1,
+                textAlign: 'center',
+                borderRight: '1px solid #e8e8e8',
+              }}
+            >
+              <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>
+                {t('用户名')}
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 500 }}>
+                <strong>{username || '-'}</strong>
+              </div>
+            </div>
+            <div
+              style={{
+                flex: 1,
+                textAlign: 'center',
+                borderRight: '1px solid #e8e8e8',
+              }}
+            >
+              <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>
+                {t('开票金额')}
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#d93026' }}>
+                ¥{detailData.amount?.toFixed(2) || '0.00'}
+              </div>
+            </div>
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>
+                {t('状态')}
+              </div>
+              <div>{statusTag}</div>
+            </div>
+          </div>
+  
+          {/* 发票信息 */}
+          <div style={{ marginBottom: '16px', padding: '0 8px' }}>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: '12px' }}>
+              {t('发票信息')}
+            </div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '12px',
+                fontSize: 13,
+              }}
+            >
+              <div>
+                <span style={{ color: '#888', marginRight: '8px' }}>
+                  {t('发票抬头')}:
+                </span>
+                <span>{titleInfo.title || '-'}</span>
+              </div>
+              <div>
+                <span style={{ color: '#888', marginRight: '8px' }}>
+                  {t('税号')}:
+                </span>
+                <span>{titleInfo.uscc || '-'}</span>
+              </div>
+              <div>
+                <span style={{ color: '#888', marginRight: '8px' }}>
+                  {t('发票类型')}:
+                </span>
+                <span>
+                  {authTypeText} {invoiceTypeText}
+                </span>
+              </div>
+              <div>
+                <span style={{ color: '#888', marginRight: '8px' }}>
+                  {t('邮箱')}:
+                </span>
+                <span>{titleInfo.email || '-'}</span>
+              </div>
+              {titleInfo.company_address && (
+                <div>
+                  <span style={{ color: '#888', marginRight: '8px' }}>
+                    {t('公司地址')}:
+                  </span>
+                  <span>{titleInfo.company_address}</span>
+                </div>
+              )}
+              {titleInfo.company_phone && (
+                <div>
+                  <span style={{ color: '#888', marginRight: '8px' }}>
+                    {t('公司电话')}:
+                  </span>
+                  <span>{titleInfo.company_phone}</span>
+                </div>
+              )}
+              {titleInfo.bank_name && (
+                <div>
+                  <span style={{ color: '#888', marginRight: '8px' }}>
+                    {t('开户银行')}:
+                  </span>
+                  <span>{titleInfo.bank_name}</span>
+                </div>
+              )}
+              {titleInfo.bank_account && (
+                <div>
+                  <span style={{ color: '#888', marginRight: '8px' }}>
+                    {t('银行账号')}:
+                  </span>
+                  <span>{titleInfo.bank_account}</span>
+                </div>
+              )}
+            </div>
+          </div>
+  
+          {/* 关联充值记录 */}
+          <div>
+            <div
+              style={{
+                fontSize: 14,
+                marginBottom: '12px',
+                paddingLeft: '8px',
+                fontWeight: 600,
+              }}
+            >
+              {t('关联充值记录')}
+            </div>
+            <div style={{marginBottom: "15px"}}>
+              <Table
+                columns={orderColumns}
+                dataSource={detailData.orders || []}
+                rowKey='id'
+                pagination={false}
+                size='small'
+                empty={
+                  <Empty
+                    description={t('暂无关联充值记录')}
+                    style={{ padding: 20 }}
+                  />
+                }
+              />
+            </div>
+          </div>
+        </div>
+      );
+    };
   return (
     <div className='w-full max-w-7xl mx-auto px-2'>
       <div className='flex items-center justify-end'>
@@ -990,6 +1279,34 @@ const Invoice = () => {
           </div>
         </div>
       </Modal>
+
+       {/* 详情弹窗 */}
+            <Modal
+              title={t('开票详情')}
+              visible={showDetailModal}
+              onCancel={() => setShowDetailModal(false)}
+              footer={null}
+              width={700}
+              bodyStyle={{ maxHeight: '600px', overflow: 'auto' }}
+            >
+              {detailLoading ? (
+                <div style={{ textAlign: 'center', padding: '40px' }}>
+                  <div
+                    style={{
+                      width: 32,
+                      height: 32,
+                      border: '3px solid #f0f0f0',
+                      borderTopColor: '#1677ff',
+                      borderRadius: '50%',
+                      animation: 'semi-spin 0.6s infinite linear',
+                      margin: '0 auto',
+                    }}
+                  />
+                </div>
+              ) : (
+                detailModalContent()
+              )}
+            </Modal>
     </div>
   );
 };
