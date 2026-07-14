@@ -584,10 +584,10 @@ func (s *FinanceService) GetAllInvoices(req dto.InvoiceListRequest, pageInfo *co
 // ApproveInvoice 审批发票
 func (s *FinanceService) ApproveInvoice(id int, status string, remark string, invoiceUrl string) error {
 	return model.DB.Model(&model.InvoiceRecord{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"status":       status,
-		"remark":       remark,
-		"invoice_url":  invoiceUrl,
-		"updated_at":   time.Now(),
+		"status":      status,
+		"remark":      remark,
+		"invoice_url": invoiceUrl,
+		"updated_at":  time.Now(),
 	}).Error
 }
 
@@ -728,10 +728,14 @@ func (s *FinanceService) GetOrderStatistics(isAdmin bool, userId int) (*dto.Orde
 		TotalRefund float64
 		Count       int64
 	}
+	quotaPerUnit := float64(common.QuotaPerUnit)
 	refundQuery := fmt.Sprintf(`
-		SELECT COALESCE(SUM(ABS(quota) / %d), 0) as total_refund, COUNT(*) as count
+		SELECT COALESCE(SUM(ABS(quota) / %f), 0) as total_refund, COUNT(*) as count
 		FROM logs
-		WHERE type = 6 %s`, common.QuotaPerUnit, userCondition)
+		WHERE type = 6`, quotaPerUnit)
+	if userCondition != "" {
+		refundQuery += " " + userCondition
+	}
 	if isAdmin {
 		model.DB.Raw(refundQuery).Scan(&refundStats)
 	} else {
@@ -773,6 +777,137 @@ func (s *FinanceService) GetOrderStatistics(isAdmin bool, userId int) (*dto.Orde
 	}
 	stats.MonthAmount = monthStats.Amount
 	stats.MonthCount = monthStats.Count
+
+	return stats, nil
+}
+
+// ============================================
+// 订单图表相关方法
+// ============================================
+
+// GetOrderChartStatistics 获取订单图表统计数据（用于 Orders 页面图表）
+// 图表只显示"成功"状态的充值记录，且只受时间控件控制
+func (s *FinanceService) GetOrderChartStatistics(isAdmin bool, userId int, startTime, endTime int64, status string) (*dto.OrderChartStatistics, error) {
+	stats := &dto.OrderChartStatistics{}
+
+	// 图表只统计"成功"状态的充值记录
+	status = "success"
+
+	// 判断时间范围是否超过1年，决定按天还是按月聚合
+	const oneYearInSeconds = int64(365 * 24 * 60 * 60)
+	var groupByClause string
+	if endTime-startTime > oneYearInSeconds {
+		// 超过1年，按月聚合
+		if common.UsingPostgreSQL {
+			groupByClause = "DATE_TRUNC('month', TO_TIMESTAMP(create_time))::date"
+		} else if common.UsingSQLite {
+			groupByClause = "DATE(create_time, 'unixepoch', 'start of month')"
+		} else {
+			groupByClause = "DATE(FROM_UNIXTIME(create_time), '-01')"
+		}
+	} else {
+		// 1年以内，按天聚合
+		if common.UsingPostgreSQL {
+			groupByClause = "DATE_TRUNC('day', TO_TIMESTAMP(create_time))::date"
+		} else if common.UsingSQLite {
+			groupByClause = "DATE(create_time, 'unixepoch')"
+		} else {
+			groupByClause = "DATE(FROM_UNIXTIME(create_time))"
+		}
+	}
+
+	// 1. 充值趋势：按天/月统计金额和订单数（只统计成功订单）
+	var trendWhere string
+	var trendArgs []interface{}
+	if !isAdmin {
+		trendWhere = "WHERE user_id = ? AND status = 'success'"
+		trendArgs = append(trendArgs, userId)
+	} else {
+		trendWhere = "WHERE status = 'success'"
+	}
+	if startTime > 0 {
+		if trendWhere != "" {
+			trendWhere += " AND"
+		}
+		trendWhere += " create_time >= ?"
+		trendArgs = append(trendArgs, startTime)
+	}
+	if endTime > 0 {
+		if trendWhere != "" {
+			trendWhere += " AND"
+		}
+		trendWhere += " create_time <= ?"
+		trendArgs = append(trendArgs, endTime)
+	}
+
+	trendQuery := fmt.Sprintf(`
+		SELECT %s as date,
+		       COALESCE(SUM(money), 0) as amount,
+		       COUNT(*) as count
+		FROM top_ups
+		%s
+		GROUP BY date ORDER BY date`, groupByClause, trendWhere)
+
+	type trendRow struct {
+		Date   string  `db:"date"`
+		Amount float64 `db:"amount"`
+		Count  int     `db:"count"`
+	}
+
+	var trendRows []trendRow
+	model.DB.Raw(trendQuery, trendArgs...).Scan(&trendRows)
+
+	for _, row := range trendRows {
+		stats.Trend = append(stats.Trend, dto.TrendPoint{
+			Date:   row.Date,
+			Amount: row.Amount,
+			Count:  row.Count,
+		})
+	}
+
+	// 2. 用户类型分布：按 user_type 统计（只统计成功订单）
+	type userTypeRow struct {
+		UserType string  `db:"user_type"`
+		Amount   float64 `db:"amount"`
+		Count    int     `db:"count"`
+	}
+
+	var userTypeRows []userTypeRow
+	userTypeQuery := `
+		SELECT u.user_type, COALESCE(SUM(t.money), 0) as amount, COUNT(*) as count
+		FROM top_ups t
+		INNER JOIN users u ON t.user_id = u.id
+		WHERE t.status = 'success'`
+	var userTypeArgs []interface{}
+
+	if !isAdmin {
+		userTypeQuery += " AND t.user_id = ?"
+		userTypeArgs = append(userTypeArgs, userId)
+	}
+	if startTime > 0 {
+		userTypeQuery += " AND t.create_time >= ?"
+		userTypeArgs = append(userTypeArgs, startTime)
+	}
+	if endTime > 0 {
+		userTypeQuery += " AND t.create_time <= ?"
+		userTypeArgs = append(userTypeArgs, endTime)
+	}
+
+	userTypeQuery += " GROUP BY u.user_type"
+
+	model.DB.Raw(userTypeQuery, userTypeArgs...).Scan(&userTypeRows)
+
+	for _, row := range userTypeRows {
+		label := "个人用户"
+		if row.UserType == "1" {
+			label = "企业用户"
+		}
+		stats.UserTypeDistribution = append(stats.UserTypeDistribution, dto.UserTypeDistribution{
+			Label: label,
+			Value: row.Amount,
+			Count: row.Count,
+		})
+	}
 
 	return stats, nil
 }

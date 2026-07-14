@@ -530,3 +530,41 @@ func GetOrderStatistics(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": stats})
 }
+
+// GetOrderChartStatistics 获取订单图表数据
+// @Summary 获取订单图表数据
+// @Description 获取订单图表数据（充值趋势和用户类型分布）
+// @Tags finance
+// @Accept json
+// @Produce json
+// @Param start_time query int false "开始时间戳"
+// @Param end_time query int false "结束时间戳"
+// @Param status query string false "状态"
+// @Success 200 {object} dto.OrderChartStatistics
+// @Router /finance/orders/chart-data [get]
+// @Security ApiKeyAuth
+func GetOrderChartStatistics(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "未登录"})
+		return
+	}
+	if !model.IsFinanceAdmin(userId) {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无权限访问财务模块"})
+		return
+	}
+	isAdmin := model.IsAdmin(userId)
+
+	startTime, _ := strconv.ParseInt(c.Query("start_time"), 10, 64)
+	endTime, _ := strconv.ParseInt(c.Query("end_time"), 10, 64)
+	status := c.Query("status")
+
+	serviceInstance := service.GetFinanceService()
+	chartData, err := serviceInstance.GetOrderChartStatistics(isAdmin, userId, startTime, endTime, status)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": chartData})
+}
