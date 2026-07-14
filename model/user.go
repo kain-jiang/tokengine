@@ -21,8 +21,9 @@ const UserNameMaxLength = 20
 
 // 用户类型
 const (
-	PersonalType = 0 // 个人
-	CompanyType  = 1 // 企业
+	UnAuthType = 0 // 未认证
+	PersonalType = 1 // 个人
+	CompanyType  = 2 // 企业
 )
 
 // User if you add sensitive fields, don't forget to clean them in setupLogin function.
