@@ -226,3 +226,72 @@ type AutoReconciliationRequest struct {
 	Period    string `json:"period" binding:"required"`
 	ChannelId int    `json:"channel_id"` // 上游对账时指定渠道
 }
+
+// ============================================
+// 营收分析 DTO
+// ============================================
+
+// UserRevenueListRequest 用户营收列表请求
+type UserRevenueListRequest struct {
+	Keyword   string `form:"keyword"` // 用户名/昵称/邮箱
+	StartDate string `form:"start_date"`
+	EndDate   string `form:"end_date"`
+}
+
+// UserRevenueStats 用户营收统计
+type UserRevenueStats struct {
+	TotalTopupMoney  float64 `json:"total_topup_money"`  // 所有用户充值总额
+	TotalUsedMoney   float64 `json:"total_used_money"`   // 所有用户使用总额
+	TotalRemainMoney float64 `json:"total_remain_money"` // 所有用户剩余总额
+}
+
+// UserRevenueSummary 用户营收汇总
+type UserRevenueSummary struct {
+	Id               int     `json:"id"`
+	Username         string  `json:"username"`
+	DisplayName      string  `json:"display_name"`
+	TotalTopupMoney  float64 `json:"total_topup_money"`  // 充值总额
+	TotalUsedMoney   float64 `json:"total_used_money"`   // 使用总额
+	TotalRemainMoney float64 `json:"total_remain_money"` // 剩余总额
+	TokenRemain      int64   `json:"token_remain"`       // token 剩余额度
+	TokenUsed        int64   `json:"token_used"`         // token 使用额度
+	TokenTotal       int64   `json:"token_total"`        // token 总额度
+}
+
+// UserRevenueDetailRequest 用户营收详情请求
+type UserRevenueDetailRequest struct {
+	StartDate string `form:"start_date"` // YYYY-MM-DD
+	EndDate   string `form:"end_date"`   // YYYY-MM-DD
+}
+
+// UserRevenueDetailResponse 用户营收详情响应
+type UserRevenueDetailResponse struct {
+	UserId           int                     `json:"user_id"`
+	Username         string                  `json:"username"`
+	DisplayName      string                  `json:"display_name"`
+	TotalTopupMoney  float64                 `json:"total_topup_money"`  // 充值总额
+	TotalUsedMoney   float64                 `json:"total_used_money"`   // 使用总额
+	TotalRemainMoney float64                 `json:"total_remain_money"` // 剩余总额
+	TokenTotal       int64                   `json:"token_total"`        // 用户总 token
+	TokenUsed        int64                   `json:"token_used"`         // 使用 token
+	TokenRemain      int64                   `json:"token_remain"`       // 剩余 token
+	Trend            []*UserRevenueTrendItem `json:"trend"`              // 额度消耗趋势
+	ModelConsumption []*ModelConsumptionItem `json:"model_consumption"`  // 模型消耗排行
+}
+
+// UserRevenueTrendItem 用户营收趋势项
+type UserRevenueTrendItem struct {
+	Date       string  `json:"date"`        // 日期 YYYY-MM-DD
+	UsedMoney  float64 `json:"used_money"`  // 使用金额
+	UsedQuota  int64   `json:"used_quota"`  // 使用 token 数
+	TopupMoney float64 `json:"topup_money"` // 充值金额
+	TopupQuota int64   `json:"topup_quota"` // 充值 token 数
+	Count      int64   `json:"count"`       // 调用次数
+}
+
+// ModelConsumptionItem 模型消耗项
+type ModelConsumptionItem struct {
+	ModelName string `json:"model_name"` // 模型名称
+	Quota     int64  `json:"quota"`      // 消耗 token 数
+	Count     int64  `json:"count"`      // 调用次数
+}

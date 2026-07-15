@@ -46,6 +46,7 @@ import FinanceLayout from './pages/Finance/FinanceLayout';
 import FinanceDashboard from './pages/Finance/Dashboard';
 import FinanceOrders from './pages/Finance/Orders';
 import FinanceRevenue from './pages/Finance/Revenue';
+import FinanceRevenueDetail from './pages/Finance/revenue/Detail';
 import FinanceInvoices from './pages/Finance/Invoices';
 import FinanceReconciliation from './pages/Finance/Reconciliation';
 import FinanceSupplier from './pages/Finance/Supplier';
@@ -393,6 +394,12 @@ function App() {
               path='revenue'
               element={
                 <ErrorBoundary key='finance-revenue'><FinanceRevenue /></ErrorBoundary>
+              }
+            />
+            <Route
+              path='revenue/detail/:userId'
+              element={
+                <ErrorBoundary key='finance-revenue-detail'><FinanceRevenueDetail /></ErrorBoundary>
               }
             />
             <Route
