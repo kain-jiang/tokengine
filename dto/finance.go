@@ -226,3 +226,104 @@ type AutoReconciliationRequest struct {
 	Period    string `json:"period" binding:"required"`
 	ChannelId int    `json:"channel_id"` // 上游对账时指定渠道
 }
+
+// ============================================
+// 财务运营概览（Dashboard）相关 DTO - v3
+// ============================================
+
+// DashboardStats 统计指标（9个指标）
+type DashboardStats struct {
+	TotalUsers          int     `json:"total_users"`           // 用户数量
+	TotalEffectiveTopup float64 `json:"total_effective_topup"` // 有效充值金额
+	SuccessOrderCount   int64   `json:"success_order_count"`   // 成功订单数
+	TotalTokenCalls     int64   `json:"total_token_calls"`     // Token调用次数
+	WeekTopupAmount     float64 `json:"week_topup_amount"`     // 本周充值金额
+	WeekTokenCalls      int64   `json:"week_token_calls"`      // 本周Tokens调用次数
+	WeekRevenue         float64 `json:"week_revenue"`          // 本周营业收入
+	TopModelName        string  `json:"top_model_name"`        // 本周调用次数最多的模型名称
+	TopModelCallCount   int64   `json:"top_model_call_count"`  // 本周调用次数最多的模型调用次数
+}
+
+// UserTrendItem 用户注册趋势项
+type UserTrendItem struct {
+	Date  string `json:"date"`
+	Count int    `json:"count"`
+}
+
+// UserAuthDistribution 用户认证分布
+type UserAuthDistribution struct {
+	Unverified int `json:"unverified"` // 0: 未认证
+	Individual int `json:"individual"` // 1: 个人用户
+	Enterprise int `json:"enterprise"` // 2: 企业用户
+	Total      int `json:"total"`
+}
+
+// TopupTrendItem 充值趋势项
+type TopupTrendItem struct {
+	Date   string  `json:"date"`
+	Amount float64 `json:"amount"` // 充值金额
+	Count  int     `json:"count"`  // 订单数
+}
+
+// UserTypeTopupDist 用户类型充值分布
+type UserTypeTopupDist struct {
+	Unverified float64 `json:"unverified"` // 未认证用户充值
+	Individual float64 `json:"individual"` // 个人用户充值
+	Enterprise float64 `json:"enterprise"` // 企业用户充值
+}
+
+// ConsumptionTrendItem 消费趋势项
+type ConsumptionTrendItem struct {
+	Date         string  `json:"date"`
+	Cost         float64 `json:"cost"`          // 消耗金额
+	Tokens       int64   `json:"tokens"`        // Tokens消耗数量
+	RequestCount int     `json:"request_count"` // 请求次数
+}
+
+// PaymentModeTokensDist 付费方式Tokens分布
+type PaymentModeTokensDist struct {
+	PayAsYouGo   int64 `json:"pay_as_you_go"` // 按量付费Tokens
+	Subscription int64 `json:"subscription"`  // 订阅Tokens
+}
+
+// RevenueByUserItem 按用户维度的营收分析项
+type RevenueByUserItem struct {
+	UserID       int     `json:"user_id"`
+	Username     string  `json:"username"`
+	PayAsYouGo   float64 `json:"pay_as_you_go"` // 按量付费金额
+	Subscription float64 `json:"subscription"`  // 订阅金额
+	Total        float64 `json:"total"`         // 总金额
+}
+
+// RevenueByUserResponse 按用户营收分析响应
+type RevenueByUserResponse struct {
+	Items []RevenueByUserItem `json:"items"`
+	Total int64               `json:"total"`
+}
+
+// PaymentModeRevenueDist 付费方式收入分布
+type PaymentModeRevenueDist struct {
+	PayAsYouGo   float64 `json:"pay_as_you_go"` // 按量付费收入
+	Subscription float64 `json:"subscription"`  // 订阅收入
+}
+
+// SupplierTrendItem 渠道消费趋势项
+type SupplierTrendItem struct {
+	Date         string  `json:"date"`
+	Supplier     string  `json:"supplier"`      // 供应商名称
+	Tokens       int64   `json:"tokens"`        // Tokens消耗
+	RequestCount int     `json:"request_count"` // 请求次数
+	Cost         float64 `json:"cost"`          // 消费金额
+}
+
+// SupplierDist 渠道消费占比
+type SupplierDist struct {
+	Items []SupplierDistItem `json:"items"`
+}
+
+// SupplierDistItem 渠道消费占比项
+type SupplierDistItem struct {
+	Supplier string  `json:"supplier"` // 供应商名称
+	Cost     float64 `json:"cost"`     // 消费金额
+	Ratio    float64 `json:"ratio"`    // 占比（0-1）
+}

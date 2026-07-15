@@ -366,6 +366,18 @@ func SetApiRouter(router *gin.Engine) {
 			financeRoute.GET("/reconciliations", controller.GetReconciliations)
 			financeRoute.POST("/reconcile", controller.AutoReconcile)
 			financeRoute.POST("/report/daily", controller.GenerateDailyReport)
+			// 财务运营概览（Dashboard）v3 接口
+			financeRoute.GET("/dashboard/stats", controller.GetDashboardStats)
+			financeRoute.GET("/users/trend", controller.GetUsersTrend)
+			financeRoute.GET("/users/auth-distribution", controller.GetUsersAuthDistribution)
+			financeRoute.GET("/topup/trend", controller.GetTopupTrend)
+			financeRoute.GET("/topup/user-type-dist", controller.GetTopupUserTypeDistribution)
+			financeRoute.GET("/consumption/trend", controller.GetConsumptionTrend)
+			financeRoute.GET("/payment-mode-tokens-dist", controller.GetPaymentModeTokensDistribution)
+			financeRoute.GET("/revenue-by-user", controller.GetRevenueByUser)
+			financeRoute.GET("/payment-mode-revenue-dist", controller.GetPaymentModeRevenueDistribution)
+			financeRoute.GET("/supplier/trend", controller.GetSupplierTrend)
+			financeRoute.GET("/supplier-dist", controller.GetSupplierDistribution)
 		}
 
 		logRoute.Use(middleware.CORS(), middleware.CriticalRateLimit())
