@@ -21,7 +21,7 @@ const UserNameMaxLength = 20
 
 // 用户类型
 const (
-	UnAuthType = 0 // 未认证
+	UnAuthType   = 0 // 未认证
 	PersonalType = 1 // 个人
 	CompanyType  = 2 // 企业
 )
@@ -60,7 +60,7 @@ type User struct {
 	Remark           string         `json:"remark,omitempty" gorm:"type:varchar(255)" validate:"max=255"`
 	StripeCustomer   string         `json:"stripe_customer" gorm:"type:varchar(64);column:stripe_customer;index"`
 	TelePhone        *string        `json:"telephone" gorm:"type:varchar(11);column:telephone;unique"` // 手机号
-	UserType         int            `json:"user_type" gorm:"type:smallint;default:0;column:user_type"` // 用户类型 0 个人, 1 企业
+	UserType         int            `json:"user_type" gorm:"type:smallint;default:0;column:user_type"` //   0 未认证    1 个人    2 企业
 }
 
 func (user *User) ToBaseUser() *UserBase {
