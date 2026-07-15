@@ -110,7 +110,6 @@ func (auth *RealNameAuth) ToAuth(operation string) {
 		if auth.AuthType == CompanyAuth {
 			userType = CompanyType
 		}
-		common.SysLog(fmt.Sprintf("用户【%d】更新用户类型为 %d", auth.UserId, userType))
 		err = UpdateUserType(auth.UserId, userType)
 		if err == nil {
 			common.SysLog(fmt.Sprintf("用户【%d】更新用户类型成功", auth.UserId))
