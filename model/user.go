@@ -265,7 +265,7 @@ func GetAllUsers(pageInfo *common.PageInfo) (users []*User, total int64, err err
 	return users, total, nil
 }
 
-func SearchUsers(keyword string, group string, startIdx int, num int) ([]*User, int64, error) {
+func SearchUsers(keyword string, group string, user_type string, startIdx int, num int) ([]*User, int64, error) {
 	var users []*User
 	var total int64
 	var err error
@@ -310,6 +310,9 @@ func SearchUsers(keyword string, group string, startIdx int, num int) ([]*User, 
 		}
 	}
 
+	if user_type != "" {
+		query = query.Where("user_type = ?", user_type)
+	}
 	// 获取总数
 	err = query.Count(&total).Error
 	if err != nil {
