@@ -514,7 +514,7 @@ export default function FinanceOrders() {
             show: false,
           },
           data: pieData,
-          color: ['#f5c542', '#1890ff'],
+          color: ['#E8A87C', '#f5c542', '#1890ff'],
         },
       ],
     };
