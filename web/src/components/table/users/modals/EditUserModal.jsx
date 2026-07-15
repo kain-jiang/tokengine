@@ -325,24 +325,34 @@ const EditUserModal = (props) => {
                       />
                     </Col>
 
+                    <Col span={12}>
+                      <Form.Input
+                        field='phone'
+                        label={t('手机号')}
+                        placeholder={t('请输入手机号')}
+                        showClear
+                      />
+                    </Col>
+
+                    <Col span={12}>
+                      <Form.Select
+                        field='user_type'
+                        label={t('用户类型')}
+                        placeholder={t('请选择用户类型')}
+                        optionList={[
+                          { label: t('未认证'), value: 0 },
+                          { label: t('个人用户'), value: 1 },
+                          { label: t('企业用户'), value: 2 },
+                        ]}
+                      />
+                    </Col>
+
                     <Col span={24}>
                       <Form.Input
                         field='remark'
                         label={t('备注')}
                         placeholder={t('请输入备注（仅管理员可见）')}
                         showClear
-                      />
-                    </Col>
-
-                    <Col span={24}>
-                      <Form.Select
-                        field='user_type'
-                        label={t('用户类型')}
-                        placeholder={t('请选择用户类型')}
-                        optionList={[
-                          { label: t('个人用户'), value: 0 },
-                          { label: t('企业用户'), value: 1 },
-                        ]}
                       />
                     </Col>
                   </Row>
