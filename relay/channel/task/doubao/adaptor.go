@@ -168,7 +168,6 @@ func (a *TaskAdaptor) EstimateBilling(c *gin.Context, info *relaycommon.RelayInf
 	otherRatios["resolution"] = resRatio
 
 	// 如果有视频输入，添加视频输入折扣
-	// 使用原始模型名称（可能是SD简化格式），GetVideoInputRatio已支持两种格式
 	if hasVideo {
 		if videoRatio, ok := GetVideoInputRatio(info.OriginModelName, resolution); ok {
 			otherRatios["video_input"] = videoRatio
@@ -223,10 +222,6 @@ func (a *TaskAdaptor) BuildRequestBody(c *gin.Context, info *relaycommon.RelayIn
 	} else {
 		info.UpstreamModelName = body.Model
 	}
-
-	// 将SD简化模型名称转换为系统原生模型名称后再发送给上游
-	body.Model = ConvertModelName(body.Model)
-
 	data, err := common.Marshal(body)
 	if err != nil {
 		return nil, err
@@ -319,36 +314,11 @@ func (a *TaskAdaptor) FetchTask(baseUrl, key string, body map[string]any, proxy 
 }
 
 func (a *TaskAdaptor) GetModelList() []string {
-	// 返回系统原生模型 + SD简化模型，支持两种命名格式
-	return append(ModelList, SdModelList...)
+	return ModelList
 }
 
 func (a *TaskAdaptor) GetChannelName() string {
 	return ChannelName
-}
-
-// ConvertModelName 将SD简化模型名称转换为系统原生模型名称
-// 如果传入的模型名称已经是系统原生格式，则原样返回
-func ConvertModelName(modelName string) string {
-	if systemModel, ok := SdToSystemModelMap[modelName]; ok {
-		return systemModel
-	}
-	// 检查是否已经是系统原生模型
-	for _, m := range ModelList {
-		if m == modelName {
-			return modelName
-		}
-	}
-	// 如果都不匹配，返回原名称（让上游处理）
-	return modelName
-}
-
-// GetSdModelName 将系统原生模型名称转换为SD简化模型名称
-func GetSdModelName(modelName string) string {
-	if sdName, ok := SystemToSdModelMap[modelName]; ok {
-		return sdName
-	}
-	return modelName
 }
 
 func (a *TaskAdaptor) convertToRequestPayload(req *relaycommon.TaskSubmitReq) (*requestPayload, error) {
