@@ -22,13 +22,13 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import * as echarts from 'echarts';
 import {
-  DatePicker, Table, Typography, Button, Select, Input, Badge, Space, Spin, Empty,
+  DatePicker, Table, Typography, Button, Select, Input, Badge, Space, Spin, Empty, Tabs, TabPane,
 } from '@douyinfe/semi-ui';
 import {
   IconMoneyExchangeStroked, IconCoinMoneyStroked, IconTickCircle, IconClockStroked,
 } from '@douyinfe/semi-icons';
 import { IllustrationNoResult, IllustrationNoResultDark } from '@douyinfe/semi-illustrations';
-import { API, timestamp2string, showError } from '../../helpers';
+import { API, timestamp2string, showError, modelColorMap, modelToColor, renderQuota, renderNumber } from '../../helpers';
 import { formatMoney } from './utils';
 import { createCardProPagination } from '../../helpers/utils';
 import { useIsMobile } from '../../hooks/common/useIsMobile';
@@ -67,12 +67,20 @@ const StatCard = ({ children, icon, color, title }) => (
   </div>
 );
 
-// 格式化日期为 MM-DD
+// 格式化日期为 MM-DD 或 MM-DD HH:MM（保留小时信息）
 const formatDateLabel = (dateStr) => {
   if (!dateStr) return '';
   if (dateStr.includes('T')) {
     dateStr = dateStr.split('T')[0];
   }
+  // 检查是否包含小时信息（如 "2024-01-15 14:00"）
+  const spaceParts = dateStr.split(' ');
+  if (spaceParts.length === 2) {
+    // 有小时信息，返回 MM-DD HH:MM
+    const dateParts = spaceParts[0].split('-');
+    return `${dateParts[1]}-${dateParts[2]} ${spaceParts[1]}`;
+  }
+  // 只有日期，返回 MM-DD
   const parts = dateStr.split('-');
   if (parts.length === 3) {
     return `${parts[1]}-${parts[2]}`;
@@ -124,6 +132,18 @@ export default function FinanceDashboard() {
   // 有效充值趋势指标切换
   const [trendMetric, setTrendMetric] = useState('amount'); // 'amount' | 'count'
 
+  // 注册用户趋势指标切换
+  const [usersTrendMetric, setUsersTrendMetric] = useState('daily'); // 'daily' | 'cumulative'
+
+  // 渠道消费趋势指标切换
+  const [supplierTrendMetric, setSupplierTrendMetric] = useState('tokens'); // 'tokens' | 'count' | 'cost'
+
+  // 消费趋势 Tabs（模型数据分析）
+  const [activeChartTab, setActiveChartTab] = useState('1');
+
+  // 模型数据分析图表数据（来自 /api/dashboard/board/chart-data）
+  const [chartData, setChartData] = useState(null);
+
   const [chartLoading, setChartLoading] = useState(false);
 
   // 图表实例引用
@@ -137,6 +157,14 @@ export default function FinanceDashboard() {
   const supplierTrendChartRef = useRef(null);
   const supplierDistChartRef = useRef(null);
 
+  // 模型数据分析图表引用（6 个子图表）
+  const quotaDistChartRef = useRef(null);        // 1. 消耗分布 - 堆叠柱状图
+  const callTrendChartRef = useRef(null);         // 2. 调用趋势 - 折线图
+  const callDistChartRef = useRef(null);          // 3. 调用次数分布 - 环形饼图
+  const callRankChartRef = useRef(null);          // 4. 调用次数排行 - 水平柱状图
+  const userQuotaRankChartRef = useRef(null);     // 5. 用户消耗排行 - 水平柱状图
+  const userQuotaTrendChartRef = useRef(null);    // 6. 用户消耗趋势 - 面积图
+
   const chartsInstance = useRef({
     usersTrend: null,
     authDist: null,
@@ -147,6 +175,13 @@ export default function FinanceDashboard() {
     revenuePie: null,
     supplierTrend: null,
     supplierDist: null,
+    // 模型数据分析图表
+    quotaDist: null,
+    callTrend: null,
+    callDist: null,
+    callRank: null,
+    userQuotaRank: null,
+    userQuotaTrend: null,
   });
 
   // DOM 引用映射：将图表名称映射到对应的 DOM ref
@@ -232,6 +267,15 @@ export default function FinanceDashboard() {
       if (paymentModeRevenueDistRes.data?.success) setPaymentModeRevenueDist(paymentModeRevenueDistRes.data?.data || {});
       if (supplierTrendRes.data?.success) setSupplierTrend(supplierTrendRes.data?.data || []);
       if (supplierDistRes.data?.success) setSupplierDist(supplierDistRes.data?.data || { items: [] });
+
+      // 获取模型数据分析数据（来自 dashboard board）
+      const dashboardBoardRes = await API.get('/api/dashboard/board/chart-data', {
+        params: {
+          start_timestamp: startTime,
+          end_timestamp: endTime,
+        },
+      });
+      if (dashboardBoardRes.data?.success) setChartData(dashboardBoardRes.data?.data || null);
     } catch (error) {
       console.error('获取图表数据失败:', error);
       showError(t('获取图表数据失败'));
@@ -375,18 +419,20 @@ export default function FinanceDashboard() {
       },
       legend: {
         orient: 'horizontal',
-        bottom: '5%',
+        bottom: 0,
+        left: 'center',
         data: pieData.map(item => item.name),
         textStyle: {
           fontSize: 12,
           color: 'rgba(0, 0, 0, 0.4)',
         },
+        padding: [0, 0, 0, 0],
       },
       series: [{
         name: title,
         type: 'pie',
-        radius: ['40%', '70%'],
-        center: ['50%', '55%'],
+        radius: ['35%', '65%'],
+        center: ['50%', '45%'],
         avoidLabelOverlap: false,
         itemStyle: {
           borderRadius: 4,
@@ -405,8 +451,17 @@ export default function FinanceDashboard() {
 
   // 渲染各图表
   useEffect(() => {
-    renderLineChart('usersTrend', usersTrendChartRef.current, usersTrend, t('注册用户趋势'), 'count');
-  }, [usersTrend, t]);
+    const valueLabel = usersTrendMetric === 'daily' ? t('新增用户') : t('累计用户');
+    let dataToRender = usersTrend;
+    if (usersTrendMetric === 'cumulative') {
+      dataToRender = usersTrend.reduce((acc, item, index) => {
+        const cumulative = index === 0 ? item.count : acc[index - 1].count + item.count;
+        acc.push({ ...item, count: cumulative });
+        return acc;
+      }, []);
+    }
+    renderLineChart('usersTrend', usersTrendChartRef.current, dataToRender, t('注册用户趋势'), 'count', '', valueLabel);
+  }, [usersTrend, t, usersTrendMetric]);
 
   useEffect(() => {
     const authData = [
@@ -428,7 +483,7 @@ export default function FinanceDashboard() {
       { name: t('个人用户'), value: topupUserTypeDist.individual || 0 },
       { name: t('企业用户'), value: topupUserTypeDist.enterprise || 0 },
     ].filter(item => item.value > 0);
-    renderPieChart('topupDist', topupDistChartRef.current, distData, t('三类用户充值分布'));
+    renderPieChart('topupDist', topupDistChartRef.current, distData, t('用户充值分布'));
   }, [topupUserTypeDist, t]);
 
   useEffect(() => {
@@ -451,7 +506,7 @@ export default function FinanceDashboard() {
     renderPieChart('revenuePie', revenuePieChartRef.current, revenueData, t('付费方式收入占比'));
   }, [paymentModeRevenueDist, t]);
 
-  // 渠道消费趋势：需要按日期聚合（同一日期可能有多个渠道）
+  // 渠道消费趋势：按渠道分组的消费数据（多系列折线图）
   useEffect(() => {
     if (!supplierTrend?.length) {
       if (chartsInstance.current.supplierTrend) {
@@ -459,19 +514,131 @@ export default function FinanceDashboard() {
       }
       return;
     }
-    // 按日期聚合总消费
-    const dateMap = {};
+    // 按日期和渠道聚合
+    const dateChannelMap = {};
+    const channelSet = new Set();
     supplierTrend.forEach(item => {
-      if (!dateMap[item.date]) {
-        dateMap[item.date] = { date: item.date, cost: 0, tokens: 0, request_count: 0 };
+      if (!dateChannelMap[item.date]) {
+        dateChannelMap[item.date] = {};
       }
-      dateMap[item.date].cost += item.cost || 0;
-      dateMap[item.date].tokens += item.tokens || 0;
-      dateMap[item.date].request_count += item.request_count || 0;
+      const channel = item.supplier || '未知';
+      channelSet.add(channel);
+      if (!dateChannelMap[item.date][channel]) {
+        dateChannelMap[item.date][channel] = { cost: 0, tokens: 0, request_count: 0 };
+      }
+      dateChannelMap[item.date][channel].cost += item.cost || 0;
+      dateChannelMap[item.date][channel].tokens += item.tokens || 0;
+      dateChannelMap[item.date][channel].request_count += item.request_count || 0;
     });
-    const aggregatedTrend = Object.values(dateMap).sort((a, b) => a.date.localeCompare(b.date));
-    renderLineChart('supplierTrend', supplierTrendChartRef.current, aggregatedTrend, t('渠道消费趋势'), 'cost', '¥');
-  }, [supplierTrend, t]);
+    
+    const dates = Object.keys(dateChannelMap).sort();
+    const channels = Array.from(channelSet).sort();
+    
+    let valueLabel, dataKey, yAxisName;
+    if (supplierTrendMetric === 'tokens') {
+      valueLabel = t('消耗Tokens');
+      dataKey = 'tokens';
+      yAxisName = 'Tokens';
+    } else if (supplierTrendMetric === 'count') {
+      valueLabel = t('请求次数');
+      dataKey = 'request_count';
+      yAxisName = '次数';
+    } else {
+      valueLabel = t('消费金额');
+      dataKey = 'cost';
+      yAxisName = '金额 (¥)';
+    }
+    
+    if (!supplierTrendChartRef.current) return;
+    if (!chartsInstance.current.supplierTrend) {
+      chartsInstance.current.supplierTrend = echarts.init(supplierTrendChartRef.current);
+    }
+    
+    const option = {
+      title: {
+        text: t('渠道消费趋势'),
+        left: 'center',
+        top: 8,
+        textStyle: {
+          fontSize: 14,
+          fontWeight: 400,
+          color: 'rgba(0, 0, 0, 0.4)',
+          fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
+          textTransform: 'uppercase',
+          letterSpacing: 0.055,
+        },
+      },
+      tooltip: {
+        show: true,
+        trigger: 'axis',
+        formatter: function(params) {
+          if (!params || !params.length) return '';
+          let result = `<strong>${params[0].name}</strong><br/>`;
+          const isCost = supplierTrendMetric === 'cost';
+          params.forEach(p => {
+            result += `${p.marker}${p.seriesName}: ${isCost ? '¥' + p.value.toFixed(2) : p.value.toFixed(0)}<br/>`;
+          });
+          return result;
+        },
+      },
+      legend: {
+        orient: 'horizontal',
+        bottom: '5%',
+        left: 'center',
+        data: channels,
+        textStyle: {
+          fontSize: 12,
+          color: 'rgba(0, 0, 0, 0.4)',
+        },
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '15%',
+        top: 45,
+        containLabel: true,
+      },
+      xAxis: {
+        type: 'category',
+        data: dates,
+        axisLabel: {
+          formatter: function(value) {
+            if (value.includes('T')) value = value.split('T')[0];
+            const parts = value.split('-');
+            if (parts.length === 3) return `${parts[1]}-${parts[2]}`;
+            return value;
+          },
+          rotate: dates.length > 15 ? 45 : 0,
+          interval: 0,
+        },
+      },
+      yAxis: {
+        type: 'value',
+        name: valueLabel,
+        position: 'left',
+        axisLabel: {
+          formatter: '{value}',
+        },
+      },
+      series: channels.map((channel, index) => ({
+        name: channel,
+        type: 'line',
+        smooth: true,
+        data: dates.map(date => dateChannelMap[date][channel]?.[dataKey] || 0),
+        itemStyle: {
+          color: modelColorMap?.[channel] || pieColors[index % pieColors.length],
+        },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: (modelColorMap?.[channel] || pieColors[index % pieColors.length]) + '4D' },
+            { offset: 1, color: (modelColorMap?.[channel] || pieColors[index % pieColors.length]) + '0D' },
+          ]),
+        },
+      })),
+    };
+    
+    chartsInstance.current.supplierTrend.setOption(option);
+  }, [supplierTrend, t, supplierTrendMetric]);
 
   useEffect(() => {
     const distData = (supplierDist.items || []).map(item => ({
@@ -480,6 +647,318 @@ export default function FinanceDashboard() {
     })).filter(item => item.value > 0);
     renderPieChart('supplierDist', supplierDistChartRef.current, distData, t('渠道消费占比'));
   }, [supplierDist, t]);
+
+  // ========== 模型数据分析 - 6 个子图表渲染 ==========
+
+  // 1. 消耗分布 - 堆叠柱状图
+  useEffect(() => {
+    if (!chartData?.quota_distribution?.length || activeChartTab !== '1') {
+      if (chartsInstance.current.quotaDist) {
+        chartsInstance.current.quotaDist.setOption({ series: [{ data: [] }] });
+      }
+      return;
+    }
+
+    const data = chartData.quota_distribution;
+    // 提取所有唯一模型
+    const modelSet = new Set();
+    data.forEach(item => item.model && modelSet.add(item.model));
+    const modelList = Array.from(modelSet);
+
+    // 构建每个模型的时间序列数据
+    const modelData = {};
+    modelList.forEach(model => { modelData[model] = {}; });
+    data.forEach(item => {
+      if (!modelData[item.model]) { modelData[item.model] = {}; }
+      modelData[item.model][item.time] = item.raw_quota || 0;
+    });
+
+    // 提取所有唯一时间点并排序
+    const timeSet = new Set();
+    data.forEach(item => timeSet.add(item.time));
+    const times = Array.from(timeSet).sort();
+
+    // 获取消耗标签
+    const statusStr = localStorage.getItem('status');
+    let symbol = '$';
+    try {
+      if (statusStr) {
+        const s = JSON.parse(statusStr);
+        const quotaDisplayType = localStorage.getItem('quota_display_type') || 'USD';
+        if (quotaDisplayType === 'CNY') symbol = '¥';
+        else if (quotaDisplayType === 'CUSTOM') symbol = s?.custom_currency_symbol || '¤';
+      }
+    } catch (e) {}
+
+    if (!chartsInstance.current.quotaDist) {
+      chartsInstance.current.quotaDist = echarts.init(quotaDistChartRef.current);
+    }
+
+    chartsInstance.current.quotaDist.setOption({
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      legend: {
+        data: modelList,
+        top: 5,
+        textStyle: { fontSize: 10, color: 'rgba(0, 0, 0, 0.5)' }
+      },
+      grid: { left: '3%', right: '4%', bottom: '3%', top: 35, containLabel: true },
+      xAxis: {
+        type: 'category',
+        data: times.map(formatDateLabel),
+        axisLabel: { rotate: 45, fontSize: 10 }
+      },
+      yAxis: {
+        type: 'value',
+        name: `消耗 (${symbol})`,
+        axisLabel: { fontSize: 10 }
+      },
+      series: modelList.map(model => ({
+        name: model,
+        type: 'bar',
+        stack: 'total',
+        emphasis: { focus: 'series' },
+        data: times.map(time => modelData[model][time] || 0),
+        itemStyle: { color: modelToColor(model) },
+      })),
+    });
+  }, [chartData?.quota_distribution, activeChartTab]);
+
+  // 2. 调用趋势 - 折线图
+  useEffect(() => {
+    if (!chartData?.call_trend?.length || activeChartTab !== '2') {
+      if (chartsInstance.current.callTrend) {
+        chartsInstance.current.callTrend.setOption({ series: [{ data: [] }] });
+      }
+      return;
+    }
+
+    const data = chartData.call_trend;
+    const dates = data.map(item => formatDateLabel(item.time));
+    const counts = data.map(item => item.count || 0);
+
+    if (!chartsInstance.current.callTrend) {
+      chartsInstance.current.callTrend = echarts.init(callTrendChartRef.current);
+    }
+
+    chartsInstance.current.callTrend.setOption({
+      tooltip: { trigger: 'axis' },
+      grid: { left: '3%', right: '4%', bottom: '3%', top: 15, containLabel: true },
+      xAxis: {
+        type: 'category',
+        data: dates,
+        axisLabel: { rotate: 45, fontSize: 10 }
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: { fontSize: 10 }
+      },
+      series: [{
+        type: 'line',
+        smooth: true,
+        data: counts,
+        itemStyle: { color: '#1890ff' },
+        areaStyle: { opacity: 0.3 },
+      }],
+    });
+  }, [chartData?.call_trend, activeChartTab]);
+
+  // 3. 调用次数分布 - 环形饼图
+  useEffect(() => {
+    if (!chartData?.call_distribution?.length || activeChartTab !== '3') {
+      if (chartsInstance.current.callDist) {
+        chartsInstance.current.callDist.setOption({ series: [{ data: [] }] });
+      }
+      return;
+    }
+
+    const data = chartData.call_distribution;
+    const pieData = data.map(item => ({ name: item.model, value: item.count || 0 }));
+
+    if (!chartsInstance.current.callDist) {
+      chartsInstance.current.callDist = echarts.init(callDistChartRef.current);
+    }
+
+    chartsInstance.current.callDist.setOption({
+      tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+      legend: { orient: 'horizontal', top: '5%', left: 'center', textStyle: { fontSize: 12 } },
+      series: [{
+        type: 'pie',
+        radius: ['40%', '70%'],
+        center: ['50%', '55%'],
+        avoidLabelOverlap: false,
+        itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
+        label: { show: false },
+        labelLine: { show: false },
+        data: pieData,
+        color: data.map((_, i) => pieColors[i % pieColors.length]),
+      }],
+    });
+  }, [chartData?.call_distribution, activeChartTab]);
+
+  // 4. 调用次数排行 - 水平柱状图
+  useEffect(() => {
+    if (!chartData?.call_rank?.length || activeChartTab !== '4') {
+      if (chartsInstance.current.callRank) {
+        chartsInstance.current.callRank.setOption({ series: [{ data: [] }] });
+      }
+      return;
+    }
+
+    const data = [...chartData.call_rank].sort((a, b) => (b.count || 0) - (a.count || 0)).slice(0, 10);
+
+    if (!chartsInstance.current.callRank) {
+      chartsInstance.current.callRank = echarts.init(callRankChartRef.current);
+    }
+
+    chartsInstance.current.callRank.setOption({
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      grid: { left: '3%', right: '10%', bottom: '3%', top: 10, containLabel: true },
+      xAxis: {
+        type: 'value',
+        axisLabel: { fontSize: 10, formatter: v => renderNumber(v) }
+      },
+      yAxis: {
+        type: 'category',
+        data: data.map(item => item.model),
+        axisLabel: { fontSize: 10 }
+      },
+      series: [{
+        type: 'bar',
+        data: data.map((item, i) => ({
+          value: item.count || 0,
+          itemStyle: { color: pieColors[i % pieColors.length] },
+        })),
+        label: { show: true, position: 'right', fontSize: 10, formatter: v => renderNumber(v.value) },
+      }],
+    });
+  }, [chartData?.call_rank, activeChartTab]);
+
+  // 5. 用户消耗排行 - 水平柱状图
+  useEffect(() => {
+    if (!chartData?.user_quota_rank?.length || activeChartTab !== '5') {
+      if (chartsInstance.current.userQuotaRank) {
+        chartsInstance.current.userQuotaRank.setOption({ series: [{ data: [] }] });
+      }
+      return;
+    }
+
+    const data = [...chartData.user_quota_rank].sort((a, b) => (b.raw_quota || 0) - (a.raw_quota || 0)).slice(0, 10);
+    
+    const statusStr = localStorage.getItem('status');
+    let symbol = '$';
+    try {
+      if (statusStr) {
+        const s = JSON.parse(statusStr);
+        const quotaDisplayType = localStorage.getItem('quota_display_type') || 'USD';
+        if (quotaDisplayType === 'CNY') symbol = '¥';
+        else if (quotaDisplayType === 'CUSTOM') symbol = s?.custom_currency_symbol || '¤';
+      }
+    } catch (e) {}
+
+    if (!chartsInstance.current.userQuotaRank) {
+      chartsInstance.current.userQuotaRank = echarts.init(userQuotaRankChartRef.current);
+    }
+
+    chartsInstance.current.userQuotaRank.setOption({
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: params => {
+          const p = params[0];
+          return `${p.name}<br/>${symbol}${(p.value || 0).toFixed(4)}`;
+        }
+      },
+      grid: { left: '3%', right: '10%', bottom: '3%', top: 10, containLabel: true },
+      xAxis: {
+        type: 'value',
+        axisLabel: { fontSize: 10, formatter: v => `${symbol}${v.toFixed(2)}` }
+      },
+      yAxis: {
+        type: 'category',
+        data: data.map(item => item.user || item.username || '未知用户'),
+        axisLabel: { fontSize: 10 }
+      },
+      series: [{
+        type: 'bar',
+        data: data.map((item, i) => ({
+          value: item.raw_quota || 0,
+          name: item.user || item.username,
+          itemStyle: { color: pieColors[i % pieColors.length] },
+        })),
+        label: { show: true, position: 'right', fontSize: 10, formatter: params => `${symbol}${(params.value || 0).toFixed(4)}` },
+      }],
+    });
+  }, [chartData?.user_quota_rank, activeChartTab]);
+
+  // 6. 用户消耗趋势 - 面积图
+  useEffect(() => {
+    if (!chartData?.user_quota_trend?.length || activeChartTab !== '6') {
+      if (chartsInstance.current.userQuotaTrend) {
+        chartsInstance.current.userQuotaTrend.setOption({ series: [{ data: [] }] });
+      }
+      return;
+    }
+
+    const data = chartData.user_quota_trend;
+    
+    // 按用户分组
+    const userMap = {};
+    data.forEach(item => {
+      if (!userMap[item.user]) { userMap[item.user] = {}; }
+      userMap[item.user][item.time] = item.raw_quota || 0;
+    });
+
+    const users = Object.keys(userMap).slice(0, 5); // 最多显示前5个用户
+    const timeSet = new Set();
+    data.forEach(item => timeSet.add(item.time));
+    const times = Array.from(timeSet).sort();
+    
+    const statusStr = localStorage.getItem('status');
+    let symbol = '$';
+    try {
+      if (statusStr) {
+        const s = JSON.parse(statusStr);
+        const quotaDisplayType = localStorage.getItem('quota_display_type') || 'USD';
+        if (quotaDisplayType === 'CNY') symbol = '¥';
+        else if (quotaDisplayType === 'CUSTOM') symbol = s?.custom_currency_symbol || '¤';
+      }
+    } catch (e) {}
+
+    if (!chartsInstance.current.userQuotaTrend) {
+      chartsInstance.current.userQuotaTrend = echarts.init(userQuotaTrendChartRef.current);
+    }
+
+    chartsInstance.current.userQuotaTrend.setOption({
+      tooltip: {
+        trigger: 'axis',
+        formatter: params => {
+          let res = `${formatDateLabel(params[0].name)}<br/>`;
+          params.forEach(p => { res += `${p.marker}${p.seriesName}: ${symbol}${p.value.toFixed(4)}<br/>`; });
+          return res;
+        }
+      },
+      legend: { data: users, top: 5, textStyle: { fontSize: 10 } },
+      grid: { left: '3%', right: '4%', bottom: '3%', top: 35, containLabel: true },
+      xAxis: {
+        type: 'category',
+        data: times.map(formatDateLabel),
+        axisLabel: { rotate: 45, fontSize: 10 }
+      },
+      yAxis: {
+        type: 'value',
+        name: `消耗 (${symbol})`,
+        axisLabel: { fontSize: 10, formatter: v => `${symbol}${v.toFixed(2)}` }
+      },
+      series: users.map((user, i) => ({
+        name: user,
+        type: 'line',
+        smooth: true,
+        data: times.map(time => userMap[user][time] || 0),
+        itemStyle: { color: pieColors[i % pieColors.length] },
+        areaStyle: { opacity: 0.2 },
+      })),
+    });
+  }, [chartData?.user_quota_trend, activeChartTab]);
 
   // 窗口大小变化时调整图表
   useEffect(() => {
@@ -686,10 +1165,65 @@ export default function FinanceDashboard() {
             </div>
             <div ref={topupTrendChartRef} style={{ width: '100%', height: 240 }} />
           </div>
+        ) : leftTitle === '注册用户趋势' ? (
+          <div style={{ position: 'relative' }}>
+            <div style={{ position: 'absolute', right: 16, top: 8, zIndex: 10, display: 'flex', gap: 2 }}>
+              <Button
+                size='small'
+                theme={usersTrendMetric === 'daily' ? 'solid' : 'light'}
+                type='primary'
+                onClick={() => setUsersTrendMetric('daily')}
+                style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
+              >
+                {t('每日注册用户数')}
+              </Button>
+              <Button
+                size='small'
+                theme={usersTrendMetric === 'cumulative' ? 'solid' : 'light'}
+                type='primary'
+                onClick={() => setUsersTrendMetric('cumulative')}
+                style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
+              >
+                {t('累计注册用户数')}
+              </Button>
+            </div>
+            <div ref={usersTrendChartRef} style={{ width: '100%', height: 240 }} />
+          </div>
+        ) : leftTitle === '渠道消费趋势' ? (
+          <div style={{ position: 'relative' }}>
+            <div style={{ position: 'absolute', right: 16, top: 8, zIndex: 10, display: 'flex', gap: 2 }}>
+              <Button
+                size='small'
+                theme={supplierTrendMetric === 'tokens' ? 'solid' : 'light'}
+                type='primary'
+                onClick={() => setSupplierTrendMetric('tokens')}
+                style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
+              >
+                {t('消耗Tokens')}
+              </Button>
+              <Button
+                size='small'
+                theme={supplierTrendMetric === 'count' ? 'solid' : 'light'}
+                type='primary'
+                onClick={() => setSupplierTrendMetric('count')}
+                style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
+              >
+                {t('请求次数')}
+              </Button>
+              <Button
+                size='small'
+                theme={supplierTrendMetric === 'cost' ? 'solid' : 'light'}
+                type='primary'
+                onClick={() => setSupplierTrendMetric('cost')}
+                style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
+              >
+                {t('消费金额')}
+              </Button>
+            </div>
+            <div ref={supplierTrendChartRef} style={{ width: '100%', height: 240 }} />
+          </div>
         ) : (
-          <div ref={leftTitle === '注册用户趋势' ? usersTrendChartRef :
-                         leftTitle === '消费趋势' ? consumptionTrendChartRef :
-                         leftTitle === '渠道消费趋势' ? supplierTrendChartRef : null}
+          <div ref={leftTitle === '消费趋势' ? consumptionTrendChartRef : null}
                 style={{ width: '100%', height: 240 }} />
         )}
       </div>
@@ -703,7 +1237,7 @@ export default function FinanceDashboard() {
         minHeight: 280,
       }}>
         <div ref={rightTitle === '用户认证占比' ? authDistChartRef :
-                       rightTitle === '三类用户充值分布' ? topupDistChartRef :
+                       rightTitle === '用户充值分布' ? topupDistChartRef :
                        rightTitle === '付费方式tokens分布' ? paymentModeTokensChartRef :
                        rightTitle === '付费方式收入占比' ? revenuePieChartRef :
                        rightTitle === '渠道消费占比' ? supplierDistChartRef : null}
@@ -736,14 +1270,112 @@ export default function FinanceDashboard() {
       {/* 第二排：充值分析 */}
       {renderChartRow(
         t('有效充值趋势'), topupTrend, 'amount', '¥',
-        t('三类用户充值分布'), null
+        t('用户充值分布'), null
       )}
 
-      {/* 第三排：消费分析 */}
-      {renderChartRow(
-        t('消费趋势'), consumptionTrend, 'cost', '¥',
-        t('付费方式tokens分布'), null
-      )}
+      {/* 第三排：消费趋势（含 Tabs 的 6 个子图表）+ 付费方式 Tokens 分布 */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+        {/* 左侧：消费趋势 Tabs（3/4 宽度） */}
+        <div style={{
+          flex: 3,
+          backgroundColor: '#ffffff',
+          borderRadius: 4,
+          border: '1px solid rgba(0, 0, 0, 0.08)',
+          boxShadow: 'rgba(1, 1, 32, 0.1) 0px 4px 10px',
+          padding: '16px',
+          minHeight: 400,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{
+              fontSize: 14,
+              fontWeight: 400,
+              color: 'rgba(0, 0, 0, 0.4)',
+              fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
+              textTransform: 'uppercase',
+              letterSpacing: 0.055,
+            }}>{t('消费趋势')}</div>
+            <Tabs
+              type='slash'
+              activeKey={activeChartTab}
+              onChange={setActiveChartTab}
+              style={{ fontSize: 12 }}
+            >
+              <TabPane tab={t('消耗分布')} itemKey='1' />
+              <TabPane tab={t('调用趋势')} itemKey='2' />
+              <TabPane tab={t('调用次数分布')} itemKey='3' />
+              <TabPane tab={t('调用次数排行')} itemKey='4' />
+              <TabPane tab={t('用户消耗排行')} itemKey='5' />
+              <TabPane tab={t('用户消耗趋势')} itemKey='6' />
+            </Tabs>
+          </div>
+          <div style={{ height: 320, width: '100%', position: 'relative' }}>
+            {/* 1. 消耗分布 - 堆叠柱状图 */}
+            {activeChartTab === '1' && (
+              <div ref={quotaDistChartRef} style={{ width: '100%', height: '100%' }} />
+            )}
+            {/* 2. 调用趋势 - 折线图 */}
+            {activeChartTab === '2' && (
+              <div ref={callTrendChartRef} style={{ width: '100%', height: '100%' }} />
+            )}
+            {/* 3. 调用次数分布 - 环形饼图 */}
+            {activeChartTab === '3' && (
+              <div ref={callDistChartRef} style={{ width: '100%', height: '100%' }} />
+            )}
+            {/* 4. 调用次数排行 - 水平柱状图 */}
+            {activeChartTab === '4' && (
+              <div ref={callRankChartRef} style={{ width: '100%', height: '100%' }} />
+            )}
+            {/* 5. 用户消耗排行 - 水平柱状图 */}
+            {activeChartTab === '5' && (
+              <div ref={userQuotaRankChartRef} style={{ width: '100%', height: '100%' }} />
+            )}
+            {/* 6. 用户消耗趋势 - 面积图 */}
+            {activeChartTab === '6' && (
+              <div ref={userQuotaTrendChartRef} style={{ width: '100%', height: '100%' }} />
+            )}
+            {/* 暂无数据提示 */}
+            {activeChartTab && chartData && !(() => {
+              const dataMap = {
+                '1': chartData.quota_distribution,
+                '2': chartData.call_trend,
+                '3': chartData.call_distribution,
+                '4': chartData.call_rank,
+                '5': chartData.user_quota_rank,
+                '6': chartData.user_quota_trend,
+              };
+              return !dataMap[activeChartTab]?.length;
+            })() ? null : (
+              <Empty
+                image={<IllustrationNoResult style={{ width: 150, height: 150 }} />}
+                darkModeImage={<IllustrationNoResultDark style={{ width: 150, height: 150 }} />}
+                description={t('暂无数据')}
+                style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+              />
+            )}
+          </div>
+        </div>
+        {/* 右侧：付费方式 Tokens 分布饼图（1/4 宽度） */}
+        <div style={{
+          flex: 1,
+          backgroundColor: '#ffffff',
+          borderRadius: 4,
+          border: '1px solid rgba(0, 0, 0, 0.08)',
+          boxShadow: 'rgba(1, 1, 32, 0.1) 0px 4px 10px',
+          padding: '16px',
+          minHeight: 400,
+        }}>
+          <div style={{
+            fontSize: 14,
+            fontWeight: 400,
+            color: 'rgba(0, 0, 0, 0.4)',
+            fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
+            textTransform: 'uppercase',
+            letterSpacing: 0.055,
+            marginBottom: 12,
+          }}>{t('付费方式Tokens分布')}</div>
+          <div ref={paymentModeTokensChartRef} style={{ width: '100%', height: 240 }} />
+        </div>
+      </div>
 
       {/* 第四排：营收分析（表格 + 饼图） */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
@@ -816,3 +1448,4 @@ export default function FinanceDashboard() {
     </div>
   );
 }
+
