@@ -440,11 +440,18 @@ func (s *FinanceService) GetSupplierTrend(startTime, endTime int64) ([]dto.Suppl
 		quotaPerUnit = 50000000
 	}
 
-	// 获取 logs 表中的渠道信息
+	// 构建 channel_id -> channel_name 映射
+	channelMap := make(map[int]string)
+	var channels []model.Channel
+	model.DB.Select("id, name").Where("id > 0").Find(&channels)
+	for _, ch := range channels {
+		channelMap[ch.Id] = ch.Name
+	}
+
+	// 获取 logs 表中的渠道信息（只按 channel_id 聚合）
 	type supplierTrendRow struct {
 		Date         string `db:"date"`
 		ChannelId    int    `db:"channel_id"`
-		ChannelName  string `db:"channel_name"`
 		Tokens       int64  `db:"tokens"`
 		RequestCount int    `db:"request_count"`
 		TotalQuota   int64  `db:"total_quota"`
@@ -453,13 +460,12 @@ func (s *FinanceService) GetSupplierTrend(startTime, endTime int64) ([]dto.Suppl
 	query := fmt.Sprintf(`
 		SELECT %s as date,
 		       l.channel_id,
-		       l.channel_name,
 		       COALESCE(SUM(l.prompt_tokens + l.completion_tokens), 0) as tokens,
 		       COUNT(*) as request_count,
 		       COALESCE(SUM(l.quota), 0) as total_quota
 		FROM logs l
-		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?
-		GROUP BY date, l.channel_id, l.channel_name
+		WHERE l.type = 2 AND l.channel_id > 0 AND l.created_at >= ? AND l.created_at <= ?
+		GROUP BY date, l.channel_id
 		ORDER BY date`, groupByClause)
 
 	var rows []supplierTrendRow
@@ -467,9 +473,13 @@ func (s *FinanceService) GetSupplierTrend(startTime, endTime int64) ([]dto.Suppl
 
 	for _, row := range rows {
 		cost := float64(row.TotalQuota) / float64(quotaPerUnit)
+		supplierName := channelMap[row.ChannelId]
+		if supplierName == "" {
+			supplierName = fmt.Sprintf("渠道 #%d", row.ChannelId)
+		}
 		items = append(items, dto.SupplierTrendItem{
 			Date:         row.Date,
-			Supplier:     row.ChannelName,
+			Supplier:     supplierName,
 			Tokens:       row.Tokens,
 			RequestCount: row.RequestCount,
 			Cost:         math.Round(cost*100) / 100,
@@ -483,16 +493,24 @@ func (s *FinanceService) GetSupplierTrend(startTime, endTime int64) ([]dto.Suppl
 func (s *FinanceService) GetSupplierDistribution(startTime, endTime int64) (*dto.SupplierDist, error) {
 	dist := &dto.SupplierDist{}
 
+	// 构建 channel_id -> channel_name 映射
+	channelMap := make(map[int]string)
+	var channels []model.Channel
+	model.DB.Select("id, name").Where("id > 0").Find(&channels)
+	for _, ch := range channels {
+		channelMap[ch.Id] = ch.Name
+	}
+
 	type supplierDistRow struct {
-		ChannelName string `db:"channel_name"`
-		TotalQuota  int64  `db:"total_quota"`
+		ChannelId  int   `db:"channel_id"`
+		TotalQuota int64 `db:"total_quota"`
 	}
 
 	query := `
-		SELECT l.channel_name, COALESCE(SUM(l.quota), 0) as total_quota
+		SELECT l.channel_id, COALESCE(SUM(l.quota), 0) as total_quota
 		FROM logs l
-		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?
-		GROUP BY l.channel_name`
+		WHERE l.type = 2 AND l.channel_id > 0 AND l.created_at >= ? AND l.created_at <= ?
+		GROUP BY l.channel_id`
 
 	var rows []supplierDistRow
 	model.DB.Raw(query, startTime, endTime).Scan(&rows)
@@ -514,8 +532,12 @@ func (s *FinanceService) GetSupplierDistribution(startTime, endTime int64) (*dto
 		if totalCost > 0 {
 			ratio = cost / totalCost
 		}
+		supplierName := channelMap[row.ChannelId]
+		if supplierName == "" {
+			supplierName = fmt.Sprintf("渠道 #%d", row.ChannelId)
+		}
 		dist.Items = append(dist.Items, dto.SupplierDistItem{
-			Supplier: row.ChannelName,
+			Supplier: supplierName,
 			Cost:     math.Round(cost*100) / 100,
 			Ratio:    math.Round(ratio*10000) / 10000,
 		})

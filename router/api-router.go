@@ -27,7 +27,7 @@ func SetApiRouter(router *gin.Engine) {
 		// Dashboard Board API (大屏数据接口)
 		apiRouter.GET("/dashboard/board/stats", middleware.AdminAuth(), controller.GetDashboardBoardStats)
 		apiRouter.GET("/dashboard/board/realtime", middleware.AdminAuth(), controller.GetDashboardBoardRealtime)
-		apiRouter.GET("/dashboard/board/chart-data", middleware.AdminAuth(), controller.GetDashboardBoardChartData)
+		apiRouter.GET("/dashboard/board/chart-data", middleware.TryUserAuth(), controller.GetDashboardBoardChartData)
 		apiRouter.GET("/notice", controller.GetNotice)
 		apiRouter.GET("/user-agreement", controller.GetUserAgreement)
 		apiRouter.GET("/privacy-policy", controller.GetPrivacyPolicy)
