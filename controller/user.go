@@ -319,8 +319,9 @@ func GetAllUsers(c *gin.Context) {
 func SearchUsers(c *gin.Context) {
 	keyword := c.Query("keyword")
 	group := c.Query("group")
+	userType := c.Query("user_type")
 	pageInfo := common.GetPageQuery(c)
-	users, total, err := model.SearchUsers(keyword, group, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
+	users, total, err := model.SearchUsers(keyword, group, userType, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -941,7 +942,7 @@ func CreateUser(c *gin.Context) {
 		Password:    user.Password,
 		DisplayName: user.DisplayName,
 		Role:        user.Role,     // 保持管理员设置的角色
-		UserType:    user.UserType, // 用户类型：0-个人，1-企业
+		UserType:    user.UserType, // 用户类型：未认证，个人，企业
 	}
 	if err := cleanUser.Insert(0); err != nil {
 		common.ApiError(c, err)

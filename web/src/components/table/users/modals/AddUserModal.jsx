@@ -48,6 +48,7 @@ const AddUserModal = (props) => {
     username: '',
     display_name: '',
     password: '',
+    phone: '',
     remark: '',
     user_type: 0,
   });
@@ -139,12 +140,20 @@ const AddUserModal = (props) => {
                 </div>
 
                 <Row gutter={12}>
-                  <Col span={24}>
+                  <Col span={12}>
                     <Form.Input
                       field='username'
                       label={t('用户名')}
                       placeholder={t('请输入用户名')}
                       rules={[{ required: true, message: t('请输入用户名') }]}
+                      showClear
+                    />
+                  </Col>
+                  <Col span={12}>
+                    <Form.Input
+                      field='phone'
+                      label={t('手机号')}
+                      placeholder={t('请输入手机号')}
                       showClear
                     />
                   </Col>
@@ -166,14 +175,15 @@ const AddUserModal = (props) => {
                       showClear
                     />
                   </Col>
-                  <Col span={24}>
+                  <Col span={12}>
                     <Form.Select
                       field='user_type'
                       label={t('用户类型')}
                       placeholder={t('请选择用户类型')}
                       optionList={[
-                        { label: t('个人用户'), value: 0 },
-                        { label: t('企业用户'), value: 1 },
+                        { label: t('未认证'), value: 0 },
+                        { label: t('个人用户'), value: 1 },
+                        { label: t('企业用户'), value: 2 },
                       ]}
                     />
                   </Col>

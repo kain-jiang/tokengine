@@ -1226,8 +1226,10 @@ func (s *FinanceService) GetOrderChartStatistics(isAdmin bool, userId int, start
 	model.DB.Raw(userTypeQuery, userTypeArgs...).Scan(&userTypeRows)
 
 	for _, row := range userTypeRows {
-		label := "个人用户"
+		label := "未认证用户"
 		if row.UserType == "1" {
+			label = "个人用户"
+		} else if row.UserType == "2" {
 			label = "企业用户"
 		}
 		stats.UserTypeDistribution = append(stats.UserTypeDistribution, dto.UserTypeDistribution{
