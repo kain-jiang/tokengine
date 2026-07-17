@@ -48,6 +48,7 @@ const PageLayout = () => {
   const [collapsed, , setCollapsed] = useSidebarCollapsed();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [bannerVisible, setBannerVisible] = useState(true);
+  const [bannerHeight, setBannerHeight] = useState(44); // 动态 Banner 高度（默认 48px）
   const { i18n } = useTranslation();
   const location = useLocation();
 
@@ -169,6 +170,7 @@ const PageLayout = () => {
           onMobileMenuToggle={() => setDrawerOpen((prev) => !prev)}
           drawerOpen={drawerOpen}
           onBannerVisibilityChange={setBannerVisible}
+          onBannerHeightChange={setBannerHeight}
         />
       </div>
       <Layout
@@ -184,7 +186,7 @@ const PageLayout = () => {
             style={{
               position: 'fixed',
               left: 0,
-              top: `${bannerVisible ? 108 : 64}px`,
+              top: `${bannerVisible ? (64 + bannerHeight) : 64}px`,
               zIndex: 99,
               border: 'none',
               paddingRight: '0',
@@ -215,7 +217,7 @@ const PageLayout = () => {
               flex: '1 0 auto',
               overflowY: isMobile ? 'visible' : 'hidden',
               WebkitOverflowScrolling: 'touch',
-              marginTop: bannerVisible ? '44px' : '0px',
+              marginTop: bannerVisible ? `${bannerHeight}px` : '0px',
               padding: shouldInnerPadding ? (isMobile ? '5px' : '24px') : '0',
               position: 'relative',
             }}
