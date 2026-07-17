@@ -173,9 +173,10 @@ const PageLayout = () => {
       </div>
       <Layout
         style={{
-          overflow: isMobile ? 'visible' : 'auto',
+          overflow: isMobile ? 'visible' : 'hidden',
           display: 'flex',
           flexDirection: 'column',
+          height: '100%',
         }}
       >
         {showSider && (
@@ -185,10 +186,14 @@ const PageLayout = () => {
               position: 'fixed',
               left: 0,
               top: `${bannerVisible ? 108 : 64}px`,
+              height: `calc(100vh - ${bannerVisible ? 108 : 64}px)`,
               zIndex: 99,
               border: 'none',
               paddingRight: '0',
               width: 'var(--sidebar-current-width)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
             }}
           >
             <SiderBar
@@ -208,6 +213,7 @@ const PageLayout = () => {
             flex: '1 1 auto',
             display: 'flex',
             flexDirection: 'column',
+            height: '100%',
           }}
         >
           <Content
