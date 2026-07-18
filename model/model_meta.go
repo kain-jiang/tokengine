@@ -159,18 +159,53 @@ func SearchModels(keyword string, vendor string, channel string, offset int, lim
 			db = db.Joins("JOIN vendors ON vendors.id = models.vendor_id").Where("vendors.name LIKE ?", "%"+vendor+"%")
 		}
 	}
+	hasChannelFilter := false
 	if channel != "" {
 		if chID, err := strconv.Atoi(channel); err == nil {
+			hasChannelFilter = true
 			db = db.Joins("JOIN abilities ON abilities.model = models.model_name").
 				Joins("JOIN channels ON channels.id = abilities.channel_id").
-				Where("abilities.channel_id = ? AND abilities.enabled = ?", chID, true).
-				Distinct()
+				Where("abilities.channel_id = ? AND abilities.enabled = ?", chID, true)
 		}
 	}
+
 	var total int64
-	if err := db.Count(&total).Error; err != nil {
-		return nil, 0, err
+	if hasChannelFilter {
+		// channel 筛选需要 DISTINCT，Count 也要对应去重
+		err := DB.Model(&Model{}).Distinct("models.id").
+			Joins("JOIN abilities ON abilities.model = models.model_name").
+			Joins("JOIN channels ON channels.id = abilities.channel_id").
+			Where("abilities.channel_id = ? AND abilities.enabled = ?", channel, true).
+			Count(&total).Error
+		if err != nil {
+			return nil, 0, err
+		}
+		// 重置 db 重新构建查询
+		db = DB.Model(&Model{})
+		if modelType != nil {
+			db = db.Where("model_type = ?", *modelType)
+		}
+		if keyword != "" {
+			like := "%" + keyword + "%"
+			db = db.Where("model_name LIKE ? OR description LIKE ? OR tags LIKE ?", like, like, like)
+		}
+		if vendor != "" {
+			if vid, err := strconv.Atoi(vendor); err == nil {
+				db = db.Where("models.vendor_id = ?", vid)
+			} else {
+				db = db.Joins("JOIN vendors ON vendors.id = models.vendor_id").Where("vendors.name LIKE ?", "%"+vendor+"%")
+			}
+		}
+		db = db.Joins("JOIN abilities ON abilities.model = models.model_name").
+			Joins("JOIN channels ON channels.id = abilities.channel_id").
+			Where("abilities.channel_id = ? AND abilities.enabled = ?", channel, true).
+			Distinct()
+	} else {
+		if err := db.Count(&total).Error; err != nil {
+			return nil, 0, err
+		}
 	}
+
 	if err := db.Order("models.id DESC").Offset(offset).Limit(limit).Find(&models).Error; err != nil {
 		return nil, 0, err
 	}
