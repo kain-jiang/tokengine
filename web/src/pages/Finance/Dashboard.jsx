@@ -289,6 +289,7 @@ export default function FinanceDashboard() {
     const endDate = new Date();
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - 1);
+    startDate.setHours(0, 0, 0, 0);
     setDateRange({ startDate, endDate });
     setStartTime(Math.floor(startDate.getTime() / 1000));
     setEndTime(Math.floor(endDate.getTime() / 1000));
@@ -1092,8 +1093,8 @@ export default function FinanceDashboard() {
     }}>
       <div className='flex flex-wrap items-center gap-2'>
         <DatePicker
-          type='date'
-          placeholder={t('开始日期')}
+          type='dateTime'
+          placeholder={t('开始时间')}
           value={dateRange.startDate}
           onChange={(value) => {
             setDateRange((prev) => ({ ...prev, startDate: value }));
@@ -1101,12 +1102,12 @@ export default function FinanceDashboard() {
           }}
           maxDate={dateRange.endDate || new Date()}
           disabledDate={(date) => date > new Date()}
-          style={{ minWidth: '150px', borderRadius: 4 }}
+          style={{ minWidth: '220px', borderRadius: 4 }}
         />
         <span className='text-gray-400'>~</span>
         <DatePicker
-          type='date'
-          placeholder={t('结束日期')}
+          type='dateTime'
+          placeholder={t('结束时间')}
           value={dateRange.endDate}
           onChange={(value) => {
             setDateRange((prev) => ({ ...prev, endDate: value }));
@@ -1114,7 +1115,7 @@ export default function FinanceDashboard() {
           }}
           minDate={dateRange.startDate}
           maxDate={new Date()}
-          style={{ minWidth: '150px', borderRadius: 4 }}
+          style={{ minWidth: '220px', borderRadius: 4 }}
         />
         <Button
           type='primary'

@@ -163,7 +163,8 @@ func SearchModels(keyword string, vendor string, channel string, offset int, lim
 		if chID, err := strconv.Atoi(channel); err == nil {
 			db = db.Joins("JOIN abilities ON abilities.model = models.model_name").
 				Joins("JOIN channels ON channels.id = abilities.channel_id").
-				Where("abilities.channel_id = ? AND abilities.enabled = ?", chID, true)
+				Where("abilities.channel_id = ? AND abilities.enabled = ?", chID, true).
+				Distinct()
 		}
 	}
 	var total int64

@@ -244,6 +244,7 @@ export default function FinanceOrders() {
     const endDate = new Date();
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - 1);
+    startDate.setHours(0, 0, 0, 0);
     setDateRange({ startDate, endDate });
   }, []);
 
@@ -735,8 +736,8 @@ export default function FinanceOrders() {
     <div style={{ padding: 12, backgroundColor: 'rgba(0, 0, 0, 0.02)', borderRadius: 4, border: '1px solid rgba(0, 0, 0, 0.08)', marginBottom: 16 }}>
       <div className='flex flex-wrap items-center gap-2'>
         <DatePicker
-          type='date'
-          placeholder={t('开始日期')}
+          type='dateTime'
+          placeholder={t('开始时间')}
           value={dateRange.startDate}
           onChange={(value) => {
             setDateRange((prev) => ({ ...prev, startDate: value }));
@@ -744,12 +745,12 @@ export default function FinanceOrders() {
           }}
           maxDate={dateRange.endDate || new Date()}
           disabledDate={(date) => date > new Date()}
-          style={{ minWidth: '150px', borderRadius: 4 }}
+          style={{ minWidth: '220px', borderRadius: 4 }}
         />
         <span className='text-gray-400'>~</span>
         <DatePicker
-          type='date'
-          placeholder={t('结束日期')}
+          type='dateTime'
+          placeholder={t('结束时间')}
           value={dateRange.endDate}
           onChange={(value) => {
             setDateRange((prev) => ({ ...prev, endDate: value }));
@@ -757,7 +758,7 @@ export default function FinanceOrders() {
           }}
           minDate={dateRange.startDate}
           maxDate={new Date()}
-          style={{ minWidth: '150px', borderRadius: 4 }}
+          style={{ minWidth: '220px', borderRadius: 4 }}
         />
         <Select
           placeholder={t('全部状态')}
