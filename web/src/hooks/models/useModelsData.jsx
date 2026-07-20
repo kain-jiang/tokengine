@@ -182,6 +182,32 @@ export const useModelsData = () => {
 
   // Refresh data
   const refresh = async (page = activePage) => {
+    const { searchKeyword = '', searchVendor = '', searchChannel = '' } = getFormValues();
+
+    if (searchKeyword !== '' || searchVendor !== '' || searchChannel !== '') {
+      const res = await API.get(
+        `/api/models/search?keyword=${searchKeyword}&vendor=${searchVendor}&channel=${searchChannel}&p=${page}&page_size=${pageSize}`,
+      );
+      const { success, message, data } = res.data;
+      if (success) {
+        const newPageData = extractItems(data);
+        setActivePage(data.page || page);
+        setModelCount(data.total || newPageData.length);
+        setModelFormat(newPageData);
+        if (data.vendor_counts) {
+          const sumAll = Object.values(data.vendor_counts).reduce(
+            (acc, v) => acc + v,
+            0,
+          );
+          setVendorCounts({ ...data.vendor_counts, all: sumAll });
+        }
+      } else {
+        showError(message);
+        setModels([]);
+      }
+      return;
+    }
+
     await loadModels(page, pageSize);
   };
 
@@ -348,8 +374,35 @@ export const useModelsData = () => {
   };
 
   // Handle page change
-  const handlePageChange = (page) => {
+  const handlePageChange = async (page) => {
     setActivePage(page);
+    const { searchKeyword = '', searchVendor = '', searchChannel = '' } = getFormValues();
+
+    // If any search filter is active, use search API with the same parameters
+    if (searchKeyword !== '' || searchVendor !== '' || searchChannel !== '') {
+      const res = await API.get(
+        `/api/models/search?keyword=${searchKeyword}&vendor=${searchVendor}&channel=${searchChannel}&p=${page}&page_size=${pageSize}`,
+      );
+      const { success, message, data } = res.data;
+      if (success) {
+        const newPageData = extractItems(data);
+        setActivePage(data.page || page);
+        setModelCount(data.total || newPageData.length);
+        setModelFormat(newPageData);
+        if (data.vendor_counts) {
+          const sumAll = Object.values(data.vendor_counts).reduce(
+            (acc, v) => acc + v,
+            0,
+          );
+          setVendorCounts({ ...data.vendor_counts, all: sumAll });
+        }
+      } else {
+        showError(message);
+        setModels([]);
+      }
+      return;
+    }
+
     loadModels(page, pageSize, activeVendorKey);
   };
 
@@ -362,6 +415,31 @@ export const useModelsData = () => {
   const handlePageSizeChange = async (size) => {
     setPageSize(size);
     setActivePage(1);
+    const { searchKeyword = '', searchVendor = '', searchChannel = '' } = getFormValues();
+
+    if (searchKeyword !== '' || searchVendor !== '' || searchChannel !== '') {
+      const res = await API.get(
+        `/api/models/search?keyword=${searchKeyword}&vendor=${searchVendor}&channel=${searchChannel}&p=1&page_size=${size}`,
+      );
+      const { success, message, data } = res.data;
+      if (success) {
+        const newPageData = extractItems(data);
+        setModelCount(data.total || newPageData.length);
+        setModelFormat(newPageData);
+        if (data.vendor_counts) {
+          const sumAll = Object.values(data.vendor_counts).reduce(
+            (acc, v) => acc + v,
+            0,
+          );
+          setVendorCounts({ ...data.vendor_counts, all: sumAll });
+        }
+      } else {
+        showError(message);
+        setModels([]);
+      }
+      return;
+    }
+
     await loadModels(1, size, activeVendorKey);
   };
 
