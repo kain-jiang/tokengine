@@ -644,7 +644,7 @@ func GetAllTopUpsExport(startTime, endTime int64, keyword, status string) ([]*To
 	}
 	if keyword != "" {
 		like := "%" + keyword + "%"
-		query = query.Where("top_ups.trade_no LIKE ?", like)
+		query = query.Where("top_ups.trade_no LIKE ? OR users.username LIKE ?", like, like)
 	}
 	if status != "" {
 		query = query.Where("top_ups.status = ?", status)
