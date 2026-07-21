@@ -322,10 +322,55 @@ export default function FinanceDashboard() {
   // 渲染折线图通用配置
   // 参数: chartName=图表名称(用于存储实例), domElement=DOM元素, data=数据, title=标题, valueKey=值字段, unit=单位, valueLabel=Y轴标签文本
   const renderLineChart = (chartName, domElement, data, title, valueKey, unit = '', valueLabel = '') => {
-    if (!domElement || !data?.length) return;
+    // 检查数据
+    if (!data?.length) {
+      // 如果数据为空，销毁实例
+      if (chartsInstance.current[chartName]) {
+        chartsInstance.current[chartName].dispose();
+        chartsInstance.current[chartName] = null;
+      }
+      return;
+    }
     
+    // 检查 DOM 元素
+    if (!domElement) {
+      return;
+    }
+    
+    // 如果 DOM 尺寸为零，延迟初始化等待布局计算完成
+    if (domElement.clientWidth === 0 || domElement.clientHeight === 0) {
+      setTimeout(() => {
+        if (chartsInstance.current[chartName]) {
+          chartsInstance.current[chartName].resize();
+        } else {
+          renderLineChart(chartName, domElement, data, title, valueKey, unit, valueLabel);
+        }
+      }, 100);
+      return;
+    }
+    
+    // 销毁旧实例（如果 DOM 已变化）
+    if (chartsInstance.current[chartName]) {
+      try {
+        const currentDom = chartsInstance.current[chartName].getDom();
+        if (currentDom !== domElement) {
+          chartsInstance.current[chartName].dispose();
+          chartsInstance.current[chartName] = null;
+        }
+      } catch (e) {
+        // 实例可能已失效，重新创建
+        chartsInstance.current[chartName] = null;
+      }
+    }
+    
+    // 初始化新实例
     if (!chartsInstance.current[chartName]) {
-      chartsInstance.current[chartName] = echarts.init(domElement);
+      try {
+        chartsInstance.current[chartName] = echarts.init(domElement);
+      } catch (e) {
+        console.error(`Failed to init chart: ${chartName}`, e);
+        return;
+      }
     }
     
     const dates = data.map(item => formatDateLabel(item.date));
@@ -487,9 +532,22 @@ export default function FinanceDashboard() {
     renderPieChart('topupDist', topupDistChartRef.current, distData, t('用户充值分布'));
   }, [topupUserTypeDist, t]);
 
+  // 使用 forceRefresh 强制刷新图表
+  const [forceRefresh, setForceRefresh] = useState(0);
+  
   useEffect(() => {
-    renderLineChart('consumptionTrend', consumptionTrendChartRef.current, consumptionTrend, t('消费趋势'), 'cost', '¥');
-  }, [consumptionTrend, t]);
+    // 组件挂载时和消费趋势数据变化时刷新图表
+    setForceRefresh(prev => prev + 1);
+  }, [consumptionTrend]);
+  
+  useEffect(() => {
+    // 使用 requestAnimationFrame 确保 DOM 已渲染
+    requestAnimationFrame(() => {
+      if (consumptionTrendChartRef.current && consumptionTrend?.length > 0) {
+        renderLineChart('consumptionTrend', consumptionTrendChartRef.current, consumptionTrend, t('消费趋势'), 'cost', '¥');
+      }
+    });
+  }, [consumptionTrend, t, forceRefresh]);
 
   useEffect(() => {
     const tokensData = [
@@ -666,12 +724,15 @@ export default function FinanceDashboard() {
     data.forEach(item => item.model && modelSet.add(item.model));
     const modelList = Array.from(modelSet);
 
-    // 构建每个模型的时间序列数据
+    // 构建每个模型的时间序列数据（将 raw_quota 转换为显示值）
+    // model/dashboard_board.go 中除以 500000
+    const quotaDivisor = 500000;
     const modelData = {};
     modelList.forEach(model => { modelData[model] = {}; });
     data.forEach(item => {
       if (!modelData[item.model]) { modelData[item.model] = {}; }
-      modelData[item.model][item.time] = item.raw_quota || 0;
+      // 转换 raw_quota 为显示单位（金额）
+      modelData[item.model][item.time] = (item.raw_quota || 0) / quotaDivisor;
     });
 
     // 提取所有唯一时间点并排序
@@ -695,14 +756,50 @@ export default function FinanceDashboard() {
       chartsInstance.current.quotaDist = echarts.init(quotaDistChartRef.current);
     }
 
+    // 判断模型数量，决定图例布局
+    const isManyModels = modelList.length > 8;
+    const legendConfig = isManyModels
+      ? {
+          type: 'scroll',
+          orient: 'vertical',
+          right: 10,
+          top: 'center',
+          bottom: 20,
+          data: modelList,
+          textStyle: { fontSize: 10, color: 'rgba(0, 0, 0, 0.6)' },
+          pageTextStyle: { fontSize: 10, color: 'rgba(0, 0, 0, 0.6)' },
+          pageIconColor: '#1890ff',
+          pageIconInactiveColor: '#b0b5b9',
+          pageIconSize: 12,
+          pageFormatter: '{current}/{total}',
+          pageButtonGap: 5,
+          pageButtonPosition: 'verticalEnd',
+        }
+      : {
+          data: modelList,
+          top: 5,
+          textStyle: { fontSize: 10, color: 'rgba(0, 0, 0, 0.5)' },
+        };
+
+    const gridConfig = isManyModels
+      ? { left: '3%', right: '15%', bottom: '3%', top: 35, containLabel: true }
+      : { left: '3%', right: '4%', bottom: '3%', top: 35, containLabel: true };
+
     chartsInstance.current.quotaDist.setOption({
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-      legend: {
-        data: modelList,
-        top: 5,
-        textStyle: { fontSize: 10, color: 'rgba(0, 0, 0, 0.5)' }
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: function(params) {
+          if (!params || !params.length) return '';
+          let result = `<strong>${formatDateLabel(params[0].name)}</strong><br/>`;
+          params.forEach(p => {
+            result += `${p.marker}${p.seriesName}: ${symbol}${p.value.toFixed(2)}<br/>`;
+          });
+          return result;
+        }
       },
-      grid: { left: '3%', right: '4%', bottom: '3%', top: 35, containLabel: true },
+      legend: legendConfig,
+      grid: gridConfig,
       xAxis: {
         type: 'category',
         data: times.map(formatDateLabel),
@@ -711,7 +808,10 @@ export default function FinanceDashboard() {
       yAxis: {
         type: 'value',
         name: `消耗 (${symbol})`,
-        axisLabel: { fontSize: 10 }
+        axisLabel: {
+          fontSize: 10,
+          formatter: (value) => value.toFixed(2)
+        }
       },
       series: modelList.map(model => ({
         name: model,
@@ -960,6 +1060,35 @@ export default function FinanceDashboard() {
       })),
     });
   }, [chartData?.user_quota_trend, activeChartTab]);
+
+  // 修复：页面返回时重新渲染所有图表
+  // 使用 Visibility API 检测页面可见性变化
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // 页面变为可见时，强制重新渲染所有图表
+        setTimeout(() => {
+          // 触发所有图表重新渲染
+          setConsumptionTrend(prev => [...prev]);
+          setUsersTrend(prev => [...prev]);
+          setTopupTrend(prev => [...prev]);
+          setSupplierTrend(prev => [...prev]);
+          setUsersAuthDist(prev => ({...prev}));
+          setTopupUserTypeDist(prev => ({...prev}));
+          setPaymentModeTokensDist(prev => ({...prev}));
+          setPaymentModeRevenueDist(prev => ({...prev}));
+          setSupplierDist(prev => ({...prev}));
+          // 刷新模型数据分析图表
+          if (chartData) {
+            setChartData(prev => ({...prev}));
+          }
+        }, 100);
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [chartData]);
 
   // 窗口大小变化时调整图表
   useEffect(() => {

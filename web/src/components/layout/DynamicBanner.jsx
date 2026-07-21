@@ -89,8 +89,6 @@ const DynamicBanner = ({ announcements, announcementsEnabled, onVisibilityChange
       return;
     }
 
-    console.log('[DynamicBanner] 启动轮播，公告数量:', len);
-
     // 清除之前的定时器
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -108,7 +106,6 @@ const DynamicBanner = ({ announcements, announcementsEnabled, onVisibilityChange
       if (currentLen > 1) {
         setCurrentIndex((prev) => {
           const next = (prev + 1) % currentLen;
-          console.log('[DynamicBanner] 切换到索引:', next, '/', currentLen);
           return next;
         });
       }
