@@ -10,6 +10,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 )
 
 type FinanceService struct{}
@@ -496,12 +497,24 @@ func (s *FinanceService) GetRevenueReports(req dto.RevenueReportRequest, pageInf
 // 营收分析相关方法
 // ============================================
 
-// GetUserRevenueReports 获取用户营收列表
+// GetUserRevenueReports 获取用户营收分析用户列表
 func (s *FinanceService) GetUserRevenueReports(req dto.UserRevenueListRequest, pageInfo *common.PageInfo) ([]*dto.UserRevenueSummary, int64, *dto.UserRevenueStats, error) {
 	var total int64
 	var results []*dto.UserRevenueSummary
 
 	keyword := "%" + req.Keyword + "%"
+
+	// 解析日期范围
+	var startTimestamp, endTimestamp int64
+	if req.StartDate != "" {
+		startTime, _ := time.Parse("2006-01-02", req.StartDate)
+		startTimestamp = startTime.Unix()
+	}
+	if req.EndDate != "" {
+		endTime, _ := time.Parse("2006-01-02", req.EndDate)
+		endTime = endTime.Add(24 * time.Hour) // 包含结束日期当天
+		endTimestamp = endTime.Unix()
+	}
 
 	// 查询总数
 	countDB := model.DB.Table("users u").
@@ -520,12 +533,24 @@ func (s *FinanceService) GetUserRevenueReports(req dto.UserRevenueListRequest, p
 		Username    string
 		DisplayName string
 		Quota       int
-		UsedQuota   int
 		TopupMoney  float64
 	}
+
+	// 构建 top_ups 子查询，支持时间范围过滤
+	topupSubQuery := model.DB.Model(&model.TopUp{}).
+		Select("user_id, SUM(money) as total_money").
+		Where("status = ?", "success")
+	if startTimestamp > 0 {
+		topupSubQuery = topupSubQuery.Where("create_time >= ?", startTimestamp)
+	}
+	if endTimestamp > 0 {
+		topupSubQuery = topupSubQuery.Where("create_time < ?", endTimestamp)
+	}
+	topupSubQuery = topupSubQuery.Group("user_id")
+
 	queryDB := model.DB.Table("users u").
-		Select("u.id, u.username, u.display_name, u.quota, u.used_quota, COALESCE(t.total_money, 0) as topup_money").
-		Joins("LEFT JOIN (SELECT user_id, SUM(money) as total_money FROM top_ups WHERE status = ? GROUP BY user_id) t ON t.user_id = u.id", "success").
+		Select("u.id, u.username, u.display_name, u.quota, COALESCE(t.total_money, 0) as topup_money").
+		Joins("LEFT JOIN (?) t ON t.user_id = u.id", topupSubQuery).
 		Where("u.deleted_at IS NULL")
 	if req.Keyword != "" {
 		queryDB = queryDB.Where("LOWER(u.username) LIKE LOWER(?) OR LOWER(u.display_name) LIKE LOWER(?) OR LOWER(u.email) LIKE LOWER(?)", keyword, keyword, keyword)
@@ -540,12 +565,25 @@ func (s *FinanceService) GetUserRevenueReports(req dto.UserRevenueListRequest, p
 		quotaPerUnit = 500000
 	}
 
+	// 为每个用户查询实际消耗（从 logs 表，消费 - 退款）
 	for _, r := range rows {
-		tokenTotal := int64(r.Quota + r.UsedQuota)
-		tokenUsed := int64(r.UsedQuota)
+		var actualUsedQuota float64
+		usedQuery := model.LOG_DB.Model(&model.Log{}).
+			Where("user_id = ? AND type IN (?, ?)", r.Id, model.LogTypeConsume, model.LogTypeRefund)
+		if startTimestamp > 0 {
+			usedQuery = usedQuery.Where("created_at >= ?", startTimestamp)
+		}
+		if endTimestamp > 0 {
+			usedQuery = usedQuery.Where("created_at < ?", endTimestamp)
+		}
+		usedQuery.Select("COALESCE(SUM(CASE WHEN type = ? THEN quota ELSE -quota END), 0)", model.LogTypeConsume).Scan(&actualUsedQuota)
+
+		tokenTotal := int64(r.Quota + int(actualUsedQuota))
+		tokenUsed := int64(actualUsedQuota)
 		tokenRemain := int64(r.Quota)
-		totalUsedMoney := float64(r.UsedQuota) / quotaPerUnit
-		totalRemainMoney := float64(r.Quota) / quotaPerUnit
+		// 转成人民币
+		totalUsedMoney := actualUsedQuota / quotaPerUnit * operation_setting.USDExchangeRate
+		totalRemainMoney := float64(r.Quota) / quotaPerUnit * operation_setting.USDExchangeRate
 		results = append(results, &dto.UserRevenueSummary{
 			Id:               r.Id,
 			Username:         r.Username,
@@ -559,40 +597,46 @@ func (s *FinanceService) GetUserRevenueReports(req dto.UserRevenueListRequest, p
 		})
 	}
 
-	// 计算统计总额（根据搜索条件决定范围）
+	// 计算统计总额（根据搜索条件和时间范围决定范围）
 	var stats dto.UserRevenueStats
 	var totalTopup, totalQuota, totalUsedQuota float64
 
-	if req.Keyword != "" {
-		// 有搜索条件时，只统计搜索结果
-		model.DB.Raw(`
-			SELECT COALESCE(SUM(t.total_money), 0)
-			FROM users u
-			LEFT JOIN (SELECT user_id, SUM(money) as total_money FROM top_ups WHERE status = ? GROUP BY user_id) t ON t.user_id = u.id
-			WHERE u.deleted_at IS NULL
-			AND (LOWER(u.username) LIKE LOWER(?) OR LOWER(u.display_name) LIKE LOWER(?) OR LOWER(u.email) LIKE LOWER(?))
-		`, "success", keyword, keyword, keyword).Scan(&totalTopup)
-		model.DB.Raw(`
-			SELECT COALESCE(SUM(u.quota), 0)
-			FROM users u
-			WHERE u.deleted_at IS NULL
-			AND (LOWER(u.username) LIKE LOWER(?) OR LOWER(u.display_name) LIKE LOWER(?) OR LOWER(u.email) LIKE LOWER(?))
-		`, keyword, keyword, keyword).Scan(&totalQuota)
-		model.DB.Raw(`
-			SELECT COALESCE(SUM(u.used_quota), 0)
-			FROM users u
-			WHERE u.deleted_at IS NULL
-			AND (LOWER(u.username) LIKE LOWER(?) OR LOWER(u.display_name) LIKE LOWER(?) OR LOWER(u.email) LIKE LOWER(?))
-		`, keyword, keyword, keyword).Scan(&totalUsedQuota)
-	} else {
-		// 无搜索条件时，统计所有用户
-		model.DB.Raw("SELECT COALESCE(SUM(money), 0) FROM top_ups WHERE status = ?", "success").Scan(&totalTopup)
-		model.DB.Raw("SELECT COALESCE(SUM(quota), 0) FROM users WHERE deleted_at IS NULL").Scan(&totalQuota)
-		model.DB.Raw("SELECT COALESCE(SUM(used_quota), 0) FROM users WHERE deleted_at IS NULL").Scan(&totalUsedQuota)
+	// 充值总额统计（支持时间范围过滤）
+	topupQuery := model.DB.Model(&model.TopUp{}).Where("status = ?", "success")
+	if startTimestamp > 0 {
+		topupQuery = topupQuery.Where("create_time >= ?", startTimestamp)
 	}
+	if endTimestamp > 0 {
+		topupQuery = topupQuery.Where("create_time < ?", endTimestamp)
+	}
+	if req.Keyword != "" {
+		topupQuery = topupQuery.Where("user_id IN (SELECT id FROM users WHERE deleted_at IS NULL AND (LOWER(username) LIKE LOWER(?) OR LOWER(display_name) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?)))", keyword, keyword, keyword)
+	}
+	topupQuery.Select("COALESCE(SUM(money), 0)").Scan(&totalTopup)
+
+	// 使用总额统计（支持时间范围过滤，实际消耗 = 消费 - 退款）
+	usedQuery := model.LOG_DB.Model(&model.Log{}).Where("type IN (?, ?)", model.LogTypeConsume, model.LogTypeRefund)
+	if startTimestamp > 0 {
+		usedQuery = usedQuery.Where("created_at >= ?", startTimestamp)
+	}
+	if endTimestamp > 0 {
+		usedQuery = usedQuery.Where("created_at < ?", endTimestamp)
+	}
+	if req.Keyword != "" {
+		usedQuery = usedQuery.Where("user_id IN (SELECT id FROM users WHERE deleted_at IS NULL AND (LOWER(username) LIKE LOWER(?) OR LOWER(display_name) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?)))", keyword, keyword, keyword)
+	}
+	usedQuery.Select("COALESCE(SUM(CASE WHEN type = ? THEN quota ELSE -quota END), 0)", model.LogTypeConsume).Scan(&totalUsedQuota)
+
+	// 剩余总额统计（当前状态，不受时间范围影响）
+	remainQuery := model.DB.Model(&model.User{}).Where("deleted_at IS NULL")
+	if req.Keyword != "" {
+		remainQuery = remainQuery.Where("LOWER(username) LIKE LOWER(?) OR LOWER(display_name) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?)", keyword, keyword, keyword)
+	}
+	remainQuery.Select("COALESCE(SUM(quota), 0)").Scan(&totalQuota)
+
 	stats.TotalTopupMoney = math.Round(totalTopup*100) / 100
-	stats.TotalUsedMoney = math.Round((totalUsedQuota/quotaPerUnit)*100) / 100
-	stats.TotalRemainMoney = math.Round((totalQuota/quotaPerUnit)*100) / 100
+	stats.TotalUsedMoney = math.Round((totalUsedQuota/quotaPerUnit*operation_setting.USDExchangeRate)*100) / 100
+	stats.TotalRemainMoney = math.Round((totalQuota/quotaPerUnit*operation_setting.USDExchangeRate)*100) / 100
 
 	return results, total, &stats, nil
 }
@@ -646,15 +690,24 @@ func (s *FinanceService) GetUserRevenueDetail(userId int, req dto.UserRevenueDet
 	model.DB.Raw("SELECT COALESCE(SUM(money), 0) FROM top_ups WHERE user_id = ? AND status = ? AND create_time >= ? AND create_time < ?",
 		userId, "success", startTimestamp, endTimestamp).Scan(&topupMoney)
 
-	// 指定时间范围内的消耗
+	// 指定时间范围内的消耗（实际消耗 = 消费 - 退款）
 	var usedQuota int64
-	model.LOG_DB.Raw("SELECT COALESCE(SUM(quota), 0) FROM logs WHERE user_id = ? AND type = ? AND created_at >= ? AND created_at < ?",
-		userId, model.LogTypeConsume, startTimestamp, endTimestamp).Scan(&usedQuota)
+	model.LOG_DB.Raw(`
+		SELECT COALESCE(SUM(CASE WHEN type = ? THEN quota ELSE -quota END), 0)
+		FROM logs
+		WHERE user_id = ? AND type IN (?, ?) AND created_at >= ? AND created_at < ?`,
+		model.LogTypeConsume, userId, model.LogTypeConsume, model.LogTypeRefund, startTimestamp, endTimestamp).Scan(&usedQuota)
 
-	// 模型消耗
+	// 模型消耗（实际消耗 = 消费 - 退款，调用次数只统计消费日志）
 	var modelConsumption []*dto.ModelConsumptionItem
-	model.LOG_DB.Raw("SELECT model_name as model_name, COALESCE(SUM(quota), 0) as quota, COUNT(*) as count FROM logs WHERE user_id = ? AND type = ? AND created_at >= ? AND created_at < ? GROUP BY model_name ORDER BY quota DESC LIMIT 50",
-		userId, model.LogTypeConsume, startTimestamp, endTimestamp).Scan(&modelConsumption)
+	model.LOG_DB.Raw(`
+		SELECT model_name as model_name, COALESCE(SUM(CASE WHEN type = ? THEN quota ELSE -quota END), 0) as quota, COUNT(CASE WHEN type = ? THEN 1 END) as count
+		FROM logs
+		WHERE user_id = ? AND type IN (?, ?) AND created_at >= ? AND created_at < ?
+		GROUP BY model_name
+		ORDER BY quota DESC
+		LIMIT 50`,
+		model.LogTypeConsume, model.LogTypeConsume, userId, model.LogTypeConsume, model.LogTypeRefund, startTimestamp, endTimestamp).Scan(&modelConsumption)
 
 	// 充值数据（用于趋势）
 	var topups []struct {
@@ -664,13 +717,14 @@ func (s *FinanceService) GetUserRevenueDetail(userId int, req dto.UserRevenueDet
 	model.DB.Raw("SELECT create_time, money FROM top_ups WHERE user_id = ? AND status = ? AND create_time >= ? AND create_time < ?",
 		userId, "success", startTimestamp, endTimestamp).Scan(&topups)
 
-	// 消耗数据（用于趋势）
+	// 消耗数据（用于趋势，实际消耗 = 消费 - 退款）
 	var logs []struct {
 		CreatedAt int64
 		Quota     int
+		Type      int
 	}
-	model.LOG_DB.Raw("SELECT created_at, quota FROM logs WHERE user_id = ? AND type = ? AND created_at >= ? AND created_at < ?",
-		userId, model.LogTypeConsume, startTimestamp, endTimestamp).Scan(&logs)
+	model.LOG_DB.Raw("SELECT created_at, quota, type FROM logs WHERE user_id = ? AND type IN (?, ?) AND created_at >= ? AND created_at < ?",
+		userId, model.LogTypeConsume, model.LogTypeRefund, startTimestamp, endTimestamp).Scan(&logs)
 
 	// 调用次数数据（用于趋势）
 	var logCounts []struct {
@@ -703,15 +757,21 @@ func (s *FinanceService) GetUserRevenueDetail(userId int, req dto.UserRevenueDet
 		dateStr := time.Unix(tp.CreateTime, 0).Format("2006-01-02")
 		if item, ok := dateMap[dateStr]; ok {
 			item.TopupMoney += tp.Money
-			item.TopupQuota += int64(tp.Money * quotaPerUnit)
+			// 数据存储的金额是人民币，要先转换成美元再乘以每美元的配额，TopupQuota = tp.Money / operation_setting.USDExchangeRate * quotaPerUnit
+			item.TopupQuota += int64(tp.Money / operation_setting.USDExchangeRate * quotaPerUnit)
 		}
 	}
 
 	for _, lg := range logs {
 		dateStr := time.Unix(lg.CreatedAt, 0).Format("2006-01-02")
 		if item, ok := dateMap[dateStr]; ok {
-			item.UsedQuota += int64(lg.Quota)
-			item.UsedMoney += float64(lg.Quota) / quotaPerUnit
+			if lg.Type == model.LogTypeConsume {
+				item.UsedQuota += int64(lg.Quota)
+				item.UsedMoney += float64(lg.Quota) / quotaPerUnit * operation_setting.USDExchangeRate
+			} else if lg.Type == model.LogTypeRefund {
+				item.UsedQuota -= int64(lg.Quota)
+				item.UsedMoney -= float64(lg.Quota) / quotaPerUnit * operation_setting.USDExchangeRate
+			}
 		}
 	}
 
@@ -741,13 +801,16 @@ func (s *FinanceService) GetUserRevenueDetail(userId int, req dto.UserRevenueDet
 		}
 	}
 
-	totalToken := int64(user.Quota + user.UsedQuota)
-	usedMoney := float64(usedQuota) / quotaPerUnit
-	remainMoney := float64(totalToken-usedQuota) / quotaPerUnit
+	// 这里总totaltoken计算是按时间范围来计算的，totaltoken = user.Quota + 本月实际消耗的totaltoken,
+	// 不是totaltoken = user.Quota + user.UsedQuota（这是一个不断累加的数据，不能通过时间范围来计算）
+	totalToken := int64(user.Quota + int(usedQuota))
+	usedMoney := float64(usedQuota) / quotaPerUnit * operation_setting.USDExchangeRate
+
+	remainMoney := float64(user.Quota) / quotaPerUnit * operation_setting.USDExchangeRate
 	if remainMoney < 0 {
 		remainMoney = 0
 	}
-	remainToken := totalToken - usedQuota
+	remainToken := int64(user.Quota)
 	if remainToken < 0 {
 		remainToken = 0
 	}

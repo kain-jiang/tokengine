@@ -21,7 +21,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { API, showError } from '../../../helpers';
-import { Button, Input, Table, Toast, Typography } from '@douyinfe/semi-ui';
+import { Button, DatePicker, Input, Table, Toast, Typography } from '@douyinfe/semi-ui';
 import { IconSearch } from '@douyinfe/semi-icons';
 import { Download } from 'lucide-react';
 import CardPro from '../../../components/common/ui/CardPro';
@@ -30,6 +30,13 @@ import { useIsMobile } from '../../../hooks/common/useIsMobile';
 import { formatMoney, formatNumber } from '../utils';
 
 const { Text } = Typography;
+
+function getDefaultDateRange() {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(start.getDate() - 30);
+  return [start, end];
+}
 
 export default function RevenueList() {
   const { t } = useTranslation();
@@ -44,7 +51,22 @@ export default function RevenueList() {
   const [pageSize, setPageSize] = useState(10);
   const [keyword, setKeyword] = useState('');
   const [searchValue, setSearchValue] = useState('');
+  const [dateRange, setDateRange] = useState(getDefaultDateRange());
   const [stats, setStats] = useState({ totalTopup: 0, totalUsed: 0, totalRemain: 0 });
+
+  const startDate = useMemo(() => {
+    if (dateRange && dateRange.length === 2 && dateRange[0]) {
+      return dateRange[0].toISOString().slice(0, 10);
+    }
+    return '';
+  }, [dateRange]);
+
+  const endDate = useMemo(() => {
+    if (dateRange && dateRange.length === 2 && dateRange[1]) {
+      return dateRange[1].toISOString().slice(0, 10);
+    }
+    return '';
+  }, [dateRange]);
 
   const fetchData = async (currentPage, currentPageSize) => {
     setLoading(true);
@@ -54,6 +76,8 @@ export default function RevenueList() {
           p: currentPage,
           page_size: currentPageSize,
           keyword: keyword,
+          start_date: startDate,
+          end_date: endDate,
         },
       });
       if (res.data?.success) {
@@ -64,8 +88,8 @@ export default function RevenueList() {
         Toast.error({ content: res.data?.message || t('加载失败') });
       }
     } catch (error) {
-      console.error('获取用户营收列表失败:', error);
-      showError(t('获取用户营收列表失败'));
+      console.error('获取用户分析数据列表失败:', error);
+      showError(t('获取用户分析数据列表失败'));
     } finally {
       setLoading(false);
     }
@@ -73,7 +97,7 @@ export default function RevenueList() {
 
   useEffect(() => {
     fetchData(page, pageSize);
-  }, [page, pageSize, keyword]);
+  }, [page, pageSize, keyword, startDate, endDate]);
 
   const handleSearch = () => {
     setPage(1);
@@ -83,6 +107,7 @@ export default function RevenueList() {
   const handleReset = () => {
     setSearchValue('');
     setKeyword('');
+    setDateRange(getDefaultDateRange());
     setPage(1);
   };
 
@@ -90,9 +115,18 @@ export default function RevenueList() {
     setExportLoading(true);
     try {
       const res = await API.get('/api/finance/reports/export', {
-        params: { keyword },
+        params: { keyword, start_date: startDate, end_date: endDate },
         responseType: 'blob',
       });
+      // 检查返回的 blob 是否是 JSON 错误响应
+      const contentType = res.headers['content-type'];
+      if (contentType && contentType.includes('application/json')) {
+        // 将 blob 转换为文本并解析 JSON
+        const text = await res.data.text();
+        const json = JSON.parse(text);
+        Toast.error({ content: json.message || t('导出失败') });
+        return;
+      }
       const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -145,6 +179,13 @@ export default function RevenueList() {
         onChange={(value) => setSearchValue(value)}
         onEnterPress={handleSearch}
         style={{ width: 280 }}
+      />
+      <DatePicker
+        type='dateRange'
+        value={dateRange}
+        onChange={(dates) => setDateRange(dates || [])}
+        style={{ width: 280 }}
+        placeholder={[t('开始日期'), t('结束日期')]}
       />
       <Button type='primary' onClick={handleSearch}>
         {t('查询')}
