@@ -154,30 +154,17 @@ func ExportOrders(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": items})
 }
 
-// GetRevenueReports 获取营收分析用户列表
-// @Summary 获取营收分析用户列表
-// @Description 获取营收分析用户列表
-// @Tags finance
-// @Accept json
-// @Produce json
-// @Param keyword query string false "关键词"
-// @Param start_date query string false "开始日期"
-// @Param end_date query string false "结束日期"
-// @Param page query int false "页码"
-// @Param page_size query int false "每页数量"
-// @Success 200 {object} object
-// @Router /finance/reports [get]
-// @Security ApiKeyAuth
+// 获取营收分析用户列表
 func GetRevenueReports(c *gin.Context) {
 	userId := c.GetInt("id")
 	// 检查是否是财务运营人员
 	if !model.IsFinanceAdmin(userId) {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无权限访问财务模块"})
+		common.ApiErrorMsg(c, "无权限访问财务模块")
 		return
 	}
 	var req dto.UserRevenueListRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		common.ApiErrorMsg(c, "参数错误")
 		return
 	}
 
@@ -186,7 +173,8 @@ func GetRevenueReports(c *gin.Context) {
 	serviceInstance := service.GetFinanceService()
 	reports, total, stats, err := serviceInstance.GetUserRevenueReports(req, pageInfo)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		common.ApiErrorMsg(c, "获取用户数据失败")
+		logger.LogError(c, fmt.Sprintf("获取营收分析用户列表数据失败，错误详情： %v", err))
 		return
 	}
 
@@ -198,34 +186,23 @@ func GetRevenueReports(c *gin.Context) {
 	})
 }
 
-// ExportRevenueReports 导出营收分析用户列表
-// @Summary 导出营收分析用户列表
-// @Description 导出营收分析用户列表为 CSV
-// @Tags finance
-// @Accept json
-// @Produce json
-// @Param keyword query string false "关键词"
-// @Param start_date query string false "开始日期"
-// @Param end_date query string false "结束日期"
-// @Success 200 {object} object
-// @Router /finance/reports/export [get]
-// @Security ApiKeyAuth
+// 导出营收分析用户列表
 func ExportRevenueReports(c *gin.Context) {
 	userId := c.GetInt("id")
 	if !model.IsFinanceAdmin(userId) {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "无权限访问财务模块"})
+		common.ApiErrorMsg(c, "无权限访问财务模块")
 		return
 	}
 	var req dto.UserRevenueListRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		common.ApiErrorMsg(c, "参数错误")
 		return
 	}
 
 	serviceInstance := service.GetFinanceService()
 	csvContent, err := serviceInstance.ExportUserRevenueReports(req)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		common.ApiErrorMsg(c, "导出用户数据失败")
 		return
 	}
 
@@ -281,7 +258,7 @@ func GetUserRevenueDetail(c *gin.Context) {
 
 	var req dto.UserRevenueDetailRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		common.ApiErrorMsg(c, "参数错误")
 		return
 	}
 
@@ -291,8 +268,7 @@ func GetUserRevenueDetail(c *gin.Context) {
 		common.ApiErrorMsg(c, "获取用户大屏详情数据失败")
 		return
 	}
-
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": detail})
+	common.ApiSuccess(c, detail)
 }
 
 // ApplyInvoice 申请发票

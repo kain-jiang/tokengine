@@ -147,10 +147,6 @@ h4 {
   height: 100dvh;
 }
 
-.app-sider {
-  height: calc(100vh - 64px);
-  height: calc(100dvh - 64px);
-}
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
@@ -232,13 +228,13 @@ code {
   min-height: 0;
   transition: width 0.3s ease;
   background: var(--semi-color-bg-0);
+  overflow: hidden;
 }
 
 .sidebar-nav {
-  flex: 1;
+  flex: 1 1 auto;
   width: 100%;
   background: var(--semi-color-bg-0);
-  height: 100%;
   overflow-x: hidden;
   border-right: none;
   overflow-y: auto;
@@ -318,9 +314,7 @@ code {
   margin-top: auto;
   cursor: pointer;
   background-color: var(--semi-color-bg-0);
-  position: sticky;
-  bottom: 0;
-  z-index: 10;
+  flex-shrink: 0;
   box-shadow: 0 -10px 10px -5px var(--semi-color-bg-0);
   backdrop-filter: blur(4px);
   border-top: 1px solid rgba(var(--semi-grey-0), 0.08);

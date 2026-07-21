@@ -76,8 +76,8 @@ export default function RevenueDetail() {
         Toast.error({ content: res.data?.message || t('加载失败') });
       }
     } catch (error) {
-      console.error('获取用户营收详情失败:', error);
-      showError(t('获取用户营收详情失败'));
+      console.error('获取营收分析用户详情失败:', error);
+      showError(t('获取营收分析用户详情失败'));
     } finally {
       setLoading(false);
     }

@@ -80,8 +80,14 @@ func SaveQuotaDataCache() {
 			//quotaDataDB.Count += quotaData.Count
 			//quotaDataDB.Quota += quotaData.Quota
 			//DB.Table("quota_data").Save(quotaDataDB)
-			increaseQuotaData(quotaData.UserID, quotaData.Username, quotaData.ModelName, quotaData.Count, quotaData.Quota, quotaData.CreatedAt, quotaData.TokenUsed)
+			// 根据 quota 的正负决定增加或减少
+			if quotaData.Quota >= 0 {
+				increaseQuotaData(quotaData.UserID, quotaData.Username, quotaData.ModelName, quotaData.Count, quotaData.Quota, quotaData.CreatedAt, quotaData.TokenUsed)
+			} else {
+				decreaseQuotaData(quotaData.UserID, quotaData.Username, quotaData.ModelName, quotaData.Count, -quotaData.Quota, quotaData.CreatedAt, quotaData.TokenUsed)
+			}
 		} else {
+			// 新记录直接创建（即使是负数也创建，后续通过 decreaseQuotaData 调整）
 			DB.Table("quota_data").Create(quotaData)
 		}
 	}
@@ -98,6 +104,17 @@ func increaseQuotaData(userId int, username string, modelName string, count int,
 	}).Error
 	if err != nil {
 		common.SysLog(fmt.Sprintf("increaseQuotaData error: %s", err))
+	}
+}
+
+func decreaseQuotaData(userId int, username string, modelName string, count int, quota int, createdAt int64, tokenUsed int) {
+	err := DB.Table("quota_data").Where("user_id = ? and username = ? and model_name = ? and created_at = ?",
+		userId, username, modelName, createdAt).Updates(map[string]interface{}{
+		"quota":      gorm.Expr("quota - ?", quota),
+		"token_used": gorm.Expr("token_used - ?", tokenUsed),
+	}).Error
+	if err != nil {
+		common.SysLog(fmt.Sprintf("decreaseQuotaData error: %s", err))
 	}
 }
 
