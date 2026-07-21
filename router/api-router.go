@@ -377,6 +377,7 @@ func SetApiRouter(router *gin.Engine) {
 			financeRoute.GET("/consumption/trend", controller.GetConsumptionTrend)
 			financeRoute.GET("/payment-mode-tokens-dist", controller.GetPaymentModeTokensDistribution)
 			financeRoute.GET("/revenue-by-user", controller.GetRevenueByUser)
+			financeRoute.GET("/revenue-by-user/export-csv", controller.ExportRevenueByUserCsv)
 			financeRoute.GET("/payment-mode-revenue-dist", controller.GetPaymentModeRevenueDistribution)
 			financeRoute.GET("/supplier/trend", controller.GetSupplierTrend)
 			financeRoute.GET("/supplier-dist", controller.GetSupplierDistribution)
