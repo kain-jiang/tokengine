@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { Modal } from '@douyinfe/semi-ui';
 import {
   API,
@@ -44,6 +45,18 @@ import ParamOverrideEntry from '../../components/table/usage-logs/components/Par
 
 export const useLogsData = () => {
   const { t } = useTranslation();
+  const location = useLocation();
+
+  // 从 location.state 读取从 Finance Dashboard 传递过来的初始过滤条件
+  // Finance Dashboard 传递的是秒级时间戳 (startTime, endTime)
+  const initialFilterUsername = location?.state?.filterUsername || '';
+  const initialLogType = location?.state?.logType ? parseInt(location.state.logType) : 0;
+  // 将秒级时间戳转换为 dayjs 对象
+  const initialStartTime = location?.state?.startTime;
+  const initialEndTime = location?.state?.endTime;
+  const initialDateRange = initialStartTime && initialEndTime
+    ? [new Date(initialStartTime * 1000), new Date(initialEndTime * 1000)]
+    : null;
 
   // Define column keys for selection
   const COLUMN_KEYS = {
@@ -95,17 +108,17 @@ export const useLogsData = () => {
   const [formApi, setFormApi] = useState(null);
   let now = new Date();
   const formInitValues = {
-    username: '',
+    username: initialFilterUsername,
     token_name: '',
     model_name: '',
     channel: '',
     group: '',
     request_id: '',
-    dateRange: [
+    dateRange: initialDateRange || [
       timestamp2string(getTodayStartTimestamp()),
       timestamp2string(now.getTime() / 1000 + 3600),
     ],
-    logType: '0',
+    logType: initialLogType > 0 ? String(initialLogType) : '0',
   };
 
   // Get default column visibility based on user role
@@ -234,7 +247,23 @@ export const useLogsData = () => {
 
   // 获取表单值的辅助函数，确保所有值都是字符串
   const getFormValues = () => {
-    const formValues = formApi ? formApi.getValues() : {};
+    // 当 formApi 未就绪时（组件首次加载），使用 formInitValues
+    // 这样可以正确获取从 location.state 传递过来的初始过滤条件
+    if (!formApi) {
+      return {
+        username: formInitValues.username || '',
+        token_name: formInitValues.token_name || '',
+        model_name: formInitValues.model_name || '',
+        start_timestamp: timestamp2string(Date.parse(formInitValues.dateRange[0]) / 1000),
+        end_timestamp: timestamp2string(Date.parse(formInitValues.dateRange[1]) / 1000),
+        channel: formInitValues.channel || '',
+        group: formInitValues.group || '',
+        request_id: formInitValues.request_id || '',
+        logType: formInitValues.logType ? parseInt(formInitValues.logType) : 0,
+      };
+    }
+
+    const formValues = formApi.getValues();
 
     let start_timestamp = timestamp2string(getTodayStartTimestamp());
     let end_timestamp = timestamp2string(now.getTime() / 1000 + 3600);
@@ -814,12 +843,30 @@ export const useLogsData = () => {
       });
   }, []);
 
-  // Initialize statistics when formApi is available
+  // 当从 Finance Dashboard 跳转过来时，应用初始过滤条件
+  // 因为 formInitValues 只在 Form 首次渲染时生效，后续需要通过 formApi 设置
   useEffect(() => {
-    if (formApi) {
-      handleEyeClick();
+    if (formApi && (initialFilterUsername || initialDateRange || initialLogType > 0)) {
+      const valuesToSet = {};
+      if (initialFilterUsername) {
+        valuesToSet.username = initialFilterUsername;
+      }
+      if (initialDateRange) {
+        valuesToSet.dateRange = initialDateRange;
+      }
+      if (initialLogType > 0) {
+        valuesToSet.logType = String(initialLogType);
+      }
+      if (Object.keys(valuesToSet).length > 0) {
+        formApi.setValues(valuesToSet);
+        // 延迟执行查询，确保表单值已更新
+        setTimeout(() => {
+          loadLogs(1, pageSize);
+          getLogStat();
+        }, 100);
+      }
     }
-  }, [formApi]);
+  }, [formApi, initialFilterUsername, initialStartTime, initialEndTime, initialLogType, pageSize]);
 
   // Check if any record has expandable content
   const hasExpandableRows = () => {

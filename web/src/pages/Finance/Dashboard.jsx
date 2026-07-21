@@ -25,10 +25,10 @@ import {
   DatePicker, Table, Typography, Button, Select, Input, Badge, Space, Spin, Empty, Tabs, TabPane,
 } from '@douyinfe/semi-ui';
 import {
-  IconMoneyExchangeStroked, IconCoinMoneyStroked, IconTickCircle, IconClockStroked,
+  IconMoneyExchangeStroked, IconCoinMoneyStroked, IconTickCircle, IconClockStroked, IconDownloadStroked,
 } from '@douyinfe/semi-icons';
 import { IllustrationNoResult, IllustrationNoResultDark } from '@douyinfe/semi-illustrations';
-import { API, timestamp2string, showError, modelColorMap, modelToColor, renderQuota, renderNumber } from '../../helpers';
+import { API, timestamp2string, showError, showSuccess, modelColorMap, modelToColor, renderQuota, renderNumber } from '../../helpers';
 import { formatMoney } from './utils';
 import { createCardProPagination } from '../../helpers/utils';
 import { useIsMobile } from '../../hooks/common/useIsMobile';
@@ -130,13 +130,13 @@ export default function FinanceDashboard() {
   const [supplierDist, setSupplierDist] = useState({ items: [] });
 
   // 有效充值趋势指标切换
-  const [trendMetric, setTrendMetric] = useState('amount'); // 'amount' | 'count'
+  const [trendMetric, setTrendMetric] = useState('amount'); // 'amount' | 'count' | 'cumulative'
 
   // 注册用户趋势指标切换
   const [usersTrendMetric, setUsersTrendMetric] = useState('daily'); // 'daily' | 'cumulative'
 
   // 渠道消费趋势指标切换
-  const [supplierTrendMetric, setSupplierTrendMetric] = useState('tokens'); // 'tokens' | 'count' | 'cost'
+  const [supplierTrendMetric, setSupplierTrendMetric] = useState('tokens'); // 'tokens' | 'count' | 'cost' | 'cumulative'
 
   // 消费趋势 Tabs（模型数据分析）
   const [activeChartTab, setActiveChartTab] = useState('1');
@@ -145,6 +145,10 @@ export default function FinanceDashboard() {
   const [chartData, setChartData] = useState(null);
 
   const [chartLoading, setChartLoading] = useState(false);
+
+  // 累计金额状态
+  const [cumulativeTopup, setCumulativeTopup] = useState(0);
+  const [cumulativeConsumption, setCumulativeConsumption] = useState(0);
 
   // 图表实例引用
   const usersTrendChartRef = useRef(null);
@@ -518,10 +522,65 @@ export default function FinanceDashboard() {
     renderPieChart('authDist', authDistChartRef.current, authData, t('用户认证占比'));
   }, [usersAuthDist, t]);
 
+  // 计算累计充值金额
   useEffect(() => {
-    const isCount = trendMetric === 'count';
-    renderLineChart('topupTrend', topupTrendChartRef.current, topupTrend, t('有效充值趋势'), isCount ? 'count' : 'amount', isCount ? '' : '¥', isCount ? t('订单数') : t('充值金额'));
-  }, [topupTrend, t, trendMetric]);
+    if (topupTrend.length > 0) {
+      const total = topupTrend.reduce((sum, item) => sum + (item.amount || 0), 0);
+      setCumulativeTopup(total);
+    } else {
+      setCumulativeTopup(0);
+    }
+  }, [topupTrend]);
+
+  // 计算累计消费金额（来自 supplierTrend，按日期聚合后求和）
+  useEffect(() => {
+    if (supplierTrend.length > 0) {
+      // 按日期聚合所有渠道的消费金额
+      const dateCostMap = {};
+      supplierTrend.forEach(item => {
+        const date = item.date;
+        if (!dateCostMap[date]) {
+          dateCostMap[date] = 0;
+        }
+        dateCostMap[date] += (item.cost || 0);
+      });
+      // 对所有日期的聚合值求和
+      const total = Object.values(dateCostMap).reduce((sum, cost) => sum + cost, 0);
+      setCumulativeConsumption(total);
+    } else {
+      setCumulativeConsumption(0);
+    }
+  }, [supplierTrend]);
+
+  // 计算有效充值累计趋势数据
+  const cumulativeTopupTrend = useMemo(() => {
+    if (topupTrend.length === 0) return [];
+    return topupTrend.reduce((acc, item, index) => {
+      const cumulative = index === 0 ? item.amount : acc[index - 1].amount + item.amount;
+      acc.push({ ...item, amount: cumulative });
+      return acc;
+    }, []);
+  }, [topupTrend]);
+
+  useEffect(() => {
+    let dataToRender = topupTrend;
+    let valueKey = 'amount';
+    let unit = '¥';
+    let valueLabel = t('充值金额');
+    
+    if (trendMetric === 'count') {
+      valueKey = 'count';
+      unit = '';
+      valueLabel = t('订单数');
+    } else if (trendMetric === 'cumulative') {
+      dataToRender = cumulativeTopupTrend;
+      valueKey = 'amount';
+      unit = '¥';
+      valueLabel = t('累计充值金额');
+    }
+    
+    renderLineChart('topupTrend', topupTrendChartRef.current, dataToRender, t('有效充值趋势'), valueKey, unit, valueLabel);
+  }, [topupTrend, cumulativeTopupTrend, t, trendMetric]);
 
   useEffect(() => {
     const distData = [
@@ -565,7 +624,7 @@ export default function FinanceDashboard() {
     renderPieChart('revenuePie', revenuePieChartRef.current, revenueData, t('付费方式收入占比'));
   }, [paymentModeRevenueDist, t]);
 
-  // 渠道消费趋势：按渠道分组的消费数据（多系列折线图）
+  // 渠道消费趋势：按渠道分组的消费数据（多系列折线图）或累计折线图
   useEffect(() => {
     if (!supplierTrend?.length) {
       if (chartsInstance.current.supplierTrend) {
@@ -573,6 +632,125 @@ export default function FinanceDashboard() {
       }
       return;
     }
+    
+    if (!supplierTrendChartRef.current) return;
+    if (!chartsInstance.current.supplierTrend) {
+      chartsInstance.current.supplierTrend = echarts.init(supplierTrendChartRef.current);
+    }
+    
+    // 累计消费模式：按渠道分别计算累计消费金额，每个渠道一条折线
+    if (supplierTrendMetric === 'cumulative') {
+      // 按日期和渠道聚合
+      const dateChannelMap = {};
+      const channelSet = new Set();
+      supplierTrend.forEach(item => {
+        const date = item.date;
+        const channel = item.supplier || '未知';
+        channelSet.add(channel);
+        if (!dateChannelMap[date]) {
+          dateChannelMap[date] = {};
+        }
+        if (!dateChannelMap[date][channel]) {
+          dateChannelMap[date][channel] = 0;
+        }
+        dateChannelMap[date][channel] += (item.cost || 0);
+      });
+      
+      const dates = Object.keys(dateChannelMap).sort();
+      const channels = Array.from(channelSet).sort();
+      
+      // 为每个渠道计算累计值
+      const cumulativeDataByChannel = {};
+      channels.forEach(channel => {
+        cumulativeDataByChannel[channel] = dates.reduce((acc, date, index) => {
+          const dailyCost = dateChannelMap[date][channel] || 0;
+          const cumulative = index === 0 ? dailyCost : acc[index - 1] + dailyCost;
+          acc.push(cumulative);
+          return acc;
+        }, []);
+      });
+      
+      const option = {
+        title: {
+          text: t('渠道消费趋势'),
+          left: 'center',
+          top: 8,
+          textStyle: {
+            fontSize: 14,
+            fontWeight: 400,
+            color: 'rgba(0, 0, 0, 0.4)',
+            fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
+            textTransform: 'uppercase',
+            letterSpacing: 0.055,
+          },
+        },
+        tooltip: {
+          show: true,
+          trigger: 'axis',
+          formatter: function(params) {
+            if (!params || !params.length) return '';
+            let result = `<strong>${formatDateLabel(params[0].name)}</strong><br/>`;
+            params.forEach(p => {
+              result += `${p.marker}${p.seriesName}: ¥${p.value.toFixed(2)}<br/>`;
+            });
+            return result;
+          },
+        },
+        legend: {
+          orient: 'horizontal',
+          bottom: '5%',
+          left: 'center',
+          data: channels,
+          textStyle: {
+            fontSize: 12,
+            color: 'rgba(0, 0, 0, 0.4)',
+          },
+        },
+        grid: {
+          left: '3%',
+          right: '4%',
+          bottom: '15%',
+          top: 45,
+          containLabel: true,
+        },
+        xAxis: {
+          type: 'category',
+          data: dates.map(date => formatDateLabel(date)),
+          axisLabel: {
+            rotate: dates.length > 15 ? 45 : 0,
+            interval: 0,
+          },
+        },
+        yAxis: {
+          type: 'value',
+          name: t('累计消费金额'),
+          position: 'left',
+          axisLabel: {
+            formatter: '¥{value}',
+          },
+        },
+        series: channels.map((channel, index) => ({
+          name: channel,
+          type: 'line',
+          smooth: true,
+          data: cumulativeDataByChannel[channel],
+          itemStyle: {
+            color: modelColorMap?.[channel] || pieColors[index % pieColors.length],
+          },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: (modelColorMap?.[channel] || pieColors[index % pieColors.length]) + '4D' },
+              { offset: 1, color: (modelColorMap?.[channel] || pieColors[index % pieColors.length]) + '0D' },
+            ]),
+          },
+        })),
+      };
+      
+      chartsInstance.current.supplierTrend.setOption(option, true);
+      return;
+    }
+    
+    // 非累计模式：按渠道分组的折线图（多系列）
     // 按日期和渠道聚合
     const dateChannelMap = {};
     const channelSet = new Set();
@@ -606,11 +784,6 @@ export default function FinanceDashboard() {
       valueLabel = t('消费金额');
       dataKey = 'cost';
       yAxisName = '金额 (¥)';
-    }
-    
-    if (!supplierTrendChartRef.current) return;
-    if (!chartsInstance.current.supplierTrend) {
-      chartsInstance.current.supplierTrend = echarts.init(supplierTrendChartRef.current);
     }
     
     const option = {
@@ -709,6 +882,28 @@ export default function FinanceDashboard() {
 
   // ========== 模型数据分析 - 6 个子图表渲染 ==========
 
+  // 切换 Tab 时清理离开图表的实例（避免 DOM 卸载后 ECharts 实例仍绑定旧 DOM 的问题）
+  useEffect(() => {
+    const tabInstanceMap = {
+      '1': 'quotaDist',
+      '2': 'callTrend',
+      '3': 'callDist',
+      '4': 'callRank',
+      '5': 'userQuotaRank',
+      '6': 'userQuotaTrend',
+    };
+    Object.entries(tabInstanceMap).forEach(([tabKey, instanceKey]) => {
+      if (tabKey !== activeChartTab && chartsInstance.current[instanceKey]) {
+        try {
+          chartsInstance.current[instanceKey].dispose();
+        } catch (e) {
+          // ignore dispose errors
+        }
+        chartsInstance.current[instanceKey] = null;
+      }
+    });
+  }, [activeChartTab]);
+
   // 1. 消耗分布 - 堆叠柱状图
   useEffect(() => {
     if (!chartData?.quota_distribution?.length || activeChartTab !== '1') {
@@ -756,34 +951,29 @@ export default function FinanceDashboard() {
       chartsInstance.current.quotaDist = echarts.init(quotaDistChartRef.current);
     }
 
-    // 判断模型数量，决定图例布局
-    const isManyModels = modelList.length > 8;
-    const legendConfig = isManyModels
-      ? {
-          type: 'scroll',
-          orient: 'vertical',
-          right: 10,
-          top: 'center',
-          bottom: 20,
-          data: modelList,
-          textStyle: { fontSize: 10, color: 'rgba(0, 0, 0, 0.6)' },
-          pageTextStyle: { fontSize: 10, color: 'rgba(0, 0, 0, 0.6)' },
-          pageIconColor: '#1890ff',
-          pageIconInactiveColor: '#b0b5b9',
-          pageIconSize: 12,
-          pageFormatter: '{current}/{total}',
-          pageButtonGap: 5,
-          pageButtonPosition: 'verticalEnd',
-        }
-      : {
-          data: modelList,
-          top: 5,
-          textStyle: { fontSize: 10, color: 'rgba(0, 0, 0, 0.5)' },
-        };
+    // 图例配置 - 底部水平滚动布局
+    const legendConfig = {
+      type: 'scroll',
+      orient: 'horizontal',
+      bottom: 10,
+      left: 'center',
+      data: modelList,
+      textStyle: { fontSize: 10, color: 'rgba(0, 0, 0, 0.5)' },
+      pageTextStyle: { fontSize: 10, color: 'rgba(0, 0, 0, 0.5)' },
+      pageIconColor: '#1890ff',
+      pageIconInactiveColor: '#b0b5b9',
+      pageIconSize: 12,
+      pageFormatter: '{current}/{total}',
+      pageButtonGap: 5,
+      pageButtonPosition: 'right',
+      pageButtonStyle: {
+        backgroundColor: '#1890ff',
+        borderColor: '#1890ff',
+        borderRadius: 2,
+      },
+    };
 
-    const gridConfig = isManyModels
-      ? { left: '3%', right: '15%', bottom: '3%', top: 35, containLabel: true }
-      : { left: '3%', right: '4%', bottom: '3%', top: 35, containLabel: true };
+    const gridConfig = { left: '3%', right: '4%', bottom: '18%', top: 35, containLabel: true };
 
     chartsInstance.current.quotaDist.setOption({
       tooltip: {
@@ -881,11 +1071,24 @@ export default function FinanceDashboard() {
 
     chartsInstance.current.callDist.setOption({
       tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
-      legend: { orient: 'horizontal', top: '5%', left: 'center', textStyle: { fontSize: 12 } },
+      legend: {
+        type: 'scroll',
+        orient: 'horizontal',
+        bottom: 10,
+        left: 'center',
+        textStyle: { fontSize: 12 },
+        pageTextStyle: { fontSize: 12 },
+        pageIconColor: '#1890ff',
+        pageIconInactiveColor: '#b0b5b9',
+        pageIconSize: 12,
+        pageFormatter: '{current}/{total}',
+        pageButtonGap: 5,
+        pageButtonPosition: 'right',
+      },
       series: [{
         type: 'pie',
         radius: ['40%', '70%'],
-        center: ['50%', '55%'],
+        center: ['50%', '50%'],
         avoidLabelOverlap: false,
         itemStyle: { borderRadius: 4, borderColor: '#fff', borderWidth: 2 },
         label: { show: false },
@@ -943,18 +1146,37 @@ export default function FinanceDashboard() {
       return;
     }
 
-    const data = [...chartData.user_quota_rank].sort((a, b) => (b.raw_quota || 0) - (a.raw_quota || 0)).slice(0, 10);
-    
+    // 获取货币配置（与 renderQuota 逻辑一致）
+    const quotaPerUnit = parseFloat(localStorage.getItem('quota_per_unit')) || 1;
+    const quotaDisplayType = localStorage.getItem('quota_display_type') || 'USD';
     const statusStr = localStorage.getItem('status');
     let symbol = '$';
+    let rate = 1;
     try {
       if (statusStr) {
         const s = JSON.parse(statusStr);
-        const quotaDisplayType = localStorage.getItem('quota_display_type') || 'USD';
-        if (quotaDisplayType === 'CNY') symbol = '¥';
-        else if (quotaDisplayType === 'CUSTOM') symbol = s?.custom_currency_symbol || '¤';
+        if (quotaDisplayType === 'CNY') {
+          symbol = '¥';
+          rate = s?.usd_exchange_rate || 1;
+        } else if (quotaDisplayType === 'CUSTOM') {
+          symbol = s?.custom_currency_symbol || '¤';
+          rate = s?.custom_currency_exchange_rate || 1;
+        }
       }
     } catch (e) {}
+
+    // 将 raw_quota 转换为显示金额（与 /console 页面的 renderQuota 一致）
+    const convertQuotaToAmount = (rawQuota) => {
+      const usdAmount = rawQuota / quotaPerUnit;
+      if (quotaDisplayType === 'CNY') {
+        return usdAmount * rate;
+      } else if (quotaDisplayType === 'CUSTOM') {
+        return usdAmount * rate;
+      }
+      return usdAmount;
+    };
+
+    const data = [...chartData.user_quota_rank].sort((a, b) => (b.raw_quota || 0) - (a.raw_quota || 0)).slice(0, 10);
 
     if (!chartsInstance.current.userQuotaRank) {
       chartsInstance.current.userQuotaRank = echarts.init(userQuotaRankChartRef.current);
@@ -982,7 +1204,7 @@ export default function FinanceDashboard() {
       series: [{
         type: 'bar',
         data: data.map((item, i) => ({
-          value: item.raw_quota || 0,
+          value: convertQuotaToAmount(item.raw_quota || 0),
           name: item.user || item.username,
           itemStyle: { color: pieColors[i % pieColors.length] },
         })),
@@ -1000,30 +1222,49 @@ export default function FinanceDashboard() {
       return;
     }
 
+    // 获取货币配置（与 renderQuota 逻辑一致）
+    const quotaPerUnit = parseFloat(localStorage.getItem('quota_per_unit')) || 1;
+    const quotaDisplayType = localStorage.getItem('quota_display_type') || 'USD';
+    const statusStr = localStorage.getItem('status');
+    let symbol = '$';
+    let rate = 1;
+    try {
+      if (statusStr) {
+        const s = JSON.parse(statusStr);
+        if (quotaDisplayType === 'CNY') {
+          symbol = '¥';
+          rate = s?.usd_exchange_rate || 1;
+        } else if (quotaDisplayType === 'CUSTOM') {
+          symbol = s?.custom_currency_symbol || '¤';
+          rate = s?.custom_currency_exchange_rate || 1;
+        }
+      }
+    } catch (e) {}
+
+    // 将 raw_quota 转换为显示金额（与 /console 页面的 renderQuota 一致）
+    const convertQuotaToAmount = (rawQuota) => {
+      const usdAmount = rawQuota / quotaPerUnit;
+      if (quotaDisplayType === 'CNY') {
+        return usdAmount * rate;
+      } else if (quotaDisplayType === 'CUSTOM') {
+        return usdAmount * rate;
+      }
+      return usdAmount;
+    };
+
     const data = chartData.user_quota_trend;
     
-    // 按用户分组
+    // 按用户分组（存储转换后的金额）
     const userMap = {};
     data.forEach(item => {
       if (!userMap[item.user]) { userMap[item.user] = {}; }
-      userMap[item.user][item.time] = item.raw_quota || 0;
+      userMap[item.user][item.time] = convertQuotaToAmount(item.raw_quota || 0);
     });
 
     const users = Object.keys(userMap).slice(0, 5); // 最多显示前5个用户
     const timeSet = new Set();
     data.forEach(item => timeSet.add(item.time));
     const times = Array.from(timeSet).sort();
-    
-    const statusStr = localStorage.getItem('status');
-    let symbol = '$';
-    try {
-      if (statusStr) {
-        const s = JSON.parse(statusStr);
-        const quotaDisplayType = localStorage.getItem('quota_display_type') || 'USD';
-        if (quotaDisplayType === 'CNY') symbol = '¥';
-        else if (quotaDisplayType === 'CUSTOM') symbol = s?.custom_currency_symbol || '¤';
-      }
-    } catch (e) {}
 
     if (!chartsInstance.current.userQuotaTrend) {
       chartsInstance.current.userQuotaTrend = echarts.init(userQuotaTrendChartRef.current);
@@ -1110,6 +1351,30 @@ export default function FinanceDashboard() {
     };
   }, []);
 
+  // 导出营收分析表格为 CSV
+  const handleExportRevenueCsv = async () => {
+    try {
+      const res = await API.get('/api/finance/revenue-by-user/export-csv', {
+        params: { start_time: startTime, end_time: endTime },
+        responseType: 'blob',
+      });
+      const blob = res.data;
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const filename = res.headers['content-disposition']?.split('filename=')[1] || `revenue_analysis_${new Date().toISOString().slice(0, 10)}.csv`;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      showSuccess(t('导出成功'));
+    } catch (error) {
+      console.error('导出CSV失败:', error);
+      showError(t('导出失败'));
+    }
+  };
+
   // 表格列定义
   const revenueColumns = useMemo(() => [
     {
@@ -1123,7 +1388,26 @@ export default function FinanceDashboard() {
       dataIndex: 'username',
       key: 'username',
       width: 150,
-      render: (text) => <Typography.Text>{text || '-'}</Typography.Text>,
+      render: (text) => (
+        <Typography.Text
+          type='primary'
+          style={{ cursor: 'pointer' }}
+          onClick={() => {
+            if (text) {
+              navigate('/console/log', {
+                state: {
+                  filterUsername: text,
+                  startTime: startTime,
+                  endTime: endTime,
+                  logType: '2',
+                },
+              });
+            }
+          }}
+        >
+          {text || '-'}
+        </Typography.Text>
+      ),
     },
     {
       title: t('按量付费'),
@@ -1292,6 +1576,15 @@ export default function FinanceDashboard() {
               >
                 {t('订单数')}
               </Button>
+              <Button
+                size='small'
+                theme={trendMetric === 'cumulative' ? 'solid' : 'light'}
+                type='primary'
+                onClick={() => setTrendMetric('cumulative')}
+                style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
+              >
+                {t('累计充值')}
+              </Button>
             </div>
             <div ref={topupTrendChartRef} style={{ width: '100%', height: 240 }} />
           </div>
@@ -1348,6 +1641,15 @@ export default function FinanceDashboard() {
                 style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
               >
                 {t('消费金额')}
+              </Button>
+              <Button
+                size='small'
+                theme={supplierTrendMetric === 'cumulative' ? 'solid' : 'light'}
+                type='primary'
+                onClick={() => setSupplierTrendMetric('cumulative')}
+                style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
+              >
+                {t('累计消费')}
               </Button>
             </div>
             <div ref={supplierTrendChartRef} style={{ width: '100%', height: 240 }} />
@@ -1494,15 +1796,6 @@ export default function FinanceDashboard() {
           padding: '16px',
           minHeight: 400,
         }}>
-          <div style={{
-            fontSize: 14,
-            fontWeight: 400,
-            color: 'rgba(0, 0, 0, 0.4)',
-            fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
-            textTransform: 'uppercase',
-            letterSpacing: 0.055,
-            marginBottom: 12,
-          }}>{t('付费方式Tokens分布')}</div>
           <div ref={paymentModeTokensChartRef} style={{ width: '100%', height: 240 }} />
         </div>
       </div>
@@ -1554,6 +1847,15 @@ export default function FinanceDashboard() {
               isMobile: isMobile,
               t: t,
             })}
+            <Button
+              icon={<IconDownloadStroked />}
+              type='primary'
+              size='small'
+              onClick={handleExportRevenueCsv}
+              style={{ marginLeft: 12 }}
+            >
+              {t('导出 CSV')}
+            </Button>
           </div>
         </div>
         {/* 付费方式收入占比饼图 */}
