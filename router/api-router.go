@@ -27,7 +27,7 @@ func SetApiRouter(router *gin.Engine) {
 		// Dashboard Board API (大屏数据接口)
 		apiRouter.GET("/dashboard/board/stats", middleware.AdminAuth(), controller.GetDashboardBoardStats)
 		apiRouter.GET("/dashboard/board/realtime", middleware.AdminAuth(), controller.GetDashboardBoardRealtime)
-		apiRouter.GET("/dashboard/board/chart-data", middleware.AdminAuth(), controller.GetDashboardBoardChartData)
+		apiRouter.GET("/dashboard/board/chart-data", middleware.TryUserAuth(), controller.GetDashboardBoardChartData)
 		apiRouter.GET("/notice", controller.GetNotice)
 		apiRouter.GET("/user-agreement", controller.GetUserAgreement)
 		apiRouter.GET("/privacy-policy", controller.GetPrivacyPolicy)
@@ -368,6 +368,18 @@ func SetApiRouter(router *gin.Engine) {
 			financeRoute.GET("/reconciliations", controller.GetReconciliations)
 			financeRoute.POST("/reconcile", controller.AutoReconcile)
 			financeRoute.POST("/report/daily", controller.GenerateDailyReport)
+			// 财务运营概览（Dashboard）v3 接口
+			financeRoute.GET("/dashboard/stats", controller.GetDashboardStats)
+			financeRoute.GET("/users/trend", controller.GetUsersTrend)
+			financeRoute.GET("/users/auth-distribution", controller.GetUsersAuthDistribution)
+			financeRoute.GET("/topup/trend", controller.GetTopupTrend)
+			financeRoute.GET("/topup/user-type-dist", controller.GetTopupUserTypeDistribution)
+			financeRoute.GET("/consumption/trend", controller.GetConsumptionTrend)
+			financeRoute.GET("/payment-mode-tokens-dist", controller.GetPaymentModeTokensDistribution)
+			financeRoute.GET("/revenue-by-user", controller.GetRevenueByUser)
+			financeRoute.GET("/payment-mode-revenue-dist", controller.GetPaymentModeRevenueDistribution)
+			financeRoute.GET("/supplier/trend", controller.GetSupplierTrend)
+			financeRoute.GET("/supplier-dist", controller.GetSupplierDistribution)
 		}
 
 		logRoute.Use(middleware.CORS(), middleware.CriticalRateLimit())

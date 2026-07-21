@@ -613,3 +613,335 @@ func GetOrderChartStatistics(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": chartData})
 }
+
+// ============================================
+// 财务运营概览（Dashboard）v3 API Handler
+// ============================================
+
+// GetDashboardStats 获取财务概览统计指标
+func GetDashboardStats(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		common.ApiErrorMsg(c, "未登录")
+		return
+	}
+	if !model.IsFinanceAdmin(userId) {
+		common.ApiErrorMsg(c, "无权限访问财务模块")
+		return
+	}
+
+	startTime, _ := strconv.ParseInt(c.Query("start_time"), 10, 64)
+	endTime, _ := strconv.ParseInt(c.Query("end_time"), 10, 64)
+
+	if startTime == 0 || endTime == 0 {
+		common.ApiErrorMsg(c, "缺少时间参数")
+		return
+	}
+
+	serviceInstance := service.GetFinanceService()
+	stats, err := serviceInstance.GetDashboardStats(startTime, endTime)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": stats})
+}
+
+// GetUsersTrend 获取用户注册趋势
+func GetUsersTrend(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		common.ApiErrorMsg(c, "未登录")
+		return
+	}
+	if !model.IsFinanceAdmin(userId) {
+		common.ApiErrorMsg(c, "无权限访问财务模块")
+		return
+	}
+
+	startTime, _ := strconv.ParseInt(c.Query("start_time"), 10, 64)
+	endTime, _ := strconv.ParseInt(c.Query("end_time"), 10, 64)
+
+	if startTime == 0 || endTime == 0 {
+		common.ApiErrorMsg(c, "缺少时间参数")
+		return
+	}
+
+	serviceInstance := service.GetFinanceService()
+	trend, err := serviceInstance.GetUsersTrend(startTime, endTime)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": trend})
+}
+
+// GetUsersAuthDistribution 获取用户认证分布
+func GetUsersAuthDistribution(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		common.ApiErrorMsg(c, "未登录")
+		return
+	}
+	if !model.IsFinanceAdmin(userId) {
+		common.ApiErrorMsg(c, "无权限访问财务模块")
+		return
+	}
+
+	serviceInstance := service.GetFinanceService()
+	dist, err := serviceInstance.GetUsersAuthDistribution()
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": dist})
+}
+
+// GetTopupTrend 获取充值趋势
+func GetTopupTrend(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		common.ApiErrorMsg(c, "未登录")
+		return
+	}
+	if !model.IsFinanceAdmin(userId) {
+		common.ApiErrorMsg(c, "无权限访问财务模块")
+		return
+	}
+
+	startTime, _ := strconv.ParseInt(c.Query("start_time"), 10, 64)
+	endTime, _ := strconv.ParseInt(c.Query("end_time"), 10, 64)
+
+	if startTime == 0 || endTime == 0 {
+		common.ApiErrorMsg(c, "缺少时间参数")
+		return
+	}
+
+	serviceInstance := service.GetFinanceService()
+	trend, err := serviceInstance.GetTopupTrend(startTime, endTime)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": trend})
+}
+
+// GetTopupUserTypeDistribution 获取用户充值分布
+func GetTopupUserTypeDistribution(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		common.ApiErrorMsg(c, "未登录")
+		return
+	}
+	if !model.IsFinanceAdmin(userId) {
+		common.ApiErrorMsg(c, "无权限访问财务模块")
+		return
+	}
+
+	startTime, _ := strconv.ParseInt(c.Query("start_time"), 10, 64)
+	endTime, _ := strconv.ParseInt(c.Query("end_time"), 10, 64)
+
+	if startTime == 0 || endTime == 0 {
+		common.ApiErrorMsg(c, "缺少时间参数")
+		return
+	}
+
+	serviceInstance := service.GetFinanceService()
+	dist, err := serviceInstance.GetTopupUserTypeDistribution(startTime, endTime)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": dist})
+}
+
+// GetConsumptionTrend 获取消费趋势
+func GetConsumptionTrend(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		common.ApiErrorMsg(c, "未登录")
+		return
+	}
+	if !model.IsFinanceAdmin(userId) {
+		common.ApiErrorMsg(c, "无权限访问财务模块")
+		return
+	}
+
+	startTime, _ := strconv.ParseInt(c.Query("start_time"), 10, 64)
+	endTime, _ := strconv.ParseInt(c.Query("end_time"), 10, 64)
+
+	if startTime == 0 || endTime == 0 {
+		common.ApiErrorMsg(c, "缺少时间参数")
+		return
+	}
+
+	serviceInstance := service.GetFinanceService()
+	trend, err := serviceInstance.GetConsumptionTrend(startTime, endTime)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": trend})
+}
+
+// GetPaymentModeTokensDistribution 获取付费方式Tokens分布
+func GetPaymentModeTokensDistribution(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		common.ApiErrorMsg(c, "未登录")
+		return
+	}
+	if !model.IsFinanceAdmin(userId) {
+		common.ApiErrorMsg(c, "无权限访问财务模块")
+		return
+	}
+
+	startTime, _ := strconv.ParseInt(c.Query("start_time"), 10, 64)
+	endTime, _ := strconv.ParseInt(c.Query("end_time"), 10, 64)
+
+	if startTime == 0 || endTime == 0 {
+		common.ApiErrorMsg(c, "缺少时间参数")
+		return
+	}
+
+	serviceInstance := service.GetFinanceService()
+	dist, err := serviceInstance.GetPaymentModeTokensDistribution(startTime, endTime)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": dist})
+}
+
+// GetRevenueByUser 获取按用户维度的营收分析
+func GetRevenueByUser(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		common.ApiErrorMsg(c, "未登录")
+		return
+	}
+	if !model.IsFinanceAdmin(userId) {
+		common.ApiErrorMsg(c, "无权限访问财务模块")
+		return
+	}
+
+	startTime, _ := strconv.ParseInt(c.Query("start_time"), 10, 64)
+	endTime, _ := strconv.ParseInt(c.Query("end_time"), 10, 64)
+
+	if startTime == 0 || endTime == 0 {
+		common.ApiErrorMsg(c, "缺少时间参数")
+		return
+	}
+
+	pageInfo := common.GetPageQuery(c)
+
+	serviceInstance := service.GetFinanceService()
+	items, total, err := serviceInstance.GetRevenueByUser(startTime, endTime, pageInfo)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    items,
+		"total":   total,
+	})
+}
+
+// GetPaymentModeRevenueDistribution 获取付费方式收入分布
+func GetPaymentModeRevenueDistribution(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		common.ApiErrorMsg(c, "未登录")
+		return
+	}
+	if !model.IsFinanceAdmin(userId) {
+		common.ApiErrorMsg(c, "无权限访问财务模块")
+		return
+	}
+
+	startTime, _ := strconv.ParseInt(c.Query("start_time"), 10, 64)
+	endTime, _ := strconv.ParseInt(c.Query("end_time"), 10, 64)
+
+	if startTime == 0 || endTime == 0 {
+		common.ApiErrorMsg(c, "缺少时间参数")
+		return
+	}
+
+	serviceInstance := service.GetFinanceService()
+	dist, err := serviceInstance.GetPaymentModeRevenueDistribution(startTime, endTime)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": dist})
+}
+
+// GetSupplierTrend 获取渠道消费趋势
+func GetSupplierTrend(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		common.ApiErrorMsg(c, "未登录")
+		return
+	}
+	if !model.IsFinanceAdmin(userId) {
+		common.ApiErrorMsg(c, "无权限访问财务模块")
+		return
+	}
+
+	startTime, _ := strconv.ParseInt(c.Query("start_time"), 10, 64)
+	endTime, _ := strconv.ParseInt(c.Query("end_time"), 10, 64)
+
+	if startTime == 0 || endTime == 0 {
+		common.ApiErrorMsg(c, "缺少时间参数")
+		return
+	}
+
+	serviceInstance := service.GetFinanceService()
+	trend, err := serviceInstance.GetSupplierTrend(startTime, endTime)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": trend})
+}
+
+// GetSupplierDistribution 获取渠道消费占比
+func GetSupplierDistribution(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		common.ApiErrorMsg(c, "未登录")
+		return
+	}
+	if !model.IsFinanceAdmin(userId) {
+		common.ApiErrorMsg(c, "无权限访问财务模块")
+		return
+	}
+
+	startTime, _ := strconv.ParseInt(c.Query("start_time"), 10, 64)
+	endTime, _ := strconv.ParseInt(c.Query("end_time"), 10, 64)
+
+	if startTime == 0 || endTime == 0 {
+		common.ApiErrorMsg(c, "缺少时间参数")
+		return
+	}
+
+	serviceInstance := service.GetFinanceService()
+	dist, err := serviceInstance.GetSupplierDistribution(startTime, endTime)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": dist})
+}

@@ -97,10 +97,10 @@ const OtherSetting = () => {
     try {
       setLoadingInput((loadingInput) => ({ ...loadingInput, Notice: true }));
       await updateOption('Notice', inputs.Notice);
-      showSuccess(t('公告已更新'));
+      showSuccess(t('通知已更新'));
     } catch (error) {
-      console.error(t('公告更新失败'), error);
-      showError(t('公告更新失败'));
+      console.error(t('通知更新失败'), error);
+      showError(t('通知更新失败'));
     } finally {
       setLoadingInput((loadingInput) => ({ ...loadingInput, Notice: false }));
     }
@@ -383,9 +383,9 @@ const OtherSetting = () => {
           <Card>
             <Form.Section text={t('通用设置')}>
               <Form.TextArea
-                label={t('公告')}
+                label={t('通知')}
                 placeholder={t(
-                  '在此输入新的公告内容，支持 Markdown & HTML 代码',
+                  '在此输入新的通知内容，支持 Markdown & HTML 代码',
                 )}
                 field={'Notice'}
                 onChange={handleInputChange}
@@ -393,7 +393,7 @@ const OtherSetting = () => {
                 autosize={{ minRows: 6, maxRows: 12 }}
               />
               <Button onClick={submitNotice} loading={loadingInput['Notice']}>
-                {t('设置公告')}
+                {t('设置通知')}
               </Button>
               <Form.TextArea
                 label={t('用户协议')}
