@@ -20,6 +20,7 @@ import (
 	"github.com/QuantumNous/new-api/relay/channel/gemini"
 	"github.com/QuantumNous/new-api/relay/channel/jimeng"
 	"github.com/QuantumNous/new-api/relay/channel/jina"
+	taskjingwei "github.com/QuantumNous/new-api/relay/channel/jingwei"
 	"github.com/QuantumNous/new-api/relay/channel/minimax"
 	"github.com/QuantumNous/new-api/relay/channel/mistral"
 	"github.com/QuantumNous/new-api/relay/channel/mokaai"
@@ -156,6 +157,8 @@ func GetTaskAdaptor(platform constant.TaskPlatform) channel.TaskAdaptor {
 			return &taskVidu.TaskAdaptor{}
 		case constant.ChannelTypeDoubaoVideo, constant.ChannelTypeVolcEngine, constant.ChannelTypeZLHub:
 			return &taskdoubao.TaskAdaptor{}
+		case constant.ChannelTypeJingWei:
+			return &taskjingwei.TaskAdaptor{}
 		case constant.ChannelTypeSora, constant.ChannelTypeOpenAI, constant.ChannelTypeAgnesAI:
 			return &tasksora.TaskAdaptor{}
 		case constant.ChannelTypeGemini:
