@@ -51,10 +51,12 @@ export const useLogsData = () => {
   // Finance Dashboard 传递的是秒级时间戳 (startTime, endTime)
   const initialFilterUsername = location?.state?.filterUsername || '';
   const initialLogType = location?.state?.logType ? parseInt(location.state.logType) : 0;
-  // 将秒级时间戳转换为 dayjs 对象
+  // 将秒级时间戳转换为 Date 对象（Semi DatePicker dateTimeRange 需要 Date 对象数组）
+  // 使用 ?? 0 保证 0 值不被错误判断为 falsy
   const initialStartTime = location?.state?.startTime;
   const initialEndTime = location?.state?.endTime;
-  const initialDateRange = initialStartTime && initialEndTime
+  const hasTimeFilter = (initialStartTime ?? 0) > 0 && (initialEndTime ?? 0) > 0;
+  const initialDateRange = hasTimeFilter
     ? [new Date(initialStartTime * 1000), new Date(initialEndTime * 1000)]
     : null;
 
@@ -309,6 +311,7 @@ export const useLogsData = () => {
     const { success, message, data } = res.data;
     if (success) {
       setStat(data);
+      setShowStat(true);
     } else {
       showError(message);
     }
@@ -334,6 +337,7 @@ export const useLogsData = () => {
     const { success, message, data } = res.data;
     if (success) {
       setStat(data);
+      setShowStat(true);
     } else {
       showError(message);
     }
@@ -842,6 +846,18 @@ export const useLogsData = () => {
         showError(reason);
       });
   }, []);
+
+  // 默认初始化数据 - 当 formApi 就绪时加载数据
+  useEffect(() => {
+    if (formApi) {
+      loadLogs(1, pageSize)
+        .then()
+        .catch((reason) => {
+          showError(reason);
+        });
+      getLogStat();
+    }
+  }, [formApi, pageSize]);
 
   // 当从 Finance Dashboard 跳转过来时，应用初始过滤条件
   // 因为 formInitValues 只在 Form 首次渲染时生效，后续需要通过 formApi 设置
