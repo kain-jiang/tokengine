@@ -75,6 +75,10 @@ export default function RevenueManagement() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
+  // ===== 搜索条件 =====
+  const [keyword, setKeyword] = useState('');
+  const [searchKeyword, setSearchKeyword] = useState('');
+
   // ===== 日期范围（默认上个月 00:00:00 至今天） =====
   const [dateRange, setDateRange] = useState({
     startDate: null,
@@ -122,6 +126,20 @@ export default function RevenueManagement() {
     }
     return 0;
   }, [dateRange]);
+
+  // ===== 查询处理 =====
+  const handleSearch = () => {
+    setSearchKeyword(keyword);
+    setPayAsYouGoPage(1);
+    setSubscriptionPage(1);
+  };
+
+  const handleClearSearch = () => {
+    setKeyword('');
+    setSearchKeyword('');
+    setPayAsYouGoPage(1);
+    setSubscriptionPage(1);
+  };
 
   // ===== 初始化默认时间（上个月同一天 00:00:00 至今日） =====
   useEffect(() => {
@@ -189,14 +207,18 @@ export default function RevenueManagement() {
     if (startTime === 0 || endTime === 0) return;
     setSubLoading(true);
     try {
-      const res = await API.get('/api/finance/subscription-orders', {
-        params: {
-          start_time: startTime,
-          end_time: endTime,
-          p: subscriptionPage,
-          page_size: subscriptionPageSize,
-        },
-      });
+      const params = {
+        start_time: startTime,
+        end_time: endTime,
+        p: subscriptionPage,
+        page_size: subscriptionPageSize,
+      };
+      if (searchKeyword) {
+        params.keyword = searchKeyword;
+      }
+      console.log('[RevenueManagement] 请求订阅套餐数据:', params);
+      const res = await API.get('/api/finance/subscription-orders', { params });
+      console.log('[RevenueManagement] 订阅套餐响应:', res.data);
       if (res.data.success) {
         setSubscriptionData({
           items: res.data.data || [],
@@ -270,14 +292,8 @@ export default function RevenueManagement() {
           style={{ cursor: 'pointer' }}
           onClick={() => {
             if (text) {
-              navigate('/console/log', {
-                state: {
-                  filterUsername: text,
-                  startTime: startTime,
-                  endTime: endTime,
-                  logType: '2',
-                },
-              });
+              setKeyword(text);
+              setSearchKeyword(text);
             }
           }}
         >
@@ -292,7 +308,7 @@ export default function RevenueManagement() {
       width: 160,
       render: (val) => <Text type='primary'>{formatMoney(val)}</Text>,
     },
-  ], [t, startTime, endTime, navigate]);
+  ], [t, navigate]);
 
   // ===== 表格列定义：订阅套餐 =====
   const subscriptionColumns = useMemo(() => [
@@ -301,7 +317,20 @@ export default function RevenueManagement() {
       dataIndex: 'username',
       key: 'username',
       width: 140,
-      render: (text) => <Text type='primary'>{text || '-'}</Text>,
+      render: (text) => (
+        <Text
+          type='primary'
+          style={{ cursor: 'pointer' }}
+          onClick={() => {
+            if (text) {
+              setKeyword(text);
+              setSearchKeyword(text);
+            }
+          }}
+        >
+          {text || '-'}
+        </Text>
+      ),
     },
     {
       title: t('套餐类型'),
@@ -393,9 +422,9 @@ export default function RevenueManagement() {
         </StatCard>
       </div>
 
-      {/* 时间控件 + 导出按钮 */}
+      {/* 时间控件 + 搜索 + 导出按钮 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: 14, color: 'rgba(0, 0, 0, 0.6)' }}>{t('统计时间')}：</span>
           <DatePicker
             value={dateRange.startDate}
@@ -412,6 +441,22 @@ export default function RevenueManagement() {
             style={{ width: 180 }}
             format='yyyy-MM-dd'
           />
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{ fontSize: 14, color: 'rgba(0, 0, 0, 0.6)' }}>{t('用户名')}：</span>
+            <Input
+              placeholder={t('请输入用户名')}
+              value={keyword}
+              onChange={(val) => setKeyword(val)}
+              style={{ width: 180 }}
+              onPressEnter={handleSearch}
+            />
+            <Button type='primary' onClick={handleSearch}>
+              {t('查询')}
+            </Button>
+            <Button onClick={handleClearSearch}>
+              {t('重置')}
+            </Button>
+          </div>
         </div>
         <Button
           icon={<IconDownloadStroked />}

@@ -397,7 +397,7 @@ func (s *FinanceService) GetRevenueByUser(startTime, endTime int64, pageInfo *co
 
 // GetPayAsYouGoByUser 获取按量付费（消费记录）营收分析
 // 统计时间段内每个用户 logs.type=2（消费）的 quota 折算金额
-func (s *FinanceService) GetPayAsYouGoByUser(startTime, endTime int64, pageInfo *common.PageInfo) ([]dto.PayAsYouGoItem, int64, error) {
+func (s *FinanceService) GetPayAsYouGoByUser(startTime, endTime int64, pageInfo *common.PageInfo, username string) ([]dto.PayAsYouGoItem, int64, error) {
 	items := make([]dto.PayAsYouGoItem, 0)
 
 	quotaPerUnit := common.QuotaPerUnit
@@ -405,13 +405,26 @@ func (s *FinanceService) GetPayAsYouGoByUser(startTime, endTime int64, pageInfo 
 		quotaPerUnit = 50000000
 	}
 
+	usernameFilter := ""
+	if username != "" {
+		usernameFilter = " AND u.username LIKE ?"
+	}
+
 	// 统计总记录数（有消费记录的用户数）
 	var total int64
-	model.DB.Raw(`
+	countQuery := `
 		SELECT COUNT(DISTINCT u.id)
 		FROM users u
 		INNER JOIN logs l ON u.id = l.user_id
-		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?`, startTime, endTime).Scan(&total)
+		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?`
+	if username != "" {
+		countQuery += " AND u.username LIKE ?"
+	}
+	args := []interface{}{startTime, endTime}
+	if username != "" {
+		args = append(args, "%"+username+"%")
+	}
+	model.DB.Raw(countQuery, args...).Scan(&total)
 
 	type payAsYouGoRow struct {
 		UserID   int     `db:"user_id"`
@@ -424,7 +437,9 @@ func (s *FinanceService) GetPayAsYouGoByUser(startTime, endTime int64, pageInfo 
 		       COALESCE(SUM(l.quota), 0) / ? as amount
 		FROM users u
 		INNER JOIN logs l ON u.id = l.user_id
-		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?
+		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?`
+	query += usernameFilter
+	query += `
 		GROUP BY u.id, u.username
 		ORDER BY amount DESC`
 
@@ -449,13 +464,19 @@ func (s *FinanceService) GetPayAsYouGoByUser(startTime, endTime int64, pageInfo 
 // GetSubscriptionOrders 获取订阅套餐营收分析
 // 统计订阅时间（下单时间 create_time）落在时间段内的订阅订单，关联套餐与用户订阅实例信息
 // 一个用户购买多个套餐（或同一套餐多次）会产生多条记录
-func (s *FinanceService) GetSubscriptionOrders(startTime, endTime int64, pageInfo *common.PageInfo) ([]dto.SubscriptionOrderItem, int64, error) {
+func (s *FinanceService) GetSubscriptionOrders(startTime, endTime int64, pageInfo *common.PageInfo, username string) ([]dto.SubscriptionOrderItem, int64, error) {
 	items := make([]dto.SubscriptionOrderItem, 0)
 
 	// 总记录数（满足时间条件的订阅订单数）
 	var total int64
+	countQuery := "status = ? AND create_time >= ? AND create_time <= ?"
+	countArgs := []interface{}{common.TopUpStatusSuccess, startTime, endTime}
+	if username != "" {
+		countQuery += " AND username LIKE ?"
+		countArgs = append(countArgs, "%"+username+"%")
+	}
 	model.DB.Model(&model.SubscriptionOrder{}).
-		Where("status = ? AND create_time >= ? AND create_time <= ?", common.TopUpStatusSuccess, startTime, endTime).
+		Where(countQuery, countArgs...).
 		Count(&total)
 
 	type subscriptionOrderRow struct {
@@ -467,6 +488,11 @@ func (s *FinanceService) GetSubscriptionOrders(startTime, endTime int64, pageInf
 		ExpireTime    int64   `db:"expire_time"`
 		PaidAmount    float64 `db:"paid_amount"`
 		TokensAmount  int64   `db:"tokens_amount"`
+	}
+
+	usernameFilter := ""
+	if username != "" {
+		usernameFilter = " AND u.username LIKE ?"
 	}
 
 	query := `
@@ -482,7 +508,9 @@ func (s *FinanceService) GetSubscriptionOrders(startTime, endTime int64, pageInf
 		LEFT JOIN users u ON u.id = o.user_id
 		LEFT JOIN subscription_plans p ON p.id = o.plan_id
 		LEFT JOIN user_subscriptions s ON s.order_trade_no = o.trade_no
-		WHERE o.status = ? AND o.create_time >= ? AND o.create_time <= ?
+		WHERE o.status = ? AND o.create_time >= ? AND o.create_time <= ?`
+	query += usernameFilter
+	query += `
 		ORDER BY o.create_time DESC`
 
 	if pageInfo.PageSize > 0 {
@@ -741,14 +769,14 @@ func (s *FinanceService) GetRevenueManagementExport(startTime, endTime int64) (*
 	data := &dto.RevenueManagementExportData{}
 
 	// 按量付费明细（不分页，全量）
-	paygItems, _, err := s.GetPayAsYouGoByUser(startTime, endTime, &common.PageInfo{PageSize: 0, Page: 0})
+	paygItems, _, err := s.GetPayAsYouGoByUser(startTime, endTime, &common.PageInfo{PageSize: 0, Page: 0}, "")
 	if err != nil {
 		return nil, err
 	}
 	data.PayAsYouGoItems = paygItems
 
 	// 订阅套餐明细（不分页，全量）
-	subItems, _, err := s.GetSubscriptionOrders(startTime, endTime, &common.PageInfo{PageSize: 0, Page: 0})
+	subItems, _, err := s.GetSubscriptionOrders(startTime, endTime, &common.PageInfo{PageSize: 0, Page: 0}, "")
 	if err != nil {
 		return nil, err
 	}

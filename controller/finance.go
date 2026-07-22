@@ -886,10 +886,12 @@ func GetPayAsYouGoByUser(c *gin.Context) {
 		return
 	}
 
+	username := c.Query("keyword")
+
 	pageInfo := common.GetPageQuery(c)
 
 	serviceInstance := service.GetFinanceService()
-	items, total, err := serviceInstance.GetPayAsYouGoByUser(startTime, endTime, pageInfo)
+	items, total, err := serviceInstance.GetPayAsYouGoByUser(startTime, endTime, pageInfo, username)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -925,6 +927,7 @@ func GetSubscriptionOrders(c *gin.Context) {
 
 	startTime, _ := strconv.ParseInt(c.Query("start_time"), 10, 64)
 	endTime, _ := strconv.ParseInt(c.Query("end_time"), 10, 64)
+	username := c.Query("keyword")
 
 	if startTime == 0 || endTime == 0 {
 		common.ApiErrorMsg(c, "缺少时间参数")
@@ -934,7 +937,7 @@ func GetSubscriptionOrders(c *gin.Context) {
 	pageInfo := common.GetPageQuery(c)
 
 	serviceInstance := service.GetFinanceService()
-	items, total, err := serviceInstance.GetSubscriptionOrders(startTime, endTime, pageInfo)
+	items, total, err := serviceInstance.GetSubscriptionOrders(startTime, endTime, pageInfo, username)
 	if err != nil {
 		common.ApiError(c, err)
 		return
