@@ -857,6 +857,96 @@ func GetRevenueByUser(c *gin.Context) {
 	})
 }
 
+// GetPayAsYouGoByUser 获取按量付费（消费记录）营收分析
+// @Summary 获取按量付费营收分析
+// @Tags finance
+// @Param start_time query int true "开始时间戳"
+// @Param end_time query int true "结束时间戳"
+// @Param p query int false "页码"
+// @Param page_size query int false "每页数量"
+// @Success 200 {object} dto.PayAsYouGoResponse
+// @Router /finance/pay-as-you-go-by-user [get]
+// @Security ApiKeyAuth
+func GetPayAsYouGoByUser(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		common.ApiErrorMsg(c, "未登录")
+		return
+	}
+	if !model.IsFinanceAdmin(userId) {
+		common.ApiErrorMsg(c, "无权限访问财务模块")
+		return
+	}
+
+	startTime, _ := strconv.ParseInt(c.Query("start_time"), 10, 64)
+	endTime, _ := strconv.ParseInt(c.Query("end_time"), 10, 64)
+
+	if startTime == 0 || endTime == 0 {
+		common.ApiErrorMsg(c, "缺少时间参数")
+		return
+	}
+
+	pageInfo := common.GetPageQuery(c)
+
+	serviceInstance := service.GetFinanceService()
+	items, total, err := serviceInstance.GetPayAsYouGoByUser(startTime, endTime, pageInfo)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    items,
+		"total":   total,
+	})
+}
+
+// GetSubscriptionOrders 获取订阅套餐营收分析
+// @Summary 获取订阅套餐营收分析
+// @Tags finance
+// @Param start_time query int true "开始时间戳"
+// @Param end_time query int true "结束时间戳"
+// @Param p query int false "页码"
+// @Param page_size query int false "每页数量"
+// @Success 200 {object} dto.SubscriptionOrderResponse
+// @Router /finance/subscription-orders [get]
+// @Security ApiKeyAuth
+func GetSubscriptionOrders(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		common.ApiErrorMsg(c, "未登录")
+		return
+	}
+	if !model.IsFinanceAdmin(userId) {
+		common.ApiErrorMsg(c, "无权限访问财务模块")
+		return
+	}
+
+	startTime, _ := strconv.ParseInt(c.Query("start_time"), 10, 64)
+	endTime, _ := strconv.ParseInt(c.Query("end_time"), 10, 64)
+
+	if startTime == 0 || endTime == 0 {
+		common.ApiErrorMsg(c, "缺少时间参数")
+		return
+	}
+
+	pageInfo := common.GetPageQuery(c)
+
+	serviceInstance := service.GetFinanceService()
+	items, total, err := serviceInstance.GetSubscriptionOrders(startTime, endTime, pageInfo)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    items,
+		"total":   total,
+	})
+}
+
 // ExportRevenueByUserCsv 导出营收分析用户数据为 CSV
 func ExportRevenueByUserCsv(c *gin.Context) {
 	userId := c.GetInt("id")
@@ -997,4 +1087,111 @@ func GetSupplierDistribution(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": dist})
+}
+
+// GetRevenueManagementStats 获取营收管理 头部统计指标
+// @Summary 获取营收管理 头部统计指标
+// @Tags finance
+// @Param start_time query int true "开始时间戳"
+// @Param end_time query int true "结束时间戳"
+// @Success 200 {object} dto.RevenueManagementStats
+// @Router /finance/revenue-management/stats [get]
+// @Security ApiKeyAuth
+func GetRevenueManagementStats(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		common.ApiErrorMsg(c, "未登录")
+		return
+	}
+	if !model.IsFinanceAdmin(userId) {
+		common.ApiErrorMsg(c, "无权限访问财务模块")
+		return
+	}
+
+	startTime, _ := strconv.ParseInt(c.Query("start_time"), 10, 64)
+	endTime, _ := strconv.ParseInt(c.Query("end_time"), 10, 64)
+
+	if startTime == 0 || endTime == 0 {
+		common.ApiErrorMsg(c, "缺少时间参数")
+		return
+	}
+
+	serviceInstance := service.GetFinanceService()
+	stats, err := serviceInstance.GetRevenueManagementStats(startTime, endTime)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": stats})
+}
+
+// ExportRevenueManagementCsv 导出营收管理（按量付费 + 订阅套餐）CSV
+// @Summary 导出营收管理 CSV
+// @Tags finance
+// @Param start_time query int true "开始时间戳"
+// @Param end_time query int true "结束时间戳"
+// @Router /finance/revenue-management/export-csv [get]
+// @Security ApiKeyAuth
+func ExportRevenueManagementCsv(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		common.ApiErrorMsg(c, "未登录")
+		return
+	}
+	if !model.IsFinanceAdmin(userId) {
+		common.ApiErrorMsg(c, "无权限访问财务模块")
+		return
+	}
+
+	startTime, _ := strconv.ParseInt(c.Query("start_time"), 10, 64)
+	endTime, _ := strconv.ParseInt(c.Query("end_time"), 10, 64)
+
+	if startTime == 0 || endTime == 0 {
+		common.ApiErrorMsg(c, "缺少时间参数")
+		return
+	}
+
+	serviceInstance := service.GetFinanceService()
+	data, err := serviceInstance.GetRevenueManagementExport(startTime, endTime)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	var buf bytes.Buffer
+	buf.WriteString("\xEF\xBB\xBF") // BOM 头
+
+	// 第一部分：按量付费
+	buf.WriteString("按量付费\n")
+	buf.WriteString("用户名,金额\n")
+	for _, item := range data.PayAsYouGoItems {
+		username := strings.ReplaceAll(item.Username, ",", "，")
+		buf.WriteString(fmt.Sprintf("%s,%s\n", username, formatMoneyForCsv(item.Amount)))
+	}
+	buf.WriteString("\n")
+
+	// 第二部分：订阅套餐
+	buf.WriteString("订阅套餐\n")
+	buf.WriteString("用户名,套餐类型,套餐名,订阅时间,到期时间,实收金额,实得金额(Tokens数量)\n")
+	for _, item := range data.SubscriptionItems {
+		username := strings.ReplaceAll(item.Username, ",", "，")
+		planName := strings.ReplaceAll(item.PlanName, ",", "，")
+		subscribeTime := time.Unix(item.SubscribeTime, 0).Format("2006-01-02 15:04:05")
+		expireTime := "-"
+		if item.ExpireTime > 0 {
+			expireTime = time.Unix(item.ExpireTime, 0).Format("2006-01-02 15:04:05")
+		}
+		buf.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,%s,%d\n",
+			username, item.PlanType, planName, subscribeTime, expireTime,
+			formatMoneyForCsv(item.PaidAmount), item.TokensAmount))
+	}
+
+	filename := fmt.Sprintf("revenue_management_%s_%s.csv",
+		time.Unix(startTime, 0).Format("20060102"),
+		time.Unix(endTime, 0).Format("20060102"))
+
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	c.String(http.StatusOK, buf.String())
 }

@@ -396,3 +396,54 @@ type SupplierDistItem struct {
 	Cost     float64 `json:"cost"`     // 消费金额
 	Ratio    float64 `json:"ratio"`    // 占比（0-1）
 }
+
+// PayAsYouGoItem 按量付费（消费记录）营收分析项
+type PayAsYouGoItem struct {
+	UserID   int     `json:"user_id"`
+	Username string  `json:"username"`
+	Amount   float64 `json:"amount"` // 按量付费金额（logs.type=2 的 quota 折算）
+}
+
+// PayAsYouGoResponse 按量付费营收分析响应
+type PayAsYouGoResponse struct {
+	Items []PayAsYouGoItem `json:"items"`
+	Total int64            `json:"total"`
+}
+
+// SubscriptionOrderItem 订阅套餐营收分析项（一个用户购买多个套餐产生多条记录）
+type SubscriptionOrderItem struct {
+	UserID        int     `json:"user_id"`
+	Username      string  `json:"username"`
+	PlanType      string  `json:"plan_type"`      // quota / tokens
+	PlanName      string  `json:"plan_name"`      // 套餐名
+	SubscribeTime int64   `json:"subscribe_time"` // 订阅时间（下单时间 create_time）
+	ExpireTime    int64   `json:"expire_time"`    // 到期时间（user_subscriptions.end_time）
+	PaidAmount    float64 `json:"paid_amount"`    // 实收金额（subscription_orders.money）
+	TokensAmount  int64   `json:"tokens_amount"`  // 实得金额（Tokens数量，user_subscriptions.tokens_limit）
+}
+
+// SubscriptionOrderResponse 订阅套餐营收分析响应
+type SubscriptionOrderResponse struct {
+	Items []SubscriptionOrderItem `json:"items"`
+	Total int64                   `json:"total"`
+}
+
+// ============================================
+// 营收管理（独立页面）相关 DTO
+// ============================================
+
+// RevenueManagementStats 营收管理 头部统计指标
+type RevenueManagementStats struct {
+	ConsumeUserCount   int64   `json:"consume_user_count"`   // 消费用户数（按量付费去重用户）
+	PayAsYouGoAmount   float64 `json:"pay_as_you_go_amount"` // 按量付费金额（logs.type=2 quota 折算）
+	SubscriptionAmount float64 `json:"subscription_amount"`  // 订阅付费金额（subscription_orders 成功订单 money 求和）
+	SubscriptionCount  int64   `json:"subscription_count"`   // 订阅付费次数（subscription_orders 成功订单数）
+	TopSubscription    string  `json:"top_subscription"`     // 热门订阅（购买次数最多的套餐名）
+}
+
+// RevenueManagementExportData 营收管理 CSV 导出响应
+// 仅用于 service 内部构造，不直接作为 JSON 响应体
+type RevenueManagementExportData struct {
+	PayAsYouGoItems   []PayAsYouGoItem        `json:"pay_as_you_go_items"`
+	SubscriptionItems []SubscriptionOrderItem `json:"subscription_items"`
+}

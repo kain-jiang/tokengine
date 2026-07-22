@@ -248,6 +248,9 @@ type UserSubscription struct {
 	UserId int `json:"user_id" gorm:"index;index:idx_user_sub_active,priority:1"`
 	PlanId int `json:"plan_id" gorm:"index"`
 
+	// OrderTradeNo 关联的原始订阅订单 trade_no（用于财务营收分析精确关联实收金额与到期信息）
+	OrderTradeNo string `json:"order_trade_no" gorm:"type:varchar(255);index"`
+
 	AmountTotal int64 `json:"amount_total" gorm:"type:bigint;not null;default:0"`
 	AmountUsed  int64 `json:"amount_used" gorm:"type:bigint;not null;default:0"`
 
@@ -559,9 +562,16 @@ func CompleteSubscriptionOrder(tradeNo string, providerPayload string) error {
 			// still allow completion for already purchased orders
 		}
 		upgradeGroup = strings.TrimSpace(plan.UpgradeGroup)
-		_, err = CreateUserSubscriptionFromPlanTx(tx, order.UserId, plan, "order")
+		sub, err := CreateUserSubscriptionFromPlanTx(tx, order.UserId, plan, "order")
 		if err != nil {
 			return err
+		}
+		// 记录关联订单的 trade_no，便于财务营收分析精确关联实收金额与到期信息
+		if sub != nil && tradeNo != "" {
+			sub.OrderTradeNo = tradeNo
+			if err := tx.Save(sub).Error; err != nil {
+				return err
+			}
 		}
 		if err := upsertSubscriptionTopUpTx(tx, &order); err != nil {
 			return err

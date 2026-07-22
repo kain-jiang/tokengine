@@ -125,6 +125,14 @@ export default function FinanceDashboard() {
   const [revenueByUser, setRevenueByUser] = useState({ items: [], total: 0 });
   const [revenueByUserPage, setRevenueByUserPage] = useState(1);
   const [revenueByUserPageSize, setRevenueByUserPageSize] = useState(10);
+  // 营收分析双视图切换：payg=按量付费，subscription=订阅套餐
+  const [revenueTab, setRevenueTab] = useState('payg'); // 'payg' | 'subscription'
+  const [payAsYouGoData, setPayAsYouGoData] = useState({ items: [], total: 0 });
+  const [payAsYouGoPage, setPayAsYouGoPage] = useState(1);
+  const [payAsYouGoPageSize, setPayAsYouGoPageSize] = useState(10);
+  const [subscriptionData, setSubscriptionData] = useState({ items: [], total: 0 });
+  const [subscriptionPage, setSubscriptionPage] = useState(1);
+  const [subscriptionPageSize, setSubscriptionPageSize] = useState(10);
   const [paymentModeRevenueDist, setPaymentModeRevenueDist] = useState({ pay_as_you_go: 0, subscription: 0 });
   const [supplierTrend, setSupplierTrend] = useState([]);
   const [supplierDist, setSupplierDist] = useState({ items: [] });
@@ -288,6 +296,44 @@ export default function FinanceDashboard() {
     }
   };
 
+  // 获取按量付费（消费记录）营收分析数据
+  const fetchPayAsYouGo = async () => {
+    try {
+      const res = await API.get('/api/finance/pay-as-you-go-by-user', {
+        params: {
+          start_time: startTime,
+          end_time: endTime,
+          p: payAsYouGoPage,
+          page_size: payAsYouGoPageSize,
+        },
+      });
+      if (res.data?.success) {
+        setPayAsYouGoData({ items: res.data?.data || [], total: res.data?.total || 0 });
+      }
+    } catch (error) {
+      console.error('获取按量付费营收分析失败:', error);
+    }
+  };
+
+  // 获取订阅套餐营收分析数据
+  const fetchSubscriptionOrders = async () => {
+    try {
+      const res = await API.get('/api/finance/subscription-orders', {
+        params: {
+          start_time: startTime,
+          end_time: endTime,
+          p: subscriptionPage,
+          page_size: subscriptionPageSize,
+        },
+      });
+      if (res.data?.success) {
+        setSubscriptionData({ items: res.data?.data || [], total: res.data?.total || 0 });
+      }
+    } catch (error) {
+      console.error('获取订阅套餐营收分析失败:', error);
+    }
+  };
+
   // 初始化默认日期范围：最近一个月
   useEffect(() => {
     const endDate = new Date();
@@ -314,6 +360,23 @@ export default function FinanceDashboard() {
       fetchChartData();
     }
   }, [startTime, endTime, revenueByUserPage, revenueByUserPageSize]);
+
+  // 营收分析双视图数据加载（按量付费 / 订阅套餐）
+  useEffect(() => {
+    if (startTime > 0 && endTime > 0) {
+      if (revenueTab === 'payg') {
+        fetchPayAsYouGo();
+      } else {
+        fetchSubscriptionOrders();
+      }
+    }
+  }, [startTime, endTime, revenueTab, payAsYouGoPage, payAsYouGoPageSize, subscriptionPage, subscriptionPageSize]);
+
+  // 切换视图时重置对应分页为第 1 页
+  useEffect(() => {
+    setPayAsYouGoPage(1);
+    setSubscriptionPage(1);
+  }, [revenueTab]);
 
   // ECharts 配色
   const lineColor = '#1890ff';
@@ -1351,18 +1414,35 @@ export default function FinanceDashboard() {
     };
   }, []);
 
-  // 导出营收分析表格为 CSV
+  // 导出营收分析表格为 CSV（根据当前视图切换）
   const handleExportRevenueCsv = async () => {
     try {
-      const res = await API.get('/api/finance/revenue-by-user/export-csv', {
-        params: { start_time: startTime, end_time: endTime },
-        responseType: 'blob',
-      });
-      const blob = res.data;
+      let csvContent = '';
+      let filename = '';
+      if (revenueTab === 'payg') {
+        csvContent = '用户名,金额\n';
+        payAsYouGoData.items.forEach((item) => {
+          const username = (item.username || '').replace(/,/g, '，');
+          csvContent += `${username},${item.amount}\n`;
+        });
+        filename = `pay_as_you_go_${new Date().toISOString().slice(0, 10)}.csv`;
+      } else {
+        csvContent = '用户名,套餐类型,套餐名,订阅时间,到期时间,实收金额,实得金额(Tokens数量)\n';
+        subscriptionData.items.forEach((item) => {
+          const username = (item.username || '').replace(/,/g, '，');
+          const planName = (item.plan_name || '').replace(/,/g, '，');
+          const planType = item.plan_type === 'tokens' ? t('tokens') : t('quota');
+          const subscribeTime = item.subscribe_time ? timestamp2string(item.subscribe_time) : '';
+          const expireTime = item.expire_time ? timestamp2string(item.expire_time) : '';
+          csvContent += `${username},${planType},${planName},${subscribeTime},${expireTime},${item.paid_amount},${item.tokens_amount}\n`;
+        });
+        filename = `subscription_orders_${new Date().toISOString().slice(0, 10)}.csv`;
+      }
+      // 添加 BOM 头，Excel 正确识别 UTF-8
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      const filename = res.headers['content-disposition']?.split('filename=')[1] || `revenue_analysis_${new Date().toISOString().slice(0, 10)}.csv`;
       link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
@@ -1375,19 +1455,13 @@ export default function FinanceDashboard() {
     }
   };
 
-  // 表格列定义
-  const revenueColumns = useMemo(() => [
-    {
-      title: t('用户ID'),
-      dataIndex: 'user_id',
-      key: 'user_id',
-      width: 80,
-    },
+  // 表格列定义：按量付费（消费记录金额）
+  const payAsYouGoColumns = useMemo(() => [
     {
       title: t('用户名'),
       dataIndex: 'username',
       key: 'username',
-      width: 150,
+      width: 180,
       render: (text) => (
         <Typography.Text
           type='primary'
@@ -1410,25 +1484,72 @@ export default function FinanceDashboard() {
       ),
     },
     {
-      title: t('按量付费'),
-      dataIndex: 'pay_as_you_go',
-      key: 'pay_as_you_go',
-      width: 120,
+      title: t('金额'),
+      dataIndex: 'amount',
+      key: 'amount',
+      width: 160,
       render: (val) => <Typography.Text type='primary'>{formatMoney(val)}</Typography.Text>,
     },
+  ], [t, startTime, endTime]);
+
+  // 表格列定义：订阅套餐
+  const subscriptionColumns = useMemo(() => [
     {
-      title: t('订阅'),
-      dataIndex: 'subscription',
-      key: 'subscription',
-      width: 120,
+      title: t('用户名'),
+      dataIndex: 'username',
+      key: 'username',
+      width: 140,
+      render: (text) => (
+        <Typography.Text type='primary' style={{ cursor: 'pointer' }}>
+          {text || '-'}
+        </Typography.Text>
+      ),
+    },
+    {
+      title: t('套餐类型'),
+      dataIndex: 'plan_type',
+      key: 'plan_type',
+      width: 110,
+      render: (val) => (
+        <Typography.Text type={val === 'tokens' ? 'warning' : 'tertiary'}>
+          {val === 'tokens' ? t('tokens') : t('quota')}
+        </Typography.Text>
+      ),
+    },
+    {
+      title: t('套餐名'),
+      dataIndex: 'plan_name',
+      key: 'plan_name',
+      width: 160,
+      render: (text) => <span>{text || '-'}</span>,
+    },
+    {
+      title: t('订阅时间'),
+      dataIndex: 'subscribe_time',
+      key: 'subscribe_time',
+      width: 160,
+      render: (val) => <span>{val ? timestamp2string(val) : '-'}</span>,
+    },
+    {
+      title: t('到期时间'),
+      dataIndex: 'expire_time',
+      key: 'expire_time',
+      width: 160,
+      render: (val) => <span>{val ? timestamp2string(val) : '-'}</span>,
+    },
+    {
+      title: t('实收金额'),
+      dataIndex: 'paid_amount',
+      key: 'paid_amount',
+      width: 130,
       render: (val) => <Typography.Text type='success'>{formatMoney(val)}</Typography.Text>,
     },
     {
-      title: t('总计'),
-      dataIndex: 'total',
-      key: 'total',
-      width: 120,
-      render: (val) => <Typography.Text type='danger'>{formatMoney(val)}</Typography.Text>,
+      title: t('实得金额（Tokens数量）'),
+      dataIndex: 'tokens_amount',
+      key: 'tokens_amount',
+      width: 180,
+      render: (val) => <Typography.Text type='primary'>{val ? val.toLocaleString() : '-'}</Typography.Text>,
     },
   ], [t]);
 
@@ -1812,19 +1933,45 @@ export default function FinanceDashboard() {
           padding: '16px',
         }}>
           <div style={{
-            fontSize: 14,
-            fontWeight: 400,
-            color: 'rgba(0, 0, 0, 0.4)',
-            fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
-            textTransform: 'uppercase',
-            letterSpacing: 0.055,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
             marginBottom: 16,
-          }}>{t('营收分析')}</div>
+          }}>
+            <div style={{
+              fontSize: 14,
+              fontWeight: 400,
+              color: 'rgba(0, 0, 0, 0.4)',
+              fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
+              textTransform: 'uppercase',
+              letterSpacing: 0.055,
+            }}>{t('营收分析')}</div>
+            <div style={{ display: 'flex', gap: 2 }}>
+              <Button
+                size='small'
+                theme={revenueTab === 'payg' ? 'solid' : 'light'}
+                type='primary'
+                onClick={() => setRevenueTab('payg')}
+                style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
+              >
+                {t('按量付费')}
+              </Button>
+              <Button
+                size='small'
+                theme={revenueTab === 'subscription' ? 'solid' : 'light'}
+                type='primary'
+                onClick={() => setRevenueTab('subscription')}
+                style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
+              >
+                {t('订阅套餐')}
+              </Button>
+            </div>
+          </div>
           <Table
-            columns={revenueColumns}
-            dataSource={revenueByUser.items || []}
+            columns={revenueTab === 'payg' ? payAsYouGoColumns : subscriptionColumns}
+            dataSource={revenueTab === 'payg' ? (payAsYouGoData.items || []) : (subscriptionData.items || [])}
             loading={chartLoading}
-            rowKey='user_id'
+            rowKey={(record) => revenueTab === 'payg' ? `payg-${record.user_id}-${record.username}` : `sub-${record.user_id}-${record.plan_name}-${record.subscribe_time}`}
             pagination={false}
             size='small'
             empty={
@@ -1838,15 +1985,27 @@ export default function FinanceDashboard() {
           />
           <div className='flex w-full pt-4 border-t justify-between items-center'
                style={{ borderColor: 'rgba(0, 0, 0, 0.08)', borderTopWidth: 1, marginTop: 16 }}>
-            {createCardProPagination({
-              currentPage: revenueByUserPage,
-              pageSize: revenueByUserPageSize,
-              total: revenueByUser.total || 0,
-              onPageChange: (page) => setRevenueByUserPage(page),
-              onPageSizeChange: (size) => { setRevenueByUserPageSize(size); setRevenueByUserPage(1); },
-              isMobile: isMobile,
-              t: t,
-            })}
+            {revenueTab === 'payg' ? (
+              createCardProPagination({
+                currentPage: payAsYouGoPage,
+                pageSize: payAsYouGoPageSize,
+                total: payAsYouGoData.total || 0,
+                onPageChange: (page) => setPayAsYouGoPage(page),
+                onPageSizeChange: (size) => { setPayAsYouGoPageSize(size); setPayAsYouGoPage(1); },
+                isMobile: isMobile,
+                t: t,
+              })
+            ) : (
+              createCardProPagination({
+                currentPage: subscriptionPage,
+                pageSize: subscriptionPageSize,
+                total: subscriptionData.total || 0,
+                onPageChange: (page) => setSubscriptionPage(page),
+                onPageSizeChange: (size) => { setSubscriptionPageSize(size); setSubscriptionPage(1); },
+                isMobile: isMobile,
+                t: t,
+              })
+            )}
             <Button
               icon={<IconDownloadStroked />}
               type='primary'

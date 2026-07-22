@@ -395,6 +395,123 @@ func (s *FinanceService) GetRevenueByUser(startTime, endTime int64, pageInfo *co
 	return items, total, nil
 }
 
+// GetPayAsYouGoByUser 获取按量付费（消费记录）营收分析
+// 统计时间段内每个用户 logs.type=2（消费）的 quota 折算金额
+func (s *FinanceService) GetPayAsYouGoByUser(startTime, endTime int64, pageInfo *common.PageInfo) ([]dto.PayAsYouGoItem, int64, error) {
+	items := make([]dto.PayAsYouGoItem, 0)
+
+	quotaPerUnit := common.QuotaPerUnit
+	if quotaPerUnit <= 0 {
+		quotaPerUnit = 50000000
+	}
+
+	// 统计总记录数（有消费记录的用户数）
+	var total int64
+	model.DB.Raw(`
+		SELECT COUNT(DISTINCT u.id)
+		FROM users u
+		INNER JOIN logs l ON u.id = l.user_id
+		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?`, startTime, endTime).Scan(&total)
+
+	type payAsYouGoRow struct {
+		UserID   int     `db:"user_id"`
+		Username string  `db:"username"`
+		Amount   float64 `db:"amount"`
+	}
+
+	query := `
+		SELECT u.id as user_id, u.username,
+		       COALESCE(SUM(l.quota), 0) / ? as amount
+		FROM users u
+		INNER JOIN logs l ON u.id = l.user_id
+		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?
+		GROUP BY u.id, u.username
+		ORDER BY amount DESC`
+
+	if pageInfo.PageSize > 0 {
+		query += fmt.Sprintf(" LIMIT %d OFFSET %d", pageInfo.PageSize, pageInfo.GetStartIdx())
+	}
+
+	var rows []payAsYouGoRow
+	model.DB.Raw(query, quotaPerUnit, startTime, endTime).Scan(&rows)
+
+	for _, row := range rows {
+		items = append(items, dto.PayAsYouGoItem{
+			UserID:   row.UserID,
+			Username: row.Username,
+			Amount:   math.Round(row.Amount*100) / 100,
+		})
+	}
+
+	return items, total, nil
+}
+
+// GetSubscriptionOrders 获取订阅套餐营收分析
+// 统计订阅时间（下单时间 create_time）落在时间段内的订阅订单，关联套餐与用户订阅实例信息
+// 一个用户购买多个套餐（或同一套餐多次）会产生多条记录
+func (s *FinanceService) GetSubscriptionOrders(startTime, endTime int64, pageInfo *common.PageInfo) ([]dto.SubscriptionOrderItem, int64, error) {
+	items := make([]dto.SubscriptionOrderItem, 0)
+
+	// 总记录数（满足时间条件的订阅订单数）
+	var total int64
+	model.DB.Model(&model.SubscriptionOrder{}).
+		Where("status = ? AND create_time >= ? AND create_time <= ?", common.TopUpStatusSuccess, startTime, endTime).
+		Count(&total)
+
+	type subscriptionOrderRow struct {
+		UserID        int     `db:"user_id"`
+		Username      string  `db:"username"`
+		PlanType      string  `db:"plan_type"`
+		PlanName      string  `db:"plan_name"`
+		SubscribeTime int64   `db:"subscribe_time"`
+		ExpireTime    int64   `db:"expire_time"`
+		PaidAmount    float64 `db:"paid_amount"`
+		TokensAmount  int64   `db:"tokens_amount"`
+	}
+
+	query := `
+		SELECT o.user_id,
+		       u.username,
+		       COALESCE(p.plan_type, '') as plan_type,
+		       COALESCE(p.title, '') as plan_name,
+		       o.create_time as subscribe_time,
+		       COALESCE(s.end_time, 0) as expire_time,
+		       o.money as paid_amount,
+		       COALESCE(s.tokens_limit, 0) as tokens_amount
+		FROM subscription_orders o
+		LEFT JOIN users u ON u.id = o.user_id
+		LEFT JOIN subscription_plans p ON p.id = o.plan_id
+		LEFT JOIN user_subscriptions s ON s.order_trade_no = o.trade_no
+		WHERE o.status = ? AND o.create_time >= ? AND o.create_time <= ?
+		ORDER BY o.create_time DESC`
+
+	if pageInfo.PageSize > 0 {
+		query += fmt.Sprintf(" LIMIT %d OFFSET %d", pageInfo.PageSize, pageInfo.GetStartIdx())
+	}
+
+	var rows []subscriptionOrderRow
+	model.DB.Raw(query, common.TopUpStatusSuccess, startTime, endTime).Scan(&rows)
+
+	for _, row := range rows {
+		planType := row.PlanType
+		if planType == "" {
+			planType = "quota"
+		}
+		items = append(items, dto.SubscriptionOrderItem{
+			UserID:        row.UserID,
+			Username:      row.Username,
+			PlanType:      planType,
+			PlanName:      row.PlanName,
+			SubscribeTime: row.SubscribeTime,
+			ExpireTime:    row.ExpireTime,
+			PaidAmount:    math.Round(row.PaidAmount*100) / 100,
+			TokensAmount:  row.TokensAmount,
+		})
+	}
+
+	return items, total, nil
+}
+
 // GetPaymentModeRevenueDistribution 获取付费方式收入分布
 func (s *FinanceService) GetPaymentModeRevenueDistribution(startTime, endTime int64) (*dto.PaymentModeRevenueDist, error) {
 	dist := &dto.PaymentModeRevenueDist{}
@@ -557,4 +674,85 @@ func (s *FinanceService) GetSupplierDistribution(startTime, endTime int64) (*dto
 	}
 
 	return dist, nil
+}
+
+// GetRevenueManagementStats 获取营收管理 头部统计指标
+// 聚合时间段内 logs（按量付费）与 subscription_orders（订阅）数据
+func (s *FinanceService) GetRevenueManagementStats(startTime, endTime int64) (*dto.RevenueManagementStats, error) {
+	stats := &dto.RevenueManagementStats{}
+
+	quotaPerUnit := common.QuotaPerUnit
+	if quotaPerUnit <= 0 {
+		quotaPerUnit = 50000000
+	}
+
+	// 1. 消费用户数：logs.type=2 去重用户
+	var consumeUserCount int64
+	model.DB.Raw(`
+		SELECT COUNT(DISTINCT l.user_id)
+		FROM logs l
+		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?`,
+		startTime, endTime).Scan(&consumeUserCount)
+	stats.ConsumeUserCount = consumeUserCount
+
+	// 2. 按量付费金额：logs.type=2 的 quota 折算
+	var totalQuota int64
+	model.DB.Raw(`
+		SELECT COALESCE(SUM(l.quota), 0)
+		FROM logs l
+		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?`,
+		startTime, endTime).Scan(&totalQuota)
+	stats.PayAsYouGoAmount = math.Round(float64(totalQuota)/float64(quotaPerUnit)*100) / 100
+
+	// 3 & 4. 订阅付费金额与次数：subscription_orders 成功订单（使用 create_time 与 money 列）
+	var subscriptionAmount float64
+	var subscriptionCount int64
+	model.DB.Model(&model.SubscriptionOrder{}).
+		Where("status = ? AND create_time >= ? AND create_time <= ?", common.TopUpStatusSuccess, startTime, endTime).
+		Select("COALESCE(SUM(money), 0)").Scan(&subscriptionAmount)
+	model.DB.Model(&model.SubscriptionOrder{}).
+		Where("status = ? AND create_time >= ? AND create_time <= ?", common.TopUpStatusSuccess, startTime, endTime).
+		Count(&subscriptionCount)
+	stats.SubscriptionAmount = math.Round(subscriptionAmount*100) / 100
+	stats.SubscriptionCount = subscriptionCount
+
+	// 5. 热门订阅：购买次数最多的套餐名（按订阅订单数聚合）
+	type topPlanRow struct {
+		PlanName string `db:"plan_name"`
+		Cnt      int64  `db:"cnt"`
+	}
+	var topRow topPlanRow
+	model.DB.Raw(`
+		SELECT COALESCE(p.title, ?) as plan_name, COUNT(*) as cnt
+		FROM subscription_orders o
+		LEFT JOIN subscription_plans p ON p.id = o.plan_id
+		WHERE o.status = ? AND o.create_time >= ? AND o.create_time <= ?
+		GROUP BY plan_name
+		ORDER BY cnt DESC
+		LIMIT 1`,
+		"未知套餐", common.TopUpStatusSuccess, startTime, endTime).Scan(&topRow)
+	stats.TopSubscription = topRow.PlanName
+
+	return stats, nil
+}
+
+// GetRevenueManagementExport 获取营收管理 CSV 导出所需的双表数据
+func (s *FinanceService) GetRevenueManagementExport(startTime, endTime int64) (*dto.RevenueManagementExportData, error) {
+	data := &dto.RevenueManagementExportData{}
+
+	// 按量付费明细（不分页，全量）
+	paygItems, _, err := s.GetPayAsYouGoByUser(startTime, endTime, &common.PageInfo{PageSize: 0, Page: 0})
+	if err != nil {
+		return nil, err
+	}
+	data.PayAsYouGoItems = paygItems
+
+	// 订阅套餐明细（不分页，全量）
+	subItems, _, err := s.GetSubscriptionOrders(startTime, endTime, &common.PageInfo{PageSize: 0, Page: 0})
+	if err != nil {
+		return nil, err
+	}
+	data.SubscriptionItems = subItems
+
+	return data, nil
 }
