@@ -374,6 +374,10 @@ func (s *FinanceService) GetRevenueByUser(startTime, endTime int64, pageInfo *co
 		GROUP BY u.id, u.username
 		ORDER BY pay_as_you_go DESC`
 
+	if pageInfo.PageSize > 0 {
+		query += fmt.Sprintf(" LIMIT %d OFFSET %d", pageInfo.PageSize, pageInfo.GetStartIdx())
+	}
+
 	var rows []revenueByUserRow
 	model.DB.Raw(query, quotaPerUnit, startTime, endTime).Scan(&rows)
 

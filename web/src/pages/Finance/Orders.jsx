@@ -473,6 +473,19 @@ export default function FinanceOrders() {
     
     // Design System: 锐利圆角(4px), 权重500而非bold
     const option = {
+      title: {
+        text: t('有效充值用户类型占比'),
+        left: 'center',
+        top: 8,
+        textStyle: {
+          fontSize: 14,
+          fontWeight: 400,
+          color: 'rgba(0, 0, 0, 0.4)',
+          fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
+          textTransform: 'uppercase',
+          letterSpacing: 0.055,
+        },
+      },
       tooltip: {
         show: true,
         trigger: 'item',

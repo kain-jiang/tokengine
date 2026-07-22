@@ -52,14 +52,6 @@ import FinanceReconciliation from './pages/Finance/Reconciliation';
 import FinanceSupplier from './pages/Finance/Supplier';
 import FinanceSupplierSettlement from './pages/Finance/SupplierSettlement';
 
-// Debug: Test if all finance imports are valid
-console.log('[App.jsx] FinanceReconciliation:', typeof FinanceReconciliation, FinanceReconciliation?.name);
-console.log('[App.jsx] FinanceDashboard:', typeof FinanceDashboard, FinanceDashboard?.name);
-console.log('[App.jsx] FinanceOrders:', typeof FinanceOrders, FinanceOrders?.name);
-console.log('[App.jsx] FinanceRevenue:', typeof FinanceRevenue, FinanceRevenue?.name);
-console.log('[App.jsx] FinanceInvoices:', typeof FinanceInvoices, FinanceInvoices?.name);
-console.log('[App.jsx] PrivateRoute:', typeof PrivateRoute);
-console.log('[App.jsx] Loading:', typeof Loading);
 import Log from './pages/Log';
 import Chat from './pages/Chat';
 import Chat2Link from './pages/Chat2Link';

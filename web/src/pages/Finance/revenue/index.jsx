@@ -31,13 +31,6 @@ import { formatMoney, formatNumber } from '../utils';
 
 const { Text } = Typography;
 
-function getDefaultDateRange() {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - 30);
-  return [start, end];
-}
-
 export default function RevenueList() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -51,19 +44,31 @@ export default function RevenueList() {
   const [pageSize, setPageSize] = useState(10);
   const [keyword, setKeyword] = useState('');
   const [searchValue, setSearchValue] = useState('');
-  const [dateRange, setDateRange] = useState(getDefaultDateRange());
+  const [dateRange, setDateRange] = useState({
+    startDate: null,
+    endDate: null,
+  });
   const [stats, setStats] = useState({ totalTopup: 0, totalUsed: 0, totalRemain: 0 });
 
+  // 初始化默认查询最近1个月，起始时间为 00:00:00
+  useEffect(() => {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - 1);
+    startDate.setHours(0, 0, 0, 0);
+    setDateRange({ startDate, endDate });
+  }, []);
+
   const startDate = useMemo(() => {
-    if (dateRange && dateRange.length === 2 && dateRange[0]) {
-      return dateRange[0].toISOString().slice(0, 10);
+    if (dateRange.startDate) {
+      return dateRange.startDate.toISOString().slice(0, 10);
     }
     return '';
   }, [dateRange]);
 
   const endDate = useMemo(() => {
-    if (dateRange && dateRange.length === 2 && dateRange[1]) {
-      return dateRange[1].toISOString().slice(0, 10);
+    if (dateRange.endDate) {
+      return dateRange.endDate.toISOString().slice(0, 10);
     }
     return '';
   }, [dateRange]);
@@ -107,7 +112,11 @@ export default function RevenueList() {
   const handleReset = () => {
     setSearchValue('');
     setKeyword('');
-    setDateRange(getDefaultDateRange());
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - 1);
+    startDate.setHours(0, 0, 0, 0);
+    setDateRange({ startDate, endDate });
     setPage(1);
   };
 
@@ -181,11 +190,29 @@ export default function RevenueList() {
         style={{ width: 280 }}
       />
       <DatePicker
-        type='dateRange'
-        value={dateRange}
-        onChange={(dates) => setDateRange(dates || [])}
-        style={{ width: 280 }}
-        placeholder={[t('开始日期'), t('结束日期')]}
+        type='dateTime'
+        placeholder={t('开始时间')}
+        value={dateRange.startDate}
+        onChange={(value) => {
+          setDateRange((prev) => ({ ...prev, startDate: value }));
+          setPage(1);
+        }}
+        maxDate={dateRange.endDate || new Date()}
+        disabledDate={(date) => date > new Date()}
+        style={{ minWidth: '220px' }}
+      />
+      <span className='text-gray-400'>~</span>
+      <DatePicker
+        type='dateTime'
+        placeholder={t('结束时间')}
+        value={dateRange.endDate}
+        onChange={(value) => {
+          setDateRange((prev) => ({ ...prev, endDate: value }));
+          setPage(1);
+        }}
+        minDate={dateRange.startDate}
+        maxDate={new Date()}
+        style={{ minWidth: '220px' }}
       />
       <Button type='primary' onClick={handleSearch}>
         {t('查询')}

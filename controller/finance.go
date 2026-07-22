@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -854,6 +855,58 @@ func GetRevenueByUser(c *gin.Context) {
 		"data":    items,
 		"total":   total,
 	})
+}
+
+// ExportRevenueByUserCsv 导出营收分析用户数据为 CSV
+func ExportRevenueByUserCsv(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		common.ApiErrorMsg(c, "未登录")
+		return
+	}
+	if !model.IsFinanceAdmin(userId) {
+		common.ApiErrorMsg(c, "无权限访问财务模块")
+		return
+	}
+
+	startTime, _ := strconv.ParseInt(c.Query("start_time"), 10, 64)
+	endTime, _ := strconv.ParseInt(c.Query("end_time"), 10, 64)
+
+	if startTime == 0 || endTime == 0 {
+		common.ApiErrorMsg(c, "缺少时间参数")
+		return
+	}
+
+	serviceInstance := service.GetFinanceService()
+	items, _, err := serviceInstance.GetRevenueByUser(startTime, endTime, nil)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	// 生成 CSV 内容
+	var buf bytes.Buffer
+	buf.WriteString("\xEF\xBB\xBF") // 添加 BOM 头，Excel 打开时正确识别 UTF-8
+	buf.WriteString("用户ID,用户名,按量付费,订阅,总计\n")
+
+	for _, item := range items {
+		username := strings.ReplaceAll(item.Username, ",", "，")
+		csvLine := fmt.Sprintf("%d,%s,%s,%s,%s\n", item.UserID, username, formatMoneyForCsv(item.PayAsYouGo), formatMoneyForCsv(item.Subscription), formatMoneyForCsv(item.Total))
+		buf.WriteString(csvLine)
+	}
+
+	filename := fmt.Sprintf("revenue_analysis_%s_%s.csv",
+		time.Unix(startTime, 0).Format("20060102"),
+		time.Unix(endTime, 0).Format("20060102"))
+
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+	c.String(http.StatusOK, buf.String())
+}
+
+// formatMoneyForCsv 格式化金额用于 CSV 输出
+func formatMoneyForCsv(amount float64) string {
+	return fmt.Sprintf("%.2f", amount)
 }
 
 // GetPaymentModeRevenueDistribution 获取付费方式收入分布
