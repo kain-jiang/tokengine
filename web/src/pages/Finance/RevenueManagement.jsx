@@ -409,6 +409,12 @@ export default function RevenueManagement() {
       ),
     },
     {
+      title: t('来源'),
+      dataIndex: 'source',
+      key: 'source',
+      width: 100,
+    },
+    {
       title: t('订阅时间'),
       dataIndex: 'subscribe_time',
       key: 'subscribe_time',
