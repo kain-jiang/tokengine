@@ -428,6 +428,7 @@ type SubscriptionOrderItem struct {
 	TokensUsed       int64   `json:"tokens_used"`       // 已用Tokens
 	UpgradeGroup     string  `json:"upgrade_group"`     // 分组（升级用户组）
 	ApplicableModels string  `json:"applicable_models"` // 适用模型
+	Source           string  `json:"source"`            // 来源（兑换/钱包）
 }
 
 // SubscriptionOrderResponse 订阅套餐营收分析响应

@@ -300,10 +300,10 @@ const MySubscriptionSection = ({
     {
       title: t('套餐名称'),
       dataIndex: 'planName',
-      width: 300,
+      width: 320,
       ellipsis: true,
-      headerCellStyle: { minWidth: 300 },
-      cellStyle: { minWidth: 300 },
+      headerCellStyle: { minWidth: 320 },
+      cellStyle: { minWidth: 320 },
     },
     {
       title: t('状态'),

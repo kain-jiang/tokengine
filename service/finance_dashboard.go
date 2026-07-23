@@ -515,6 +515,7 @@ func (s *FinanceService) GetSubscriptionOrders(startTime, endTime int64, pageInf
 		TokensAmount      int64   `db:"tokens_amount"`
 		TokensUsed        int64   `db:"tokens_used"`
 		PaidAmountUSD     float64 `db:"paid_amount_usd"`
+		Source            string  `db:"source"`
 	}
 
 	// 构建查询：以 user_subscriptions 为主表，通过 trade_no 精确关联 subscription_orders
@@ -536,7 +537,8 @@ func (s *FinanceService) GetSubscriptionOrders(startTime, endTime int64, pageInf
 		       us.amount_used as amount_used,
 		       COALESCE(us.tokens_limit, 0) as tokens_amount,
 		       COALESCE(us.tokens_used, 0) as tokens_used,
-		       COALESCE(so.money, 0) as paid_amount_usd
+		       COALESCE(so.money, 0) as paid_amount_usd,
+		       COALESCE(us.source, '') as source
 		FROM user_subscriptions us
 		INNER JOIN users u ON u.id = us.user_id
 		LEFT JOIN subscription_plans p ON p.id = us.plan_id
@@ -581,6 +583,7 @@ func (s *FinanceService) GetSubscriptionOrders(startTime, endTime int64, pageInf
 			AmountUsed:    row.AmountUsed,
 			TokensAmount:  row.TokensAmount,
 			TokensUsed:    row.TokensUsed,
+			Source:        row.Source,
 		})
 	}
 
