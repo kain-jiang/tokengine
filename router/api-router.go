@@ -175,11 +175,7 @@ func SetApiRouter(router *gin.Engine) {
 			subscriptionRoute.GET("/plans", controller.GetSubscriptionPlans)
 			subscriptionRoute.GET("/self", controller.GetSubscriptionSelf)
 			subscriptionRoute.PUT("/self/preference", controller.UpdateSubscriptionPreference)
-			subscriptionRoute.POST("/epay/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestEpay)
-			subscriptionRoute.POST("/stripe/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestStripePay)
-			subscriptionRoute.POST("/creem/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestCreemPay)
-			subscriptionRoute.POST("/zs_pay/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestZSPay)
-			subscriptionRoute.POST("/helipay/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestHelipay)
+			// 订阅只能通过钱包余额购买（同步完成）
 			subscriptionRoute.POST("/wallet/pay", middleware.CriticalRateLimit(), controller.SubscriptionRequestWalletPay)
 		}
 		subscriptionAdminRoute := apiRouter.Group("/subscription/admin")
@@ -189,7 +185,6 @@ func SetApiRouter(router *gin.Engine) {
 			subscriptionAdminRoute.POST("/plans", controller.AdminCreateSubscriptionPlan)
 			subscriptionAdminRoute.PUT("/plans/:id", controller.AdminUpdateSubscriptionPlan)
 			subscriptionAdminRoute.PATCH("/plans/:id", controller.AdminUpdateSubscriptionPlanStatus)
-			subscriptionAdminRoute.POST("/bind", controller.AdminBindSubscription)
 
 			// User subscription management (admin)
 			subscriptionAdminRoute.GET("/users/:id/subscriptions", controller.AdminListUserSubscriptions)
@@ -198,15 +193,6 @@ func SetApiRouter(router *gin.Engine) {
 			subscriptionAdminRoute.DELETE("/user_subscriptions/:id", controller.AdminDeleteUserSubscription)
 		}
 
-		// Subscription payment callbacks (no auth)
-		apiRouter.POST("/subscription/epay/notify", controller.SubscriptionEpayNotify)
-		apiRouter.GET("/subscription/epay/notify", controller.SubscriptionEpayNotify)
-		apiRouter.GET("/subscription/epay/return", controller.SubscriptionEpayReturn)
-		apiRouter.POST("/subscription/epay/return", controller.SubscriptionEpayReturn)
-		apiRouter.POST("/subscription/helipay/notify", controller.SubscriptionHelipayNotify)
-		apiRouter.GET("/subscription/helipay/notify", controller.SubscriptionHelipayNotify)
-		apiRouter.GET("/subscription/helipay/return", controller.SubscriptionHelipayReturn)
-		apiRouter.POST("/subscription/helipay/return", controller.SubscriptionHelipayReturn)
 		optionRoute := apiRouter.Group("/option")
 		optionRoute.Use(middleware.RootAuth())
 		{

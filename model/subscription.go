@@ -10,7 +10,6 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/pkg/cachex"
-	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/samber/hot"
 	"gorm.io/gorm"
 )
@@ -249,7 +248,7 @@ type UserSubscription struct {
 	PlanId int `json:"plan_id" gorm:"index"`
 
 	// OrderTradeNo 关联的原始订阅订单 trade_no（用于财务营收分析精确关联实收金额与到期信息）
-	OrderTradeNo string `json:"order_trade_no" gorm:"type:varchar(255);index"`
+	TradeNo string `json:"trade_no" gorm:"type:varchar(255);index"`
 
 	AmountTotal int64 `json:"amount_total" gorm:"type:bigint;not null;default:0"`
 	AmountUsed  int64 `json:"amount_used" gorm:"type:bigint;not null;default:0"`
@@ -456,7 +455,7 @@ func downgradeUserGroupForSubscriptionTx(tx *gorm.DB, sub *UserSubscription, now
 	return prevGroup, nil
 }
 
-func CreateUserSubscriptionFromPlanTx(tx *gorm.DB, userId int, plan *SubscriptionPlan, source string) (*UserSubscription, error) {
+func CreateUserSubscriptionFromPlanTx(tx *gorm.DB, userId int, tradeNo string, plan *SubscriptionPlan, source string) (*UserSubscription, error) {
 	if tx == nil {
 		return nil, errors.New("tx is nil")
 	}
@@ -507,6 +506,7 @@ func CreateUserSubscriptionFromPlanTx(tx *gorm.DB, userId int, plan *Subscriptio
 	sub := &UserSubscription{
 		UserId:           userId,
 		PlanId:           plan.Id,
+		TradeNo:          tradeNo,
 		AmountTotal:      plan.TotalAmount,
 		AmountUsed:       0,
 		StartTime:        now.Unix(),
@@ -529,81 +529,84 @@ func CreateUserSubscriptionFromPlanTx(tx *gorm.DB, userId int, plan *Subscriptio
 	return sub, nil
 }
 
+/*
 // Complete a subscription order (idempotent). Creates a UserSubscription snapshot from the plan.
-func CompleteSubscriptionOrder(tradeNo string, providerPayload string) error {
-	if tradeNo == "" {
-		return errors.New("tradeNo is empty")
-	}
-	refCol := "`trade_no`"
-	if common.UsingPostgreSQL {
-		refCol = `"trade_no"`
-	}
-	var logUserId int
-	var logPlanTitle string
-	var logMoney float64
-	var logPaymentMethod string
-	var upgradeGroup string
-	err := DB.Transaction(func(tx *gorm.DB) error {
-		var order SubscriptionOrder
-		if err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(&order).Error; err != nil {
-			return ErrSubscriptionOrderNotFound
+
+	func CompleteSubscriptionOrder(tradeNo string, providerPayload string) error {
+		if tradeNo == "" {
+			return errors.New("tradeNo is empty")
 		}
-		if order.Status == common.TopUpStatusSuccess {
-			return nil
+		refCol := "`trade_no`"
+		if common.UsingPostgreSQL {
+			refCol = `"trade_no"`
 		}
-		if order.Status != common.TopUpStatusPending {
-			return ErrSubscriptionOrderStatusInvalid
-		}
-		plan, err := GetSubscriptionPlanById(order.PlanId)
-		if err != nil {
-			return err
-		}
-		if !plan.Enabled {
-			// still allow completion for already purchased orders
-		}
-		upgradeGroup = strings.TrimSpace(plan.UpgradeGroup)
-		sub, err := CreateUserSubscriptionFromPlanTx(tx, order.UserId, plan, "order")
-		if err != nil {
-			return err
-		}
-		// 记录关联订单的 trade_no，便于财务营收分析精确关联实收金额与到期信息
-		if sub != nil && tradeNo != "" {
-			sub.OrderTradeNo = tradeNo
-			if err := tx.Save(sub).Error; err != nil {
+		var logUserId int
+		var logPlanTitle string
+		var logMoney float64
+		var logPaymentMethod string
+		var upgradeGroup string
+		err := DB.Transaction(func(tx *gorm.DB) error {
+			var order SubscriptionOrder
+			if err := tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(&order).Error; err != nil {
+				return ErrSubscriptionOrderNotFound
+			}
+			if order.Status == common.TopUpStatusSuccess {
+				return nil
+			}
+			if order.Status != common.TopUpStatusPending {
+				return ErrSubscriptionOrderStatusInvalid
+			}
+			plan, err := GetSubscriptionPlanById(order.PlanId)
+			if err != nil {
 				return err
 			}
-		}
-		if err := upsertSubscriptionTopUpTx(tx, &order); err != nil {
+			if !plan.Enabled {
+				// still allow completion for already purchased orders
+			}
+			upgradeGroup = strings.TrimSpace(plan.UpgradeGroup)
+			sub, err := CreateUserSubscriptionFromPlanTx(tx, order.UserId, plan, "order")
+			if err != nil {
+				return err
+			}
+			// 记录关联订单的 trade_no，便于财务营收分析精确关联实收金额与到期信息
+			if sub != nil && tradeNo != "" {
+				sub.OrderTradeNo = tradeNo
+				if err := tx.Save(sub).Error; err != nil {
+					return err
+				}
+			}
+			if err := upsertSubscriptionTopUpTx(tx, &order); err != nil {
+				return err
+			}
+			order.Status = common.TopUpStatusSuccess
+			order.CompleteTime = common.GetTimestamp()
+			if providerPayload != "" {
+				order.ProviderPayload = providerPayload
+			}
+			if err := tx.Save(&order).Error; err != nil {
+				return err
+			}
+			logUserId = order.UserId
+			logPlanTitle = plan.Title
+			logMoney = order.Money
+			logPaymentMethod = order.PaymentMethod
+			return nil
+		})
+		if err != nil {
 			return err
 		}
-		order.Status = common.TopUpStatusSuccess
-		order.CompleteTime = common.GetTimestamp()
-		if providerPayload != "" {
-			order.ProviderPayload = providerPayload
+		if upgradeGroup != "" && logUserId > 0 {
+			_ = UpdateUserGroupCache(logUserId, upgradeGroup)
 		}
-		if err := tx.Save(&order).Error; err != nil {
-			return err
+		if logUserId > 0 {
+			usdToCnyRate := operation_setting.USDExchangeRate
+			cnyAmount := logMoney * usdToCnyRate
+			msg := fmt.Sprintf("订阅购买成功，套餐: %s，支付金额: %.2f美元（约%.2f人民币），支付方式: %s", logPlanTitle, logMoney, cnyAmount, logPaymentMethod)
+			RecordLog(logUserId, LogTypeConsume, msg)
 		}
-		logUserId = order.UserId
-		logPlanTitle = plan.Title
-		logMoney = order.Money
-		logPaymentMethod = order.PaymentMethod
 		return nil
-	})
-	if err != nil {
-		return err
 	}
-	if upgradeGroup != "" && logUserId > 0 {
-		_ = UpdateUserGroupCache(logUserId, upgradeGroup)
-	}
-	if logUserId > 0 {
-		usdToCnyRate := operation_setting.USDExchangeRate
-		cnyAmount := logMoney * usdToCnyRate
-		msg := fmt.Sprintf("订阅购买成功，套餐: %s，支付金额: %.2f美元（约%.2f人民币），支付方式: %s", logPlanTitle, logMoney, cnyAmount, logPaymentMethod)
-		RecordLog(logUserId, LogTypeConsume, msg)
-	}
-	return nil
-}
+*/
 
 func upsertSubscriptionTopUpTx(tx *gorm.DB, order *SubscriptionOrder) error {
 	if tx == nil || order == nil {
@@ -671,7 +674,7 @@ func AdminBindSubscription(userId int, planId int, sourceNote string) (string, e
 		return "", err
 	}
 	err = DB.Transaction(func(tx *gorm.DB) error {
-		_, err := CreateUserSubscriptionFromPlanTx(tx, userId, plan, "admin")
+		_, err := CreateUserSubscriptionFromPlanTx(tx, userId, "", plan, "admin")
 		return err
 	})
 	if err != nil {

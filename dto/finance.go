@@ -412,14 +412,22 @@ type PayAsYouGoResponse struct {
 
 // SubscriptionOrderItem 订阅套餐营收分析项（一个用户购买多个套餐产生多条记录）
 type SubscriptionOrderItem struct {
-	UserID        int     `json:"user_id"`
-	Username      string  `json:"username"`
-	PlanType      string  `json:"plan_type"`      // quota / tokens
-	PlanName      string  `json:"plan_name"`      // 套餐名
-	SubscribeTime int64   `json:"subscribe_time"` // 订阅时间（下单时间 create_time）
-	ExpireTime    int64   `json:"expire_time"`    // 到期时间（user_subscriptions.end_time）
-	PaidAmount    float64 `json:"paid_amount"`    // 实收金额（subscription_orders.money）
-	TokensAmount  int64   `json:"tokens_amount"`  // 实得金额（Tokens数量，user_subscriptions.tokens_limit）
+	UserID           int     `json:"user_id"`
+	Username         string  `json:"username"`
+	PlanType         string  `json:"plan_type"`         // quota / tokens
+	PlanName         string  `json:"plan_name"`         // 套餐名
+	SubscribeTime    int64   `json:"subscribe_time"`    // 订阅时间（下单时间 create_time）
+	StartTime        int64   `json:"start_time"`        // 生效时间（user_subscriptions.start_time）
+	ExpireTime       int64   `json:"expire_time"`       // 到期时间（user_subscriptions.end_time）
+	Status           string  `json:"status"`            // 订阅状态（active/expired/cancelled）
+	PaidAmount       float64 `json:"paid_amount"`       // 实收金额（subscription_orders.money，美元）
+	Currency         string  `json:"currency"`          // 货币单位（USD/CNY）
+	AmountTotal      int64   `json:"amount_total"`      // 总额度（quota类型的总额度或tokens类型的tokens_limit）
+	AmountUsed       int64   `json:"amount_used"`       // 已用额度
+	TokensAmount     int64   `json:"tokens_amount"`     // 实得金额（Tokens数量，user_subscriptions.tokens_limit）
+	TokensUsed       int64   `json:"tokens_used"`       // 已用Tokens
+	UpgradeGroup     string  `json:"upgrade_group"`     // 分组（升级用户组）
+	ApplicableModels string  `json:"applicable_models"` // 适用模型
 }
 
 // SubscriptionOrderResponse 订阅套餐营收分析响应

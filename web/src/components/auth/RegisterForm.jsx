@@ -456,7 +456,7 @@ const RegisterForm = () => {
                 {t('注 册')}
               </Title>
             </div>
-            <div className='px-2 py-8'>
+            <div className='px-2 py-8 max-h-[70vh] overflow-y-auto'>
               <div className='space-y-3'>
                 {status.wechat_login && (
                   <Button
@@ -619,7 +619,7 @@ const RegisterForm = () => {
                 {t('注 册')}
               </Title>
             </div>
-            <div className='px-2 py-8'>
+            <div className='px-2 py-8 max-h-[70vh] overflow-y-auto'>
               <Form className='space-y-3'>
                 <Form.Input
                   field='username'
@@ -858,7 +858,7 @@ const RegisterForm = () => {
   };
 
   return (
-    <div className='relative overflow-hidden bg-gray-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8'>
+    <div className='relative overflow-y-auto overflow-x-hidden bg-gray-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 min-h-screen'>
       {/* 背景模糊晕染球 */}
       <div
         className='blur-ball blur-ball-indigo'

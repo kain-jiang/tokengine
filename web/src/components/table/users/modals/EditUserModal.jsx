@@ -119,6 +119,10 @@ const EditUserModal = (props) => {
       data.quota_amount = Number(
         quotaToDisplayAmount(data.quota || 0).toFixed(6),
       );
+      // 映射 telephone 字段到 phone（表单字段名）
+      if (data.telephone) {
+        data.phone = data.telephone;
+      }
       setInputs({ ...getInitValues(), ...data });
     } else {
       showError(message);
@@ -150,6 +154,11 @@ const EditUserModal = (props) => {
   const submit = async (values) => {
     setLoading(true);
     let payload = { ...values };
+    // 将 phone 字段映射回 telephone（后端字段名）
+    if (payload.phone) {
+      payload.telephone = payload.phone;
+    }
+    delete payload.phone;
     delete payload.quota;
     delete payload.quota_amount;
     if (userId) {

@@ -8,6 +8,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 )
 
 // ============================================
@@ -462,78 +463,124 @@ func (s *FinanceService) GetPayAsYouGoByUser(startTime, endTime int64, pageInfo 
 }
 
 // GetSubscriptionOrders 获取订阅套餐营收分析
-// 统计订阅时间（下单时间 create_time）落在时间段内的订阅订单，关联套餐与用户订阅实例信息
+// 关联 subscription_orders 和 user_subscriptions 两个表
+// - subscription_orders 提供实际支付金额（money）和订单状态
+// - user_subscriptions 提供订阅详情（start_time、end_time、amount_total、amount_used）
 // 一个用户购买多个套餐（或同一套餐多次）会产生多条记录
+// 使用 subscription_orders.create_time 作为筛选条件，与用户看到的"订阅时间"一致
 func (s *FinanceService) GetSubscriptionOrders(startTime, endTime int64, pageInfo *common.PageInfo, username string) ([]dto.SubscriptionOrderItem, int64, error) {
 	items := make([]dto.SubscriptionOrderItem, 0)
 
-	// 总记录数（满足时间条件的订阅订单数）
-	var total int64
-	countQuery := "status = ? AND create_time >= ? AND create_time <= ?"
-	countArgs := []interface{}{common.TopUpStatusSuccess, startTime, endTime}
-	if username != "" {
-		countQuery += " AND username LIKE ?"
-		countArgs = append(countArgs, "%"+username+"%")
-	}
-	model.DB.Model(&model.SubscriptionOrder{}).
-		Where(countQuery, countArgs...).
-		Count(&total)
-
-	type subscriptionOrderRow struct {
-		UserID        int     `db:"user_id"`
-		Username      string  `db:"username"`
-		PlanType      string  `db:"plan_type"`
-		PlanName      string  `db:"plan_name"`
-		SubscribeTime int64   `db:"subscribe_time"`
-		ExpireTime    int64   `db:"expire_time"`
-		PaidAmount    float64 `db:"paid_amount"`
-		TokensAmount  int64   `db:"tokens_amount"`
+	// 获取美元汇率
+	usdToCnyRate := operation_setting.USDExchangeRate
+	if usdToCnyRate <= 0 {
+		usdToCnyRate = 7.3
 	}
 
 	usernameFilter := ""
+	usernameArgs := []interface{}{}
 	if username != "" {
 		usernameFilter = " AND u.username LIKE ?"
+		usernameArgs = append(usernameArgs, "%"+username+"%")
 	}
 
+	// 总记录数：基于 user_subscriptions 表查询
+	// 使用 user_subscriptions.created_at 作为筛选条件（与 subscription_orders.create_time 基本一致）
+	var total int64
+	countQuery := `
+		SELECT COUNT(us.id)
+		FROM user_subscriptions us
+		INNER JOIN users u ON u.id = us.user_id
+		WHERE us.created_at >= ? AND us.created_at <= ?`
+	countArgs := append([]interface{}{startTime, endTime}, usernameArgs...)
+	if usernameFilter != "" {
+		countQuery += usernameFilter
+	}
+	model.DB.Raw(countQuery, countArgs...).Scan(&total)
+
+	common.SysLog(fmt.Sprintf("GetSubscriptionOrders: startTime=%d, endTime=%d, username=%s, total=%d", startTime, endTime, username, total))
+
+	type subscriptionOrderRow struct {
+		UserID            int     `db:"user_id"`
+		Username          string  `db:"username"`
+		PlanType          string  `db:"plan_type"`
+		PlanName          string  `db:"plan_name"`
+		SubscribeTime     int64   `db:"subscribe_time"`
+		OrderCompleteTime int64   `db:"order_complete_time"`
+		SubStartTime      int64   `db:"sub_start_time"`
+		SubExpireTime     int64   `db:"sub_expire_time"`
+		SubStatus         string  `db:"sub_status"`
+		AmountTotal       int64   `db:"amount_total"`
+		AmountUsed        int64   `db:"amount_used"`
+		TokensAmount      int64   `db:"tokens_amount"`
+		TokensUsed        int64   `db:"tokens_used"`
+		PaidAmountUSD     float64 `db:"paid_amount_usd"`
+	}
+
+	// 构建查询：以 user_subscriptions 为主表，通过 trade_no 精确关联 subscription_orders
+	// user_subscriptions 是用户实际拥有的订阅实例，subscription_orders 是支付订单
+	// 关联逻辑：
+	// 1. 优先通过 trade_no 精确关联（两者都有 trade_no 时）
+	// 2. 对于 admin 创建的订阅（trade_no 为空），通过 user_id + plan_id + 时间接近关联
 	query := `
-		SELECT o.user_id,
+		SELECT us.user_id,
 		       u.username,
-		       COALESCE(p.plan_type, '') as plan_type,
+		       COALESCE(p.plan_type, 'quota') as plan_type,
 		       COALESCE(p.title, '') as plan_name,
-		       o.create_time as subscribe_time,
-		       COALESCE(s.end_time, 0) as expire_time,
-		       o.money as paid_amount,
-		       COALESCE(s.tokens_limit, 0) as tokens_amount
-		FROM subscription_orders o
-		LEFT JOIN users u ON u.id = o.user_id
-		LEFT JOIN subscription_plans p ON p.id = o.plan_id
-		LEFT JOIN user_subscriptions s ON s.order_trade_no = o.trade_no
-		WHERE o.status = ? AND o.create_time >= ? AND o.create_time <= ?`
+		       us.created_at as subscribe_time,
+		       COALESCE(so.complete_time, 0) as order_complete_time,
+		       us.start_time as sub_start_time,
+		       us.end_time as sub_expire_time,
+		       COALESCE(us.status, 'active') as sub_status,
+		       us.amount_total as amount_total,
+		       us.amount_used as amount_used,
+		       COALESCE(us.tokens_limit, 0) as tokens_amount,
+		       COALESCE(us.tokens_used, 0) as tokens_used,
+		       COALESCE(so.money, 0) as paid_amount_usd
+		FROM user_subscriptions us
+		INNER JOIN users u ON u.id = us.user_id
+		LEFT JOIN subscription_plans p ON p.id = us.plan_id
+		LEFT JOIN subscription_orders so ON (so.trade_no = us.trade_no AND us.trade_no != '')
+		                                OR (so.user_id = us.user_id AND so.plan_id = us.plan_id AND so.trade_no = '' AND us.trade_no = '' AND ABS(so.create_time - us.created_at) < 300)
+		WHERE us.created_at >= ? AND us.created_at <= ?`
 	query += usernameFilter
 	query += `
-		ORDER BY o.create_time DESC`
+		ORDER BY us.created_at DESC`
 
 	if pageInfo.PageSize > 0 {
 		query += fmt.Sprintf(" LIMIT %d OFFSET %d", pageInfo.PageSize, pageInfo.GetStartIdx())
 	}
 
+	// 构建完整参数
+	allArgs := []interface{}{startTime, endTime}
+	allArgs = append(allArgs, usernameArgs...)
+
 	var rows []subscriptionOrderRow
-	model.DB.Raw(query, common.TopUpStatusSuccess, startTime, endTime).Scan(&rows)
+	result := model.DB.Raw(query, allArgs...).Scan(&rows)
+	common.SysLog(fmt.Sprintf("GetSubscriptionOrders query rows=%d, error=%v", len(rows), result))
 
 	for _, row := range rows {
 		planType := row.PlanType
 		if planType == "" {
 			planType = "quota"
 		}
+		// 从 subscription_orders 获取实际支付金额（美元），转换为人民币
+		paidAmount := row.PaidAmountUSD * usdToCnyRate
 		items = append(items, dto.SubscriptionOrderItem{
 			UserID:        row.UserID,
 			Username:      row.Username,
 			PlanType:      planType,
 			PlanName:      row.PlanName,
 			SubscribeTime: row.SubscribeTime,
-			ExpireTime:    row.ExpireTime,
-			PaidAmount:    math.Round(row.PaidAmount*100) / 100,
+			StartTime:     row.SubStartTime,
+			ExpireTime:    row.SubExpireTime,
+			Status:        row.SubStatus,
+			PaidAmount:    math.Round(paidAmount*100) / 100,
+			Currency:      "CNY",
+			AmountTotal:   row.AmountTotal,
+			AmountUsed:    row.AmountUsed,
 			TokensAmount:  row.TokensAmount,
+			TokensUsed:    row.TokensUsed,
 		})
 	}
 
@@ -733,15 +780,22 @@ func (s *FinanceService) GetRevenueManagementStats(startTime, endTime int64) (*d
 	stats.PayAsYouGoAmount = math.Round(float64(totalQuota)/float64(quotaPerUnit)*100) / 100
 
 	// 3 & 4. 订阅付费金额与次数：subscription_orders 成功订单（使用 create_time 与 money 列）
-	var subscriptionAmount float64
+	// money 列是美元，需要转换为人民币
+	var subscriptionAmountUSD float64
 	var subscriptionCount int64
 	model.DB.Model(&model.SubscriptionOrder{}).
 		Where("status = ? AND create_time >= ? AND create_time <= ?", common.TopUpStatusSuccess, startTime, endTime).
-		Select("COALESCE(SUM(money), 0)").Scan(&subscriptionAmount)
+		Select("COALESCE(SUM(money), 0)").Scan(&subscriptionAmountUSD)
 	model.DB.Model(&model.SubscriptionOrder{}).
 		Where("status = ? AND create_time >= ? AND create_time <= ?", common.TopUpStatusSuccess, startTime, endTime).
 		Count(&subscriptionCount)
-	stats.SubscriptionAmount = math.Round(subscriptionAmount*100) / 100
+	// 获取美元汇率并转换
+	usdToCnyRate := operation_setting.USDExchangeRate
+	if usdToCnyRate <= 0 {
+		usdToCnyRate = 7.3
+	}
+	subscriptionAmountCNY := subscriptionAmountUSD * usdToCnyRate
+	stats.SubscriptionAmount = math.Round(subscriptionAmountCNY*100) / 100
 	stats.SubscriptionCount = subscriptionCount
 
 	// 5. 热门订阅：购买次数最多的套餐名（按订阅订单数聚合）

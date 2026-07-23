@@ -21,7 +21,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
-  DatePicker, Table, Typography, Button, Tabs, TabPane,
+  DatePicker, Table, Typography, Button, Tabs, TabPane, Input,
   Spin, Empty,
 } from '@douyinfe/semi-ui';
 import {
@@ -29,7 +29,7 @@ import {
   IconClockStroked, IconDownloadStroked,
 } from '@douyinfe/semi-icons';
 import { IllustrationNoResult, IllustrationNoResultDark } from '@douyinfe/semi-illustrations';
-import { API, timestamp2string, showError, showSuccess } from '../../helpers';
+import { API, timestamp2string, showError, showSuccess, renderQuota } from '../../helpers';
 import { formatMoney } from './utils';
 import { createCardProPagination } from '../../helpers/utils';
 import { useIsMobile } from '../../hooks/common/useIsMobile';
@@ -97,6 +97,7 @@ export default function RevenueManagement() {
 
   // 视图切换
   const [revenueTab, setRevenueTab] = useState('payg');
+  const [tableKey, setTableKey] = useState(0); // 用于强制表格重新渲染
 
   // 按量付费数据
   const [payAsYouGoData, setPayAsYouGoData] = useState({ items: [], total: 0 });
@@ -148,7 +149,6 @@ export default function RevenueManagement() {
     // 设置为上个月的同一天 00:00:00
     startDate.setMonth(startDate.getMonth() - 1);
     startDate.setHours(0, 0, 0, 0);
-    startDate.setMinutes(0, 0, 0);
     setDateRange({ startDate, endDate });
   }, []);
 
@@ -218,10 +218,15 @@ export default function RevenueManagement() {
       }
       console.log('[RevenueManagement] 请求订阅套餐数据:', params);
       const res = await API.get('/api/finance/subscription-orders', { params });
-      console.log('[RevenueManagement] 订阅套餐响应:', res.data);
+      console.log('[RevenueManagement] 订阅套餐响应 (完整):', JSON.stringify(res.data, null, 2));
+      console.log('[RevenueManagement] res.data.success:', res.data.success);
+      console.log('[RevenueManagement] res.data.data:', res.data.data);
+      console.log('[RevenueManagement] res.data.total:', res.data.total);
       if (res.data.success) {
+        const items = res.data.data || [];
+        console.log('[RevenueManagement] 设置 items:', items.length, '条记录');
         setSubscriptionData({
-          items: res.data.data || [],
+          items: items,
           total: res.data.total || 0,
         });
       }
@@ -237,6 +242,18 @@ export default function RevenueManagement() {
     fetchStats();
   }, [startTime, endTime]);
 
+  // 切换视图时重置当前 tab 的页码和强制表格重新渲染
+  useEffect(() => {
+    if (revenueTab === 'payg') {
+      setPayAsYouGoPage(1);
+    } else {
+      setSubscriptionPage(1);
+    }
+    // 强制表格重新渲染，清除旧 tab 的数据
+    setTableKey(prev => prev + 1);
+  }, [revenueTab]);
+
+  // 获取数据（当时间范围、页码或 tab 变化时）
   useEffect(() => {
     if (revenueTab === 'payg') {
       fetchPayAsYouGo();
@@ -244,12 +261,6 @@ export default function RevenueManagement() {
       fetchSubscriptionOrders();
     }
   }, [startTime, endTime, revenueTab, payAsYouGoPage, payAsYouGoPageSize, subscriptionPage, subscriptionPageSize]);
-
-  // 切换视图时重置页码
-  useEffect(() => {
-    setPayAsYouGoPage(1);
-    setSubscriptionPage(1);
-  }, [revenueTab]);
 
   // ===== 导出 CSV =====
   const handleExportCsv = async () => {
@@ -292,8 +303,14 @@ export default function RevenueManagement() {
           style={{ cursor: 'pointer' }}
           onClick={() => {
             if (text) {
-              setKeyword(text);
-              setSearchKeyword(text);
+              navigate('/console/log', {
+                state: {
+                  filterUsername: text,
+                  startTime: startTime,
+                  endTime: endTime,
+                  logType: '2',
+                },
+              });
             }
           }}
         >
@@ -308,7 +325,37 @@ export default function RevenueManagement() {
       width: 160,
       render: (val) => <Text type='primary'>{formatMoney(val)}</Text>,
     },
-  ], [t, navigate]);
+  ], [t, navigate, startTime, endTime]);
+
+  // 格式化额度显示：根据套餐类型区分
+  // 使用 renderQuota 与 MyPlan 保持一致（quota → USD → CNY 汇率转换）
+  const renderQuotaOrTokens = (val, planType) => {
+    if (!val || val <= 0) return '-';
+    if (planType === 'tokens') {
+      return <Text type='primary'>{val.toLocaleString()} Tokens</Text>;
+    }
+    return <Text type='primary'>{renderQuota(val)}</Text>;
+  };
+
+  // 格式化已用额度显示
+  const renderUsedQuota = (used, total, planType) => {
+    if (total <= 0 || used <= 0) return '-';
+    const percent = Math.round((used / total) * 100);
+    if (planType === 'tokens') {
+      return <span>{used.toLocaleString()} Tokens ({percent}%)</span>;
+    }
+    return <span>{renderQuota(used)} ({percent}%)</span>;
+  };
+
+  // 格式化剩余额度显示
+  const renderRemainQuota = (total, used, planType) => {
+    if (total <= 0) return '-';
+    const remain = Math.max(0, total - used);
+    if (planType === 'tokens') {
+      return <Text type='warning'>{remain.toLocaleString()} Tokens</Text>;
+    }
+    return <Text type='warning'>{renderQuota(remain)}</Text>;
+  };
 
   // ===== 表格列定义：订阅套餐 =====
   const subscriptionColumns = useMemo(() => [
@@ -316,15 +363,21 @@ export default function RevenueManagement() {
       title: t('用户名'),
       dataIndex: 'username',
       key: 'username',
-      width: 140,
+      width: 120,
       render: (text) => (
         <Text
           type='primary'
           style={{ cursor: 'pointer' }}
           onClick={() => {
             if (text) {
-              setKeyword(text);
-              setSearchKeyword(text);
+              navigate('/console/log', {
+                state: {
+                  filterUsername: text,
+                  startTime: startTime,
+                  endTime: endTime,
+                  logType: '2',
+                },
+              });
             }
           }}
         >
@@ -336,19 +389,24 @@ export default function RevenueManagement() {
       title: t('套餐类型'),
       dataIndex: 'plan_type',
       key: 'plan_type',
-      width: 110,
+      width: 100,
       render: (val) => (
         <Text type={val === 'tokens' ? 'warning' : 'tertiary'}>
-          {val === 'tokens' ? t('tokens') : t('quota')}
+          {val === 'tokens' ? t('tokens') : t('额度')}
         </Text>
       ),
     },
     {
-      title: t('套餐名'),
+      title: t('套餐名称'),
       dataIndex: 'plan_name',
       key: 'plan_name',
-      width: 160,
-      render: (text) => <span>{text || '-'}</span>,
+      width: 200,
+      ellipsis: true,
+      render: (text, record) => (
+        <span title={`${text} · ${t('订阅')} #${record.user_id}`}>
+          {text ? `${text} · ${t('订阅')} #${record.user_id}` : '-'}
+        </span>
+      ),
     },
     {
       title: t('订阅时间'),
@@ -362,23 +420,56 @@ export default function RevenueManagement() {
       dataIndex: 'expire_time',
       key: 'expire_time',
       width: 160,
-      render: (val) => <span>{val ? timestamp2string(val) : '-'}</span>,
+      render: (val) => <span>{val > 0 ? timestamp2string(val) : '-'}</span>,
     },
     {
       title: t('实收金额'),
       dataIndex: 'paid_amount',
       key: 'paid_amount',
-      width: 130,
+      width: 120,
       render: (val) => <Text type='success'>{formatMoney(val)}</Text>,
     },
     {
-      title: t('实得金额（Tokens数量）'),
-      dataIndex: 'tokens_amount',
-      key: 'tokens_amount',
-      width: 180,
-      render: (val) => <Text type='primary'>{val ? val.toLocaleString() : '-'}</Text>,
+      title: t('实得价值'),
+      dataIndex: 'amount_total',
+      key: 'amount_total',
+      width: 150,
+      render: (val, record) => {
+        // 优先使用 amount_total，如果没有则使用 tokens_amount
+        const total = (val && val > 0) ? val : (record.tokens_amount || 0);
+        return renderQuotaOrTokens(total, record.plan_type);
+      },
     },
-  ], [t]);
+    {
+      title: t('已用额度'),
+      dataIndex: 'amount_used',
+      key: 'amount_used',
+      width: 150,
+      render: (val, record) => {
+        const total = (record.amount_total && record.amount_total > 0)
+          ? record.amount_total
+          : (record.tokens_amount || 0);
+        const used = record.tokens_used && record.plan_type === 'tokens'
+          ? record.tokens_used
+          : (val || 0);
+        return renderUsedQuota(used, total, record.plan_type);
+      },
+    },
+    {
+      title: t('剩余额度'),
+      key: 'remain_quota',
+      width: 150,
+      render: (_, record) => {
+        const total = (record.amount_total && record.amount_total > 0)
+          ? record.amount_total
+          : (record.tokens_amount || 0);
+        const used = record.tokens_used && record.plan_type === 'tokens'
+          ? record.tokens_used
+          : (record.amount_used || 0);
+        return renderRemainQuota(total, used, record.plan_type);
+      },
+    },
+  ], [t, navigate, startTime, endTime]);
 
   // ===== 渲染 =====
   return (
@@ -425,24 +516,31 @@ export default function RevenueManagement() {
       {/* 时间控件 + 搜索 + 导出按钮 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 14, color: 'rgba(0, 0, 0, 0.6)' }}>{t('统计时间')}：</span>
           <DatePicker
+            type='dateTime'
+            placeholder={t('开始时间')}
             value={dateRange.startDate}
-            onChange={(val) => setDateRange(prev => ({ ...prev, startDate: val }))}
-            placeholder={t('开始日期')}
-            style={{ width: 180 }}
-            format='yyyy-MM-dd'
+            onChange={(value) => {
+              setDateRange((prev) => ({ ...prev, startDate: value }));
+            }}
+            maxDate={dateRange.endDate || new Date()}
+            disabledDate={(date) => date > new Date()}
+            style={{ minWidth: '220px' }}
           />
-          <span style={{ color: 'rgba(0, 0, 0, 0.4)' }}>至</span>
+          <span style={{ color: 'rgba(0, 0, 0, 0.4)' }}>~</span>
           <DatePicker
+            type='dateTime'
+            placeholder={t('结束时间')}
             value={dateRange.endDate}
-            onChange={(val) => setDateRange(prev => ({ ...prev, endDate: val }))}
-            placeholder={t('结束日期')}
-            style={{ width: 180 }}
-            format='yyyy-MM-dd'
+            onChange={(value) => {
+              setDateRange((prev) => ({ ...prev, endDate: value }));
+            }}
+            minDate={dateRange.startDate}
+            maxDate={new Date()}
+            style={{ minWidth: '220px' }}
           />
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span style={{ fontSize: 14, color: 'rgba(0, 0, 0, 0.6)' }}>{t('用户名')}：</span>
+           
             <Input
               placeholder={t('请输入用户名')}
               value={keyword}
@@ -496,12 +594,13 @@ export default function RevenueManagement() {
 
         {/* 表格 */}
         <Table
+          key={tableKey}
           columns={revenueTab === 'payg' ? payAsYouGoColumns : subscriptionColumns}
           dataSource={revenueTab === 'payg' ? (payAsYouGoData.items || []) : (subscriptionData.items || [])}
           loading={revenueTab === 'payg' ? paygLoading : subLoading}
           rowKey={(record) => revenueTab === 'payg'
             ? `payg-${record.user_id}-${record.username}`
-            : `sub-${record.user_id}-${record.plan_name}-${record.subscribe_time}`}
+            : `sub-${record.user_id}-${record.subscribe_time}`}
           pagination={false}
           size='small'
           empty={

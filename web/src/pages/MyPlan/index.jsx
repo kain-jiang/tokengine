@@ -501,6 +501,8 @@ const MySubscriptionSection = ({
     {
       title: t('套餐名称'),
       dataIndex: 'planName',
+      key: 'planName',
+      width: 180,
       ellipsis: true,
     },
     {
