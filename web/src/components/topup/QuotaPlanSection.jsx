@@ -300,7 +300,7 @@ const MySubscriptionSection = ({
     {
       title: t('套餐名称'),
       dataIndex: 'planName',
-      width: 320,
+      width: 180,
       ellipsis: true,
       headerCellStyle: { minWidth: 320 },
       cellStyle: { minWidth: 320 },
@@ -313,12 +313,12 @@ const MySubscriptionSection = ({
     {
       title: t('订阅时间'),
       dataIndex: 'createTime',
-      width: 180,
+      width: 170,
     },
     {
       title: t('到期时间'),
       dataIndex: 'endTime',
-      width: 180,
+      width: 170,
     },
     {
       title: t('来源'),
@@ -328,7 +328,7 @@ const MySubscriptionSection = ({
     {
       title: t('适用模型'),
       dataIndex: 'applicableModels',
-      width: 200,
+      width: 220,
       ellipsis: true,
     },
     {
