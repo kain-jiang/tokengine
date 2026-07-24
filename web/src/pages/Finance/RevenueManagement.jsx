@@ -181,14 +181,16 @@ export default function RevenueManagement() {
     if (startTime === 0 || endTime === 0) return;
     setPaygLoading(true);
     try {
-      const res = await API.get('/api/finance/pay-as-you-go-by-user', {
-        params: {
-          start_time: startTime,
-          end_time: endTime,
-          p: payAsYouGoPage,
-          page_size: payAsYouGoPageSize,
-        },
-      });
+      const params = {
+        start_time: startTime,
+        end_time: endTime,
+        p: payAsYouGoPage,
+        page_size: payAsYouGoPageSize,
+      };
+      if (searchKeyword) {
+        params.keyword = searchKeyword;
+      }
+      const res = await API.get('/api/finance/pay-as-you-go-by-user', { params });
       if (res.data.success) {
         setPayAsYouGoData({
           items: res.data.data || [],
@@ -253,14 +255,14 @@ export default function RevenueManagement() {
     setTableKey(prev => prev + 1);
   }, [revenueTab]);
 
-  // 获取数据（当时间范围、页码或 tab 变化时）
-  useEffect(() => {
-    if (revenueTab === 'payg') {
-      fetchPayAsYouGo();
-    } else {
-      fetchSubscriptionOrders();
-    }
-  }, [startTime, endTime, revenueTab, payAsYouGoPage, payAsYouGoPageSize, subscriptionPage, subscriptionPageSize]);
+  // 获取数据（当时间范围、页码、搜索关键词或 tab 变化时）
+    useEffect(() => {
+      if (revenueTab === 'payg') {
+        fetchPayAsYouGo();
+      } else {
+        fetchSubscriptionOrders();
+      }
+    }, [startTime, endTime, revenueTab, payAsYouGoPage, payAsYouGoPageSize, subscriptionPage, subscriptionPageSize, searchKeyword]);
 
   // ===== 导出 CSV =====
   const handleExportCsv = async () => {

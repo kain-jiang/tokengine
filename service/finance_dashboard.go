@@ -15,6 +15,19 @@ import (
 // 财务运营概览（Dashboard）v3 相关方法
 // ============================================
 
+// getPayAsYouGoFilter 生成"排除订阅抵扣"的 WHERE 条件
+// 当 billing_source = 'subscription' 时，表示该条消费记录由订阅抵扣，不应计入按量付费
+// 使用跨数据库兼容的 JSON 提取方式
+func getPayAsYouGoFilter() string {
+	if common.UsingPostgreSQL {
+		return "AND (l.other = '' OR l.other IS NULL OR (l.other->>'billing_source') != 'subscription')"
+	} else if common.UsingSQLite {
+		return "AND (l.other = '' OR l.other IS NULL OR json_extract(l.other, '$.billing_source') != 'subscription')"
+	} else {
+		return "AND (l.other = '' OR l.other IS NULL OR JSON_EXTRACT(l.other, '$.billing_source') != 'subscription')"
+	}
+}
+
 // getWeekStart 获取本周开始时间戳（周一 00:00:00）
 func (s *FinanceService) getWeekStart() int64 {
 	now := time.Now()
@@ -772,26 +785,34 @@ func (s *FinanceService) GetRevenueManagementStats(startTime, endTime int64) (*d
 		quotaPerUnit = 50000000
 	}
 
+	// 获取美元汇率（用于按量付费和订阅金额的 CNY 转换）
+	usdToCnyRate := operation_setting.USDExchangeRate
+	if usdToCnyRate <= 0 {
+		usdToCnyRate = 7.3
+	}
+
 	// 1. 消费用户数：logs.type=2 去重用户
 	var consumeUserCount int64
-	model.DB.Raw(`
+	model.LOG_DB.Raw(`
 		SELECT COUNT(DISTINCT l.user_id)
 		FROM logs l
 		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?`,
 		startTime, endTime).Scan(&consumeUserCount)
 	stats.ConsumeUserCount = consumeUserCount
 
-	// 2. 按量付费金额：logs.type=2 的 quota 折算
+	// 2. 按量付费金额：logs.type=2 的 quota 折算（USD → CNY）
 	var totalQuota int64
-	model.DB.Raw(`
+	model.LOG_DB.Raw(`
 		SELECT COALESCE(SUM(l.quota), 0)
 		FROM logs l
 		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?`,
 		startTime, endTime).Scan(&totalQuota)
-	stats.PayAsYouGoAmount = math.Round(float64(totalQuota)/float64(quotaPerUnit)*100) / 100
+	paygAmountUSD := float64(totalQuota) / float64(quotaPerUnit)
+	paygAmountCNY := paygAmountUSD * usdToCnyRate
+	stats.PayAsYouGoAmount = math.Round(paygAmountCNY*100) / 100
 
 	// 3 & 4. 订阅付费金额与次数：subscription_orders 成功订单（使用 create_time 与 money 列）
-	// money 列是美元，需要转换为人民币
+	// money 列是美元，已在上文获取 usdToCnyRate
 	var subscriptionAmountUSD float64
 	var subscriptionCount int64
 	model.DB.Model(&model.SubscriptionOrder{}).
@@ -800,11 +821,6 @@ func (s *FinanceService) GetRevenueManagementStats(startTime, endTime int64) (*d
 	model.DB.Model(&model.SubscriptionOrder{}).
 		Where("status = ? AND create_time >= ? AND create_time <= ?", common.TopUpStatusSuccess, startTime, endTime).
 		Count(&subscriptionCount)
-	// 获取美元汇率并转换
-	usdToCnyRate := operation_setting.USDExchangeRate
-	if usdToCnyRate <= 0 {
-		usdToCnyRate = 7.3
-	}
 	subscriptionAmountCNY := subscriptionAmountUSD * usdToCnyRate
 	stats.SubscriptionAmount = math.Round(subscriptionAmountCNY*100) / 100
 	stats.SubscriptionCount = subscriptionCount
@@ -848,4 +864,65 @@ func (s *FinanceService) GetRevenueManagementExport(startTime, endTime int64) (*
 	data.SubscriptionItems = subItems
 
 	return data, nil
+}
+
+// GetDashboardRevenueTrend 获取营收趋势数据（按量付费 + 订阅套餐）
+func (s *FinanceService) GetDashboardRevenueTrend(startTime, endTime int64) (*dto.DashboardRevenueTrendResponse, error) {
+	response := &dto.DashboardRevenueTrendResponse{}
+	response.PayAsYouGo = make([]dto.DashboardRevenueTrendItem, 0)
+	response.Subscription = make([]dto.DashboardRevenueTrendItem, 0)
+
+	quotaPerUnit := common.QuotaPerUnit
+	if quotaPerUnit <= 0 {
+		quotaPerUnit = 50000000
+	}
+
+	// 获取美元汇率（转换为 CNY）
+	usdToCnyRate := operation_setting.USDExchangeRate
+	if usdToCnyRate <= 0 {
+		usdToCnyRate = 7.3
+	}
+
+	// 1. 按量付费趋势：从 logs 表统计 type=2（消费记录）
+	// 注意：此处与表格数据源保持一致，不排除 billing_source='subscription' 的记录
+	// 订阅套餐营收由单独的 subscription 趋势统计
+	type revenueTrendRow struct {
+		Date   string  `db:"date"`
+		Amount float64 `db:"amount"`
+	}
+
+	var paygRows []revenueTrendRow
+	paygGroupBy := getLogGroupByClause(startTime, endTime)
+	query := fmt.Sprintf(`
+		SELECT %s as date,
+		       COALESCE(SUM(l.quota), 0) / ? * ? as amount
+		FROM logs l
+		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?
+		GROUP BY date ORDER BY date`, paygGroupBy)
+	model.LOG_DB.Raw(query, quotaPerUnit, usdToCnyRate, startTime, endTime).Scan(&paygRows)
+	for _, row := range paygRows {
+		response.PayAsYouGo = append(response.PayAsYouGo, dto.DashboardRevenueTrendItem{
+			Date:   row.Date,
+			Amount: math.Round(row.Amount*100) / 100,
+		})
+	}
+
+	// 2. 订阅套餐趋势：从 subscription_orders 表统计成功订单
+	var subRows []revenueTrendRow
+	subGroupBy := getGroupByClause(startTime, endTime)
+	subQuery := fmt.Sprintf(`
+		SELECT %s as date,
+		       COALESCE(SUM(money), 0) * ? as amount
+		FROM subscription_orders
+		WHERE status = ? AND create_time >= ? AND create_time <= ?
+		GROUP BY date ORDER BY date`, subGroupBy)
+	model.DB.Raw(subQuery, usdToCnyRate, common.TopUpStatusSuccess, startTime, endTime).Scan(&subRows)
+	for _, row := range subRows {
+		response.Subscription = append(response.Subscription, dto.DashboardRevenueTrendItem{
+			Date:   row.Date,
+			Amount: math.Round(row.Amount*100) / 100,
+		})
+	}
+
+	return response, nil
 }

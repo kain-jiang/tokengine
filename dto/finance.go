@@ -456,3 +456,19 @@ type RevenueManagementExportData struct {
 	PayAsYouGoItems   []PayAsYouGoItem        `json:"pay_as_you_go_items"`
 	SubscriptionItems []SubscriptionOrderItem `json:"subscription_items"`
 }
+
+// ============================================
+// 营收趋势相关 DTO
+// ============================================
+
+// DashboardRevenueTrendItem 营收趋势数据点
+type DashboardRevenueTrendItem struct {
+	Date   string  `json:"date"`   // 日期 YYYY-MM-DD
+	Amount float64 `json:"amount"` // 金额（CNY）
+}
+
+// DashboardRevenueTrendResponse 营收趋势响应
+type DashboardRevenueTrendResponse struct {
+	PayAsYouGo   []DashboardRevenueTrendItem `json:"pay_as_you_go"` // 按量付费趋势
+	Subscription []DashboardRevenueTrendItem `json:"subscription"`  // 订阅套餐趋势
+}
