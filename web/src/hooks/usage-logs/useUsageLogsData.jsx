@@ -855,7 +855,13 @@ export const useLogsData = () => {
         .catch((reason) => {
           showError(reason);
         });
-      getLogStat();
+      // 根据用户角色选择调用正确的统计API
+      // 管理员调用 /api/log/stat，普通用户调用 /api/log/self/stat
+      if (isAdminUser) {
+        getLogStat();
+      } else {
+        getLogSelfStat();
+      }
     }
   }, [formApi, pageSize]);
 
