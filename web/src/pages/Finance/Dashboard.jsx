@@ -630,6 +630,9 @@ export default function FinanceDashboard() {
     renderPieChart('revenuePie', revenuePieChartRef.current, revenueData, t('付费方式收入占比'));
   }, [paymentModeRevenueDist, t]);
 
+  // 工具函数：四舍五入到两位小数
+  const mathRound = (val) => Math.round(val * 100) / 100;
+
   // 计算营收统计指标
   const revenueStats = useMemo(() => {
     let totalPayAsYouGo = 0;
@@ -642,8 +645,6 @@ export default function FinanceDashboard() {
       subscription: mathRound(totalSubscription),
     };
   }, [revenueTrend]);
-
-  const mathRound = (val) => Math.round(val * 100) / 100;
 
   // 营收趋势折线图（按量付费 + 订阅套餐，双折线图例）
   useEffect(() => {
