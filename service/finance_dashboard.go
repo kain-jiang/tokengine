@@ -397,13 +397,19 @@ func (s *FinanceService) GetRevenueByUser(startTime, endTime int64, pageInfo *co
 }
 
 // GetPayAsYouGoByUser 获取按量付费（消费记录）营收分析
-// 统计时间段内每个用户 logs.type=2（消费）的 quota 折算金额
+// 统计时间段内每个用户 logs.type=2（消费）的 quota 折算金额（CNY）
 func (s *FinanceService) GetPayAsYouGoByUser(startTime, endTime int64, pageInfo *common.PageInfo, username string) ([]dto.PayAsYouGoItem, int64, error) {
 	items := make([]dto.PayAsYouGoItem, 0)
 
 	quotaPerUnit := common.QuotaPerUnit
 	if quotaPerUnit <= 0 {
 		quotaPerUnit = 50000000
+	}
+
+	// 获取美元转人民币汇率（与 Log 页面显示一致）
+	usdToCnyRate := operation_setting.USDExchangeRate
+	if usdToCnyRate <= 0 {
+		usdToCnyRate = 7.3
 	}
 
 	usernameFilter := ""
@@ -425,7 +431,7 @@ func (s *FinanceService) GetPayAsYouGoByUser(startTime, endTime int64, pageInfo 
 	if username != "" {
 		args = append(args, "%"+username+"%")
 	}
-	model.DB.Raw(countQuery, args...).Scan(&total)
+	model.LOG_DB.Raw(countQuery, args...).Scan(&total)
 
 	type payAsYouGoRow struct {
 		UserID   int     `db:"user_id"`
@@ -449,13 +455,15 @@ func (s *FinanceService) GetPayAsYouGoByUser(startTime, endTime int64, pageInfo 
 	}
 
 	var rows []payAsYouGoRow
-	model.DB.Raw(query, quotaPerUnit, startTime, endTime).Scan(&rows)
+	model.LOG_DB.Raw(query, quotaPerUnit, startTime, endTime).Scan(&rows)
 
 	for _, row := range rows {
+		// USD → CNY 转换（与 Log 页面 renderQuota 逻辑一致）
+		cnyAmount := row.Amount * usdToCnyRate
 		items = append(items, dto.PayAsYouGoItem{
 			UserID:   row.UserID,
 			Username: row.Username,
-			Amount:   math.Round(row.Amount*100) / 100,
+			Amount:   math.Round(cnyAmount*100) / 100,
 		})
 	}
 
