@@ -13,6 +13,20 @@ import (
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 )
 
+// parseFlexibleDateTime 解析日期时间字符串，兼容 "2006-01-02 15:04:05" 和 "2006-01-02" 两种格式
+func parseFlexibleDateTime(value string) (time.Time, bool) {
+	if value == "" {
+		return time.Time{}, false
+	}
+	if t, err := time.ParseInLocation("2006-01-02 15:04:05", value, time.Local); err == nil {
+		return t, true
+	}
+	if t, err := time.ParseInLocation("2006-01-02", value, time.Local); err == nil {
+		return t, true
+	}
+	return time.Time{}, false
+}
+
 type FinanceService struct{}
 
 var financeService *FinanceService
@@ -504,15 +518,15 @@ func (s *FinanceService) GetUserRevenueReports(req dto.UserRevenueListRequest, p
 
 	keyword := "%" + req.Keyword + "%"
 
-	// 解析日期范围
+	// 解析日期范围，兼容 "YYYY-MM-DD" 和 "YYYY-MM-DD HH:mm:ss" 两种格式
 	var startTimestamp, endTimestamp int64
-	if req.StartDate != "" {
-		startTime, _ := time.Parse("2006-01-02", req.StartDate)
+	if startTime, ok := parseFlexibleDateTime(req.StartDate); ok {
 		startTimestamp = startTime.Unix()
 	}
-	if req.EndDate != "" {
-		endTime, _ := time.Parse("2006-01-02", req.EndDate)
-		endTime = endTime.Add(24 * time.Hour) // 包含结束日期当天
+	if endTime, ok := parseFlexibleDateTime(req.EndDate); ok {
+		if endTime.Hour() == 0 && endTime.Minute() == 0 && endTime.Second() == 0 {
+			endTime = endTime.Add(24 * time.Hour) // 仅传日期时，包含结束日期当天
+		}
 		endTimestamp = endTime.Unix()
 	}
 

@@ -59,16 +59,28 @@ export default function RevenueList() {
     setDateRange({ startDate, endDate });
   }, []);
 
+  // 将 Date 对象格式化为 "YYYY-MM-DD HH:mm:ss"（本地时间）
+  const formatDateTime = (date) => {
+    const pad = (n) => String(n).padStart(2, '0');
+    const y = date.getFullYear();
+    const m = pad(date.getMonth() + 1);
+    const d = pad(date.getDate());
+    const h = pad(date.getHours());
+    const mi = pad(date.getMinutes());
+    const s = pad(date.getSeconds());
+    return `${y}-${m}-${d} ${h}:${mi}:${s}`;
+  };
+
   const startDate = useMemo(() => {
     if (dateRange.startDate) {
-      return dateRange.startDate.toISOString().slice(0, 10);
+      return formatDateTime(dateRange.startDate);
     }
     return '';
   }, [dateRange]);
 
   const endDate = useMemo(() => {
     if (dateRange.endDate) {
-      return dateRange.endDate.toISOString().slice(0, 10);
+      return formatDateTime(dateRange.endDate);
     }
     return '';
   }, [dateRange]);
