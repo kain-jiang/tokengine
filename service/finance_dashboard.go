@@ -467,8 +467,14 @@ func (s *FinanceService) GetPayAsYouGoByUser(startTime, endTime int64, pageInfo 
 		query += fmt.Sprintf(" LIMIT %d OFFSET %d", pageInfo.PageSize, pageInfo.GetStartIdx())
 	}
 
+	// 构建完整参数
+	allArgs := []interface{}{quotaPerUnit, startTime, endTime}
+	if username != "" {
+		allArgs = append(allArgs, "%"+username+"%")
+	}
+
 	var rows []payAsYouGoRow
-	model.LOG_DB.Raw(query, quotaPerUnit, startTime, endTime).Scan(&rows)
+	model.LOG_DB.Raw(query, allArgs...).Scan(&rows)
 
 	for _, row := range rows {
 		// USD → CNY 转换（与 Log 页面 renderQuota 逻辑一致）
