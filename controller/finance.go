@@ -1250,3 +1250,33 @@ func GetDashboardRevenueTrend(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": trend})
 }
+
+// GetUserAgentDistribution 获取客户端 User-Agent 分布统计
+func GetUserAgentDistribution(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		common.ApiErrorMsg(c, "未登录")
+		return
+	}
+	if !model.IsFinanceAdmin(userId) {
+		common.ApiErrorMsg(c, "无权限访问财务模块")
+		return
+	}
+
+	startTime, _ := strconv.ParseInt(c.Query("start_time"), 10, 64)
+	endTime, _ := strconv.ParseInt(c.Query("end_time"), 10, 64)
+
+	if startTime == 0 || endTime == 0 {
+		common.ApiErrorMsg(c, "缺少时间参数")
+		return
+	}
+
+	serviceInstance := service.GetFinanceService()
+	distribution, err := serviceInstance.GetClientUserAgentDistribution(startTime, endTime)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": distribution})
+}

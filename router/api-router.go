@@ -372,6 +372,7 @@ func SetApiRouter(router *gin.Engine) {
 			financeRoute.GET("/supplier/trend", controller.GetSupplierTrend)
 			financeRoute.GET("/supplier-dist", controller.GetSupplierDistribution)
 			financeRoute.GET("/revenue/trend", controller.GetDashboardRevenueTrend)
+			financeRoute.GET("/user-agent-dist", controller.GetUserAgentDistribution)
 		}
 
 		logRoute.Use(middleware.CORS(), middleware.CriticalRateLimit())

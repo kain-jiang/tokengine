@@ -120,6 +120,7 @@ export default function FinanceDashboard() {
   const [paymentModeRevenueDist, setPaymentModeRevenueDist] = useState({ pay_as_you_go: 0, subscription: 0 });
   const [supplierTrend, setSupplierTrend] = useState([]);
   const [supplierDist, setSupplierDist] = useState({ items: [] });
+  const [userAgentDist, setUserAgentDist] = useState([]);
   
   // 营收趋势（全局折线图）
   const [revenueTrend, setRevenueTrend] = useState({ pay_as_you_go: [], subscription: [] });
@@ -245,6 +246,7 @@ export default function FinanceDashboard() {
         supplierTrendRes,
         supplierDistRes,
         revenueTrendRes,
+        userAgentDistRes,
       ] = await Promise.all([
         API.get('/api/finance/users/trend', { params }),
         API.get('/api/finance/users/auth-distribution', { params: {} }),
@@ -257,6 +259,7 @@ export default function FinanceDashboard() {
         API.get('/api/finance/supplier/trend', { params }),
         API.get('/api/finance/supplier-dist', { params }),
         API.get('/api/finance/revenue/trend', { params }),
+        API.get('/api/finance/user-agent-dist', { params }),
       ]);
 
       if (usersTrendRes.data?.success) setUsersTrend(usersTrendRes.data?.data || []);
@@ -272,6 +275,7 @@ export default function FinanceDashboard() {
       if (supplierTrendRes.data?.success) setSupplierTrend(supplierTrendRes.data?.data || []);
       if (supplierDistRes.data?.success) setSupplierDist(supplierDistRes.data?.data || { items: [] });
       if (revenueTrendRes.data?.success) setRevenueTrend(revenueTrendRes.data?.data || { pay_as_you_go: [], subscription: [] });
+      if (userAgentDistRes.data?.success) setUserAgentDist(userAgentDistRes.data?.data || []);
 
       // 获取模型数据分析数据（来自 dashboard board）
       const dashboardBoardRes = await API.get('/api/dashboard/board/chart-data', {
@@ -683,12 +687,13 @@ export default function FinanceDashboard() {
   }, [consumptionTrend, t, forceRefresh]);
 
   useEffect(() => {
-    const tokensData = [
-      { name: t('按量付费'), value: paymentModeTokensDist.pay_as_you_go || 0 },
-      { name: t('订阅'), value: paymentModeTokensDist.subscription || 0 },
-    ].filter(item => item.value > 0);
-    renderPieChart('paymentModeTokens', paymentModeTokensChartRef.current, tokensData, t('付费方式tokens分布'));
-  }, [paymentModeTokensDist, t]);
+    // 客户端 User-Agent 分布饼图（来自 user_agent_dist API）
+    const uaData = userAgentDist.map(item => ({
+      name: item.user_agent || '未知客户端',
+      value: item.count || 0,
+    })).filter(item => item.value > 0).slice(0, 10); // 最多显示前 10 个
+    renderPieChart('paymentModeTokens', paymentModeTokensChartRef.current, uaData, t('客户端分布'));
+  }, [userAgentDist, t]);
 
   useEffect(() => {
     // 渲染付费方式收入对比饼图
@@ -1936,7 +1941,7 @@ export default function FinanceDashboard() {
             )}
           </div>
         </div>
-        {/* 右侧：付费方式 Tokens 分布饼图（1/4 宽度） */}
+        {/* 右侧：客户端 User-Agent 分布饼图（1/4 宽度） */}
         <div style={{
           flex: 1,
           backgroundColor: '#ffffff',
@@ -1945,8 +1950,18 @@ export default function FinanceDashboard() {
           boxShadow: 'rgba(1, 1, 32, 0.1) 0px 4px 10px',
           padding: '16px',
           minHeight: 400,
+          position: 'relative',
         }}>
-          <div ref={paymentModeTokensChartRef} style={{ width: '100%', height: 240 }} />
+          <div ref={paymentModeTokensChartRef} style={{ width: '100%', height: 320 }} />
+          {/* 暂无数据提示 */}
+          {userAgentDist.length === 0 && !chartLoading && (
+            <Empty
+              image={<IllustrationNoResult style={{ width: 150, height: 150 }} />}
+              darkModeImage={<IllustrationNoResultDark style={{ width: 150, height: 150 }} />}
+              description={t('暂无客户端数据')}
+              style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+            />
+          )}
         </div>
       </div>
 

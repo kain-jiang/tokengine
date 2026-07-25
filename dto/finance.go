@@ -472,3 +472,9 @@ type DashboardRevenueTrendResponse struct {
 	PayAsYouGo   []DashboardRevenueTrendItem `json:"pay_as_you_go"` // 按量付费趋势
 	Subscription []DashboardRevenueTrendItem `json:"subscription"`  // 订阅套餐趋势
 }
+
+// DashboardUserAgentDistributionItem User-Agent 分布数据点
+type DashboardUserAgentDistributionItem struct {
+	UserAgent string `json:"user_agent"` // 客户端 User-Agent
+	Count     int    `json:"count"`      // 请求次数
+}
