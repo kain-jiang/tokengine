@@ -451,7 +451,15 @@ export default function FinanceDashboard() {
       chartsInstance.current[chartName] = echarts.init(domElement);
     }
     
-    const pieData = data.map(item => ({ name: item.name, value: item.value }));
+    // 截断过长的名称用于图例显示（最多 40 字符）
+    const MAX_LEGEND_LENGTH = 40;
+    const pieData = data.map(item => ({
+      name: item.name.length > MAX_LEGEND_LENGTH
+        ? item.name.slice(0, MAX_LEGEND_LENGTH) + '...'
+        : item.name,
+      value: item.value,
+      originalName: item.name // 保存原始完整名称用于 tooltip
+    }));
 
     const option = {
       title: {
@@ -470,7 +478,10 @@ export default function FinanceDashboard() {
       tooltip: {
         show: true,
         trigger: 'item',
-        formatter: '{b}: {c} ({d}%)',
+        formatter: (params) => {
+          const originalName = params.data?.originalName || params.name;
+          return `${originalName}<br/>${params.marker}${params.value} (${params.percent}%)`;
+        },
       },
       legend: {
         orient: 'horizontal',
@@ -480,8 +491,18 @@ export default function FinanceDashboard() {
         textStyle: {
           fontSize: 12,
           color: 'rgba(0, 0, 0, 0.4)',
+          width: 360,
+          overflow: 'truncate',
         },
         padding: [0, 0, 0, 0],
+        formatter: (name) => {
+          // 查找对应的原始数据，截断显示
+          const item = pieData.find(p => p.name === name);
+          if (item && item.originalName && item.originalName !== name) {
+            return name.length > 25 ? name.slice(0, 25) + '...' : name;
+          }
+          return name;
+        },
       },
       series: [{
         name: title,
