@@ -19,12 +19,11 @@ import (
 // 只选择 billing_source = 'wallet' 的记录，其他所有情况（包括 other 为空/NULL）都不计入
 func getPayAsYouGoFilter() string {
 	if common.UsingPostgreSQL {
-		return "AND (l.other = '' OR l.other IS NULL OR (l.other->>'billing_source') != 'subscription')"
-		//	return "AND ((l.other)::jsonb->>'billing_source') = 'wallet'"
+		return " AND ((l.other)::jsonb->>'billing_source') = 'wallet'"
 	} else if common.UsingSQLite {
-		return "AND json_extract(l.other, '$.billing_source') = 'wallet'"
+		return " AND json_extract(l.other, '$.billing_source') = 'wallet'"
 	} else {
-		return "AND (l.other->>'$.billing_source') = 'wallet'"
+		return " AND (l.other->>'$.billing_source') = 'wallet'"
 	}
 }
 
