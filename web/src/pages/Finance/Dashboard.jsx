@@ -19,18 +19,16 @@ For commercial licensing, please contact support@quantumnous.com
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import * as echarts from 'echarts';
 import {
-  DatePicker, Table, Typography, Button, Select, Input, Badge, Space, Spin, Empty, Tabs, TabPane,
+  DatePicker, Typography, Button, Select, Input, Badge, Space, Spin, Empty, Tabs, TabPane,
 } from '@douyinfe/semi-ui';
 import {
-  IconMoneyExchangeStroked, IconCoinMoneyStroked, IconTickCircle, IconClockStroked, IconDownloadStroked,
+  IconMoneyExchangeStroked, IconCoinMoneyStroked, IconTickCircle, IconClockStroked,
 } from '@douyinfe/semi-icons';
 import { IllustrationNoResult, IllustrationNoResultDark } from '@douyinfe/semi-illustrations';
-import { API, timestamp2string, showError, showSuccess, modelColorMap, modelToColor, renderQuota, renderNumber } from '../../helpers';
+import { API, showError, modelColorMap, modelToColor, renderQuota, renderNumber } from '../../helpers';
 import { formatMoney } from './utils';
-import { createCardProPagination } from '../../helpers/utils';
 import { useIsMobile } from '../../hooks/common/useIsMobile';
 
 // StatCard 组件
@@ -67,7 +65,7 @@ const StatCard = ({ children, icon, color, title }) => (
   </div>
 );
 
-// 格式化日期为 MM-DD 或 MM-DD HH:MM（保留小时信息）
+// 格式化日期为 YYYY-MM-DD 或 YYYY-MM-DD HH:MM（保留小时信息）
 const formatDateLabel = (dateStr) => {
   if (!dateStr) return '';
   if (dateStr.includes('T')) {
@@ -76,21 +74,15 @@ const formatDateLabel = (dateStr) => {
   // 检查是否包含小时信息（如 "2024-01-15 14:00"）
   const spaceParts = dateStr.split(' ');
   if (spaceParts.length === 2) {
-    // 有小时信息，返回 MM-DD HH:MM
-    const dateParts = spaceParts[0].split('-');
-    return `${dateParts[1]}-${dateParts[2]} ${spaceParts[1]}`;
+    // 有小时信息，返回 YYYY-MM-DD HH:MM
+    return spaceParts[0] + ' ' + spaceParts[1];
   }
-  // 只有日期，返回 MM-DD
-  const parts = dateStr.split('-');
-  if (parts.length === 3) {
-    return `${parts[1]}-${parts[2]}`;
-  }
+  // 只有日期，返回 YYYY-MM-DD
   return dateStr;
 };
 
 export default function FinanceDashboard() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const isMobile = useIsMobile();
 
   // 日期范围
@@ -128,6 +120,9 @@ export default function FinanceDashboard() {
   const [paymentModeRevenueDist, setPaymentModeRevenueDist] = useState({ pay_as_you_go: 0, subscription: 0 });
   const [supplierTrend, setSupplierTrend] = useState([]);
   const [supplierDist, setSupplierDist] = useState({ items: [] });
+  
+  // 营收趋势（全局折线图）
+  const [revenueTrend, setRevenueTrend] = useState({ pay_as_you_go: [], subscription: [] });
 
   // 有效充值趋势指标切换
   const [trendMetric, setTrendMetric] = useState('amount'); // 'amount' | 'count' | 'cumulative'
@@ -160,6 +155,7 @@ export default function FinanceDashboard() {
   const revenuePieChartRef = useRef(null);
   const supplierTrendChartRef = useRef(null);
   const supplierDistChartRef = useRef(null);
+  const revenueTrendChartRef = useRef(null); // 营收趋势（按量付费 + 订阅套餐）
 
   // 模型数据分析图表引用（6 个子图表）
   const quotaDistChartRef = useRef(null);        // 1. 消耗分布 - 堆叠柱状图
@@ -176,9 +172,10 @@ export default function FinanceDashboard() {
     topupDist: null,
     consumptionTrend: null,
     paymentModeTokens: null,
-    revenuePie: null,
+    revenuePie: null, // 付费方式收入对比饼图
     supplierTrend: null,
     supplierDist: null,
+    revenueTrend: null, // 营收趋势（按量付费 + 订阅套餐合并）
     // 模型数据分析图表
     quotaDist: null,
     callTrend: null,
@@ -199,6 +196,7 @@ export default function FinanceDashboard() {
     revenuePie: revenuePieChartRef,
     supplierTrend: supplierTrendChartRef,
     supplierDist: supplierDistChartRef,
+    revenueTrend: revenueTrendChartRef, // 营收趋势（按量付费 + 订阅套餐合并）
   };
 
   // 获取星期一开始的时间戳
@@ -246,6 +244,7 @@ export default function FinanceDashboard() {
         paymentModeRevenueDistRes,
         supplierTrendRes,
         supplierDistRes,
+        revenueTrendRes,
       ] = await Promise.all([
         API.get('/api/finance/users/trend', { params }),
         API.get('/api/finance/users/auth-distribution', { params: {} }),
@@ -257,6 +256,7 @@ export default function FinanceDashboard() {
         API.get('/api/finance/payment-mode-revenue-dist', { params }),
         API.get('/api/finance/supplier/trend', { params }),
         API.get('/api/finance/supplier-dist', { params }),
+        API.get('/api/finance/revenue/trend', { params }),
       ]);
 
       if (usersTrendRes.data?.success) setUsersTrend(usersTrendRes.data?.data || []);
@@ -271,6 +271,7 @@ export default function FinanceDashboard() {
       if (paymentModeRevenueDistRes.data?.success) setPaymentModeRevenueDist(paymentModeRevenueDistRes.data?.data || {});
       if (supplierTrendRes.data?.success) setSupplierTrend(supplierTrendRes.data?.data || []);
       if (supplierDistRes.data?.success) setSupplierDist(supplierDistRes.data?.data || { items: [] });
+      if (revenueTrendRes.data?.success) setRevenueTrend(revenueTrendRes.data?.data || { pay_as_you_go: [], subscription: [] });
 
       // 获取模型数据分析数据（来自 dashboard board）
       const dashboardBoardRes = await API.get('/api/dashboard/board/chart-data', {
@@ -313,7 +314,7 @@ export default function FinanceDashboard() {
       fetchDashboardStats();
       fetchChartData();
     }
-  }, [startTime, endTime, revenueByUserPage, revenueByUserPageSize]);
+  }, [startTime, endTime]);
 
   // ECharts 配色
   const lineColor = '#1890ff';
@@ -499,6 +500,79 @@ export default function FinanceDashboard() {
     chartsInstance.current[chartName].setOption(option);
   };
 
+  // 渲染付费方式收入对比饼图
+  // 参数: domElement=DOM元素, payAsYouGo=按量付费金额, subscription=订阅金额
+  const renderRevenuePieChart = (domElement, payAsYouGo, subscription) => {
+    if (!domElement) return;
+    
+    const total = payAsYouGo + subscription;
+    if (total === 0) {
+      if (chartsInstance.current.revenuePie) {
+        chartsInstance.current.revenuePie.setOption({ series: [{ data: [] }] });
+      }
+      return;
+    }
+
+    if (!chartsInstance.current.revenuePie) {
+      chartsInstance.current.revenuePie = echarts.init(domElement);
+    }
+
+    const pieData = [
+      { name: t('按量付费'), value: payAsYouGo },
+      { name: t('订阅'), value: subscription },
+    ].filter(item => item.value > 0);
+
+    const option = {
+      title: {
+        text: t('付费方式收入对比'),
+        left: 'center',
+        top: 8,
+        textStyle: {
+          fontSize: 14,
+          fontWeight: 400,
+          color: 'rgba(0, 0, 0, 0.4)',
+          fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
+          textTransform: 'uppercase',
+          letterSpacing: 0.055,
+        },
+      },
+      tooltip: {
+        show: true,
+        trigger: 'item',
+        formatter: '{b}: {c} ({d}%)',
+      },
+      legend: {
+        orient: 'horizontal',
+        bottom: 0,
+        left: 'center',
+        data: pieData.map(item => item.name),
+        textStyle: {
+          fontSize: 12,
+          color: 'rgba(0, 0, 0, 0.4)',
+        },
+        padding: [0, 0, 0, 0],
+      },
+      series: [{
+        name: t('付费方式收入对比'),
+        type: 'pie',
+        radius: ['35%', '65%'],
+        center: ['50%', '45%'],
+        avoidLabelOverlap: false,
+        itemStyle: {
+          borderRadius: 4,
+          borderColor: '#fff',
+          borderWidth: 2,
+        },
+        label: { show: false },
+        emphasis: { label: { show: false } },
+        labelLine: { show: false },
+        data: pieData,
+        color: pieColors,
+      }],
+    };
+    chartsInstance.current.revenuePie.setOption(option);
+  };
+
   // 渲染各图表
   useEffect(() => {
     const valueLabel = usersTrendMetric === 'daily' ? t('新增用户') : t('累计用户');
@@ -617,12 +691,170 @@ export default function FinanceDashboard() {
   }, [paymentModeTokensDist, t]);
 
   useEffect(() => {
-    const revenueData = [
-      { name: t('按量付费'), value: paymentModeRevenueDist.pay_as_you_go || 0 },
-      { name: t('订阅'), value: paymentModeRevenueDist.subscription || 0 },
-    ].filter(item => item.value > 0);
-    renderPieChart('revenuePie', revenuePieChartRef.current, revenueData, t('付费方式收入占比'));
+    // 渲染付费方式收入对比饼图
+    renderRevenuePieChart(
+      revenuePieChartRef.current,
+      paymentModeRevenueDist.pay_as_you_go || 0,
+      paymentModeRevenueDist.subscription || 0
+    );
   }, [paymentModeRevenueDist, t]);
+
+  // 工具函数：四舍五入到两位小数
+  const mathRound = (val) => Math.round(val * 100) / 100;
+
+  // 计算营收统计指标
+  const revenueStats = useMemo(() => {
+    let totalPayAsYouGo = 0;
+    let totalSubscription = 0;
+    revenueTrend?.pay_as_you_go?.forEach(item => { totalPayAsYouGo += (item.amount || 0); });
+    revenueTrend?.subscription?.forEach(item => { totalSubscription += (item.amount || 0); });
+    return {
+      total: mathRound(totalPayAsYouGo + totalSubscription),
+      pay_as_you_go: mathRound(totalPayAsYouGo),
+      subscription: mathRound(totalSubscription),
+    };
+  }, [revenueTrend]);
+
+  // 营收趋势折线图（按量付费 + 订阅套餐，双折线图例）
+  useEffect(() => {
+    const hasData = (revenueTrend?.pay_as_you_go?.length > 0) || (revenueTrend?.subscription?.length > 0);
+    if (!hasData) {
+      if (chartsInstance.current.revenueTrend) {
+        chartsInstance.current.revenueTrend.setOption({ series: [{ data: [] }, { data: [] }] });
+      }
+      return;
+    }
+    if (!revenueTrendChartRef.current) {
+      requestAnimationFrame(() => {
+        renderRevenueTrendChart();
+      });
+      return;
+    }
+    renderRevenueTrendChart();
+  }, [revenueTrend]);
+
+  const renderRevenueTrendChart = () => {
+    if (!revenueTrendChartRef.current) return;
+    
+    // 合并所有日期（去重后排序）
+    const dateSet = new Set();
+    revenueTrend?.pay_as_you_go?.forEach(item => dateSet.add(item.date));
+    revenueTrend?.subscription?.forEach(item => dateSet.add(item.date));
+    const allDates = Array.from(dateSet).sort();
+    
+    // 构建按量付费和订阅套餐的金额映射
+    const paygMap = {};
+    revenueTrend?.pay_as_you_go?.forEach(item => { paygMap[item.date] = item.amount; });
+    const subMap = {};
+    revenueTrend?.subscription?.forEach(item => { subMap[item.date] = item.amount; });
+    
+    // 构建图表数据
+    const paygData = allDates.map(date => paygMap[date] || 0);
+    const subData = allDates.map(date => subMap[date] || 0);
+    
+    if (!chartsInstance.current.revenueTrend) {
+      chartsInstance.current.revenueTrend = echarts.init(revenueTrendChartRef.current);
+    }
+    chartsInstance.current.revenueTrend.setOption({
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: '#ffffff',
+        borderColor: 'rgba(0, 0, 0, 0.08)',
+        borderWidth: 1,
+        textStyle: { color: '#000000', fontSize: 14 },
+        formatter: function(params) {
+          if (!params || params.length === 0) return '';
+          const dateStr = formatDateLabel(params[0].name);
+          let content = `<div style="font-weight:500;margin-bottom:6px">${dateStr}</div>`;
+          params.forEach(p => {
+            content += `<div style="display:flex;justify-content:gap:8px;align-items:center">
+              <span>${p.marker}</span>
+              <span style="color:rgba(0,0,0,0.6)">${p.seriesName}:</span>
+              <span style="font-weight:500">¥${p.value.toLocaleString()}</span>
+            </div>`;
+          });
+          return content;
+        }
+      },
+      legend: {
+        data: [t('按量付费'), t('订阅套餐')],
+        top: 0,
+        right: 0,
+        itemWidth: 16,
+        itemHeight: 8,
+        itemGap: 16,
+        textStyle: {
+          fontSize: 14,
+          fontWeight: 400,
+          color: 'rgba(0, 0, 0, 0.6)',
+          fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
+        }
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        top: 40,
+        containLabel: true,
+      },
+      xAxis: {
+        type: 'category',
+        data: allDates.map(formatDateLabel),
+        boundaryGap: false,
+        axisLine: { lineStyle: { color: 'rgba(0, 0, 0, 0.08)' } },
+        axisTick: { show: false },
+        axisLabel: {
+          rotate: allDates.length > 15 ? 45 : 0,
+          interval: 0,
+          fontSize: 10,
+          color: 'rgba(0, 0, 0, 0.4)',
+          fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
+        }
+      },
+      yAxis: {
+        type: 'value',
+        splitLine: { lineStyle: { color: 'rgba(0, 0, 0, 0.04)' } },
+        axisLabel: {
+          formatter: '¥{value}',
+          fontSize: 10,
+          color: 'rgba(0, 0, 0, 0.4)',
+          fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
+        }
+      },
+      series: [
+        {
+          name: t('按量付费'),
+          type: 'line',
+          smooth: true,
+          symbol: 'none',
+          lineStyle: { width: 2 },
+          data: paygData,
+          itemStyle: { color: '#52c41a' },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: 'rgba(82, 196, 26, 0.25)' },
+              { offset: 1, color: 'rgba(82, 196, 26, 0.02)' }
+            ])
+          }
+        },
+        {
+          name: t('订阅套餐'),
+          type: 'line',
+          smooth: true,
+          symbol: 'none',
+          lineStyle: { width: 2 },
+          data: subData,
+          itemStyle: { color: '#722ed1' },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: 'rgba(114, 46, 209, 0.25)' },
+              { offset: 1, color: 'rgba(114, 46, 209, 0.02)' }
+            ])
+          }
+        }
+      ]
+    });
+  };
 
   // 渠道消费趋势：按渠道分组的消费数据（多系列折线图）或累计折线图
   useEffect(() => {
@@ -676,12 +908,13 @@ export default function FinanceDashboard() {
           left: 'center',
           top: 8,
           textStyle: {
-            fontSize: 14,
-            fontWeight: 400,
+            fontSize: 12,
+            fontWeight: 500,
             color: 'rgba(0, 0, 0, 0.4)',
             fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
             textTransform: 'uppercase',
-            letterSpacing: 0.055,
+            letterSpacing: '0.055px',
+            marginBottom: 20,
           },
         },
         tooltip: {
@@ -792,12 +1025,12 @@ export default function FinanceDashboard() {
         left: 'center',
         top: 8,
         textStyle: {
-          fontSize: 14,
-          fontWeight: 400,
+          fontSize: 12,
+          fontWeight: 500,
           color: 'rgba(0, 0, 0, 0.4)',
           fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
           textTransform: 'uppercase',
-          letterSpacing: 0.055,
+          letterSpacing: '0.055px',
         },
       },
       tooltip: {
@@ -805,7 +1038,7 @@ export default function FinanceDashboard() {
         trigger: 'axis',
         formatter: function(params) {
           if (!params || !params.length) return '';
-          let result = `<strong>${params[0].name}</strong><br/>`;
+          let result = `<strong>${formatDateLabel(params[0].name)}</strong><br/>`;
           const isCost = supplierTrendMetric === 'cost';
           params.forEach(p => {
             result += `${p.marker}${p.seriesName}: ${isCost ? '¥' + p.value.toFixed(2) : p.value.toFixed(0)}<br/>`;
@@ -1351,87 +1584,6 @@ export default function FinanceDashboard() {
     };
   }, []);
 
-  // 导出营收分析表格为 CSV
-  const handleExportRevenueCsv = async () => {
-    try {
-      const res = await API.get('/api/finance/revenue-by-user/export-csv', {
-        params: { start_time: startTime, end_time: endTime },
-        responseType: 'blob',
-      });
-      const blob = res.data;
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      const filename = res.headers['content-disposition']?.split('filename=')[1] || `revenue_analysis_${new Date().toISOString().slice(0, 10)}.csv`;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      showSuccess(t('导出成功'));
-    } catch (error) {
-      console.error('导出CSV失败:', error);
-      showError(t('导出失败'));
-    }
-  };
-
-  // 表格列定义
-  const revenueColumns = useMemo(() => [
-    {
-      title: t('用户ID'),
-      dataIndex: 'user_id',
-      key: 'user_id',
-      width: 80,
-    },
-    {
-      title: t('用户名'),
-      dataIndex: 'username',
-      key: 'username',
-      width: 150,
-      render: (text) => (
-        <Typography.Text
-          type='primary'
-          style={{ cursor: 'pointer' }}
-          onClick={() => {
-            if (text) {
-              navigate('/console/log', {
-                state: {
-                  filterUsername: text,
-                  startTime: startTime,
-                  endTime: endTime,
-                  logType: '2',
-                },
-              });
-            }
-          }}
-        >
-          {text || '-'}
-        </Typography.Text>
-      ),
-    },
-    {
-      title: t('按量付费'),
-      dataIndex: 'pay_as_you_go',
-      key: 'pay_as_you_go',
-      width: 120,
-      render: (val) => <Typography.Text type='primary'>{formatMoney(val)}</Typography.Text>,
-    },
-    {
-      title: t('订阅'),
-      dataIndex: 'subscription',
-      key: 'subscription',
-      width: 120,
-      render: (val) => <Typography.Text type='success'>{formatMoney(val)}</Typography.Text>,
-    },
-    {
-      title: t('总计'),
-      dataIndex: 'total',
-      key: 'total',
-      width: 120,
-      render: (val) => <Typography.Text type='danger'>{formatMoney(val)}</Typography.Text>,
-    },
-  ], [t]);
-
   // 顶部统计卡片（9个指标）
   const statsCards = (
     <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -1511,7 +1663,6 @@ export default function FinanceDashboard() {
           value={dateRange.startDate}
           onChange={(value) => {
             setDateRange((prev) => ({ ...prev, startDate: value }));
-            setRevenueByUserPage(1);
           }}
           maxDate={dateRange.endDate || new Date()}
           disabledDate={(date) => date > new Date()}
@@ -1524,7 +1675,6 @@ export default function FinanceDashboard() {
           value={dateRange.endDate}
           onChange={(value) => {
             setDateRange((prev) => ({ ...prev, endDate: value }));
-            setRevenueByUserPage(1);
           }}
           minDate={dateRange.startDate}
           maxDate={new Date()}
@@ -1800,75 +1950,108 @@ export default function FinanceDashboard() {
         </div>
       </div>
 
-      {/* 第四排：营收分析（表格 + 饼图） */}
+      {/* 第四排：营收趋势（含统计指标 + 折线图） + 饼图 */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-        {/* 营收分析表格 */}
+        {/* 营收趋势（按量付费 + 订阅套餐） */}
         <div style={{
           flex: 3,
           backgroundColor: '#ffffff',
           borderRadius: 4,
           border: '1px solid rgba(0, 0, 0, 0.08)',
           boxShadow: 'rgba(1, 1, 32, 0.1) 0px 4px 10px',
-          padding: '16px',
+          padding: '24px',
         }}>
+          {/* 板块标签 */}
           <div style={{
-            fontSize: 14,
-            fontWeight: 400,
+            fontSize: 11,
+            fontWeight: 500,
             color: 'rgba(0, 0, 0, 0.4)',
             fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
             textTransform: 'uppercase',
-            letterSpacing: 0.055,
-            marginBottom: 16,
-          }}>{t('营收分析')}</div>
-          <Table
-            columns={revenueColumns}
-            dataSource={revenueByUser.items || []}
-            loading={chartLoading}
-            rowKey='user_id'
-            pagination={false}
-            size='small'
-            empty={
-              <Empty
-                image={<IllustrationNoResult style={{ width: 150, height: 150 }} />}
-                darkModeImage={<IllustrationNoResultDark style={{ width: 150, height: 150 }} />}
-                description={t('暂无数据')}
-                style={{ padding: 30 }}
-              />
-            }
-          />
-          <div className='flex w-full pt-4 border-t justify-between items-center'
-               style={{ borderColor: 'rgba(0, 0, 0, 0.08)', borderTopWidth: 1, marginTop: 16 }}>
-            {createCardProPagination({
-              currentPage: revenueByUserPage,
-              pageSize: revenueByUserPageSize,
-              total: revenueByUser.total || 0,
-              onPageChange: (page) => setRevenueByUserPage(page),
-              onPageSizeChange: (size) => { setRevenueByUserPageSize(size); setRevenueByUserPage(1); },
-              isMobile: isMobile,
-              t: t,
-            })}
-            <Button
-              icon={<IconDownloadStroked />}
-              type='primary'
-              size='small'
-              onClick={handleExportRevenueCsv}
-              style={{ marginLeft: 12 }}
-            >
-              {t('导出 CSV')}
-            </Button>
+            letterSpacing: '0.055px',
+            marginBottom: 20,
+          }}>{t('营收趋势')}</div>
+          
+          {/* 营收统计指标 */}
+          <div style={{
+            display: 'flex',
+            gap: 24,
+            marginBottom: 20,
+            flexWrap: 'wrap',
+          }}>
+            <div>
+              <div style={{
+                fontSize: 10,
+                fontWeight: 500,
+                color: 'rgba(0, 0, 0, 0.4)',
+                fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05px',
+                marginBottom: 4,
+              }}>{t('总收入')}</div>
+              <div style={{
+                fontSize: 28,
+                fontWeight: 400,
+                color: '#000000',
+                fontFamily: 'The Future, Arial, sans-serif',
+                lineHeight: 1.1,
+                letterSpacing: '-0.42px',
+              }}>¥{revenueStats.total.toLocaleString()}</div>
+            </div>
+            <div style={{ borderLeft: '1px solid rgba(0, 0, 0, 0.08)', paddingLeft: 24 }}>
+              <div style={{
+                fontSize: 10,
+                fontWeight: 500,
+                color: 'rgba(0, 0, 0, 0.4)',
+                fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05px',
+                marginBottom: 4,
+              }}>{t('按量付费')}</div>
+              <div style={{
+                fontSize: 20,
+                fontWeight: 400,
+                color: '#52c41a',
+                fontFamily: 'The Future, Arial, sans-serif',
+                lineHeight: 1.2,
+                letterSpacing: '-0.16px',
+              }}>¥{revenueStats.pay_as_you_go.toLocaleString()}</div>
+            </div>
+            <div style={{ borderLeft: '1px solid rgba(0, 0, 0, 0.08)', paddingLeft: 24 }}>
+              <div style={{
+                fontSize: 10,
+                fontWeight: 500,
+                color: 'rgba(0, 0, 0, 0.4)',
+                fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05px',
+                marginBottom: 4,
+              }}>{t('订阅套餐')}</div>
+              <div style={{
+                fontSize: 20,
+                fontWeight: 400,
+                color: '#722ed1',
+                fontFamily: 'The Future, Arial, sans-serif',
+                lineHeight: 1.2,
+                letterSpacing: '-0.16px',
+              }}>¥{revenueStats.subscription.toLocaleString()}</div>
+            </div>
           </div>
+          
+          {/* 折线图 */}
+          <div ref={revenueTrendChartRef} style={{ width: '100%', height: 240 }} />
         </div>
-        {/* 付费方式收入占比饼图 */}
+        {/* 付费方式收入对比柱状图 */}
         <div style={{
           flex: 1,
           backgroundColor: '#ffffff',
           borderRadius: 4,
           border: '1px solid rgba(0, 0, 0, 0.08)',
           boxShadow: 'rgba(1, 1, 32, 0.1) 0px 4px 10px',
-          padding: '16px',
-          minHeight: 280,
+          padding: '24px',
+          minHeight: 400,
         }}>
-          <div ref={revenuePieChartRef} style={{ width: '100%', height: 240 }} />
+          <div ref={revenuePieChartRef} style={{ width: '100%', height: 320 }} />
         </div>
       </div>
 

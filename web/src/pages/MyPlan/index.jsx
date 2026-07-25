@@ -484,7 +484,7 @@ const MySubscriptionSection = ({
         ),
         createTime: new Date((subscription?.start_time || 0) * 1000).toLocaleString(),
         endTime: new Date((subscription?.end_time || 0) * 1000).toLocaleString(),
-        group: subscription?.upgrade_group || '-',
+        source: subscription?.source || '-',
         totalQuota: totalAmount > 0 ? (
           <Tooltip content={`${t('原生额度')}：${usedAmount}/${totalAmount} · ${t('剩余')} ${remainAmount}`}>
             <span>{formatQuotaAmount(totalAmount)}</span>
@@ -501,7 +501,10 @@ const MySubscriptionSection = ({
     {
       title: t('套餐名称'),
       dataIndex: 'planName',
-      ellipsis: true,
+      key: 'planName',
+      width: 400,
+      cellStyle: { minWidth: 350 },
+      headerCellStyle: { minWidth: 350 },
     },
     {
       title: t('状态'),
@@ -519,9 +522,9 @@ const MySubscriptionSection = ({
       width: 180,
     },
     {
-      title: t('分组'),
-      dataIndex: 'group',
-      width: 120,
+      title: t('来源'),
+      dataIndex: 'source',
+      width: 100,
     },
     {
       title: t('已用额度'),
@@ -541,7 +544,7 @@ const MySubscriptionSection = ({
   ];
 
   return (
-    <Card className='!rounded-xl w-full' bodyStyle={{ padding: '12px' }}>
+    <Card className='!rounded-xl w-full my-plan-section' bodyStyle={{ padding: '12px' }}>
       <div className='flex items-center justify-between mb-2 gap-3'>
         <div className='flex items-center gap-2 flex-1 min-w-0'>
           <Text strong>{t('我的订阅')}</Text>
@@ -622,6 +625,8 @@ const MySubscriptionSection = ({
             size='small'
             pagination={false}
             bordered
+            style={{ width: '100%' }}
+            tableLayout='auto'
           />
         </>
       ) : (

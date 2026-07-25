@@ -12,9 +12,7 @@ import (
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
-	"github.com/QuantumNous/new-api/setting/system_setting"
 	"github.com/gin-gonic/gin"
-	"github.com/samber/lo"
 )
 
 type SubscriptionEpayPayRequest struct {
@@ -111,6 +109,7 @@ func SubscriptionRequestEpay(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "success", "data": params, "url": uri})
 }
 
+/*
 func SubscriptionEpayNotify(c *gin.Context) {
 	var params map[string]string
 
@@ -164,6 +163,7 @@ func SubscriptionEpayNotify(c *gin.Context) {
 	_, _ = c.Writer.Write([]byte("success"))
 }
 
+
 // SubscriptionEpayReturn handles browser return after payment.
 // It verifies the payload and completes the order, then redirects to console.
 func SubscriptionEpayReturn(c *gin.Context) {
@@ -214,3 +214,4 @@ func SubscriptionEpayReturn(c *gin.Context) {
 	}
 	c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=pending")
 }
+*/

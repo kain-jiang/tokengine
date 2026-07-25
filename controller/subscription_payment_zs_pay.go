@@ -1,23 +1,11 @@
 package controller
 
-import (
-	"fmt"
-	"log"
-	"strconv"
-	"time"
-
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/model"
-	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/setting/operation_setting"
-	"github.com/gin-gonic/gin"
-)
-
 type SubscriptionZSPayRequest struct {
 	PlanId        int    `json:"plan_id"`
 	PaymentMethod string `json:"payment_method"`
 }
 
+/*
 func SubscriptionRequestZSPay(c *gin.Context) {
 	var req SubscriptionZSPayRequest
 	if err := c.ShouldBindJSON(&req); err != nil || req.PlanId <= 0 {
@@ -147,3 +135,4 @@ func SubscriptionZSPayNotify(c *gin.Context) {
 
 	c.Writer.Write([]byte("success"))
 }
+*/

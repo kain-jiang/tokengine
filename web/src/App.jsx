@@ -51,6 +51,7 @@ import FinanceInvoices from './pages/Finance/Invoices';
 import FinanceReconciliation from './pages/Finance/Reconciliation';
 import FinanceSupplier from './pages/Finance/Supplier';
 import FinanceSupplierSettlement from './pages/Finance/SupplierSettlement';
+import RevenueManagement from './pages/Finance/RevenueManagement';
 
 import Log from './pages/Log';
 import Chat from './pages/Chat';
@@ -415,6 +416,12 @@ function App() {
               path='supplier-settlement'
               element={
                 <ErrorBoundary key='finance-supplier-settlement'><FinanceSupplierSettlement /></ErrorBoundary>
+              }
+            />
+            <Route
+              path='revenue-management'
+              element={
+                <ErrorBoundary key='finance-revenue-management'><RevenueManagement /></ErrorBoundary>
               }
             />
           </Route>

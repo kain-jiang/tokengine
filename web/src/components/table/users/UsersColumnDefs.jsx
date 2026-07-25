@@ -321,6 +321,23 @@ export const getUsersColumns = ({
       render: (text, record) => renderUsername(text, record),
     },
     {
+      title: t('用户类型'),
+      dataIndex: 'user_type',
+      render: (text, record) => {
+        const userTypeMap = {
+          0: { color: 'gray', text: t('未认证') },
+          1: { color: 'blue', text: t('个人认证') },
+          2: { color: 'green', text: t('企业认证') },
+        };
+        const config = userTypeMap[record.user_type] || { color: 'gray', text: t('未知') };
+        return (
+          <Tag color={config.color} shape='circle' size='small'>
+            {config.text}
+          </Tag>
+        );
+      },
+    },
+    {
       title: t('状态'),
       dataIndex: 'info',
       render: (text, record, index) =>

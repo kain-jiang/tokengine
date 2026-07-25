@@ -1,27 +1,11 @@
 package controller
 
-import (
-	"fmt"
-	"io"
-	"log"
-	"net/http"
-	"net/url"
-	"strconv"
-	"time"
-
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/model"
-	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/setting/operation_setting"
-	"github.com/QuantumNous/new-api/setting/system_setting"
-	"github.com/gin-gonic/gin"
-)
-
 type SubscriptionHelipayRequest struct {
 	PlanId        int    `json:"plan_id"`
 	PaymentMethod string `json:"payment_method"`
 }
 
+/*
 func SubscriptionRequestHelipay(c *gin.Context) {
 	var req SubscriptionHelipayRequest
 	if err := c.ShouldBindJSON(&req); err != nil || req.PlanId <= 0 {
@@ -210,3 +194,5 @@ func SubscriptionHelipayReturn(c *gin.Context) {
 
 	c.Redirect(http.StatusFound, system_setting.ServerAddress+"/console/topup?pay=fail")
 }
+
+*/
