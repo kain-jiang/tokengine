@@ -36,6 +36,7 @@ type Log struct {
 	Group            string `json:"group" gorm:"index"`
 	Ip               string `json:"ip" gorm:"index;default:''"`
 	RequestId        string `json:"request_id,omitempty" gorm:"type:varchar(64);index:idx_logs_request_id;default:''"`
+	UserAgent        string `json:"user_agent" gorm:"type:varchar(512);default:''"`
 	Other            string `json:"other"`
 }
 
@@ -126,7 +127,13 @@ func RecordErrorLog(c *gin.Context, userId int, channelId int, modelName string,
 			return ""
 		}(),
 		RequestId: requestId,
-		Other:     otherStr,
+		UserAgent: func() string {
+			if c.Request != nil {
+				return c.Request.UserAgent()
+			}
+			return ""
+		}(),
+		Other: otherStr,
 	}
 	err := LOG_DB.Create(log).Error
 	if err != nil {
@@ -187,7 +194,13 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 			return ""
 		}(),
 		RequestId: requestId,
-		Other:     otherStr,
+		UserAgent: func() string {
+			if c.Request != nil {
+				return c.Request.UserAgent()
+			}
+			return ""
+		}(),
+		Other: otherStr,
 	}
 	err := LOG_DB.Create(log).Error
 	if err != nil {
