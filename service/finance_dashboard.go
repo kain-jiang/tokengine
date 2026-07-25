@@ -16,16 +16,14 @@ import (
 // ============================================
 
 // getPayAsYouGoFilter 生成"按量付费"的 WHERE 条件
-// 当 billing_source = 'wallet' 时，表示该条消费记录由钱包按量付费
-// 当 billing_source = 'subscription' 时，表示该条消费记录由订阅抵扣，不应计入按量付费
-// 使用跨数据库兼容的 JSON 提取方式
+// 只选择 billing_source = 'wallet' 的记录，其他所有情况（包括 other 为空/NULL）都不计入
 func getPayAsYouGoFilter() string {
 	if common.UsingPostgreSQL {
-		return "AND (l.other = '' OR l.other IS NULL OR (l.other->>'billing_source') = 'wallet')"
+		return "AND ((l.other)::jsonb->>'billing_source') = 'wallet'"
 	} else if common.UsingSQLite {
-		return "AND (l.other = '' OR l.other IS NULL OR json_extract(l.other, '$.billing_source') = 'wallet')"
+		return "AND json_extract(l.other, '$.billing_source') = 'wallet'"
 	} else {
-		return "AND (l.other = '' OR l.other IS NULL OR JSON_EXTRACT(l.other, '$.billing_source') = 'wallet')"
+		return "AND (l.other->>'$.billing_source') = 'wallet'"
 	}
 }
 
