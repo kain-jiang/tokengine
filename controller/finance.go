@@ -14,6 +14,7 @@ import (
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/gin-gonic/gin"
 )
 
@@ -1002,6 +1003,25 @@ func formatMoneyForCsv(amount float64) string {
 	return fmt.Sprintf("%.2f", amount)
 }
 
+// formatAmountTotalForCsv 格式化实得价值用于 CSV 输出
+// 根据套餐类型区分：quota 类型显示金额（CNY/¥），tokens 类型显示 Tokens 数量
+func formatAmountTotalForCsv(amountTotal int64, tokensAmount int64, planType string) string {
+	if planType == "tokens" {
+		return fmt.Sprintf("%d Tokens", tokensAmount)
+	}
+	quotaPerUnit := common.QuotaPerUnit
+	if quotaPerUnit <= 0 {
+		quotaPerUnit = 50000000
+	}
+	usd := float64(amountTotal) / float64(quotaPerUnit)
+	usdToCnyRate := operation_setting.USDExchangeRate
+	if usdToCnyRate <= 0 {
+		usdToCnyRate = 7.3
+	}
+	cny := usd * usdToCnyRate
+	return fmt.Sprintf("¥%.2f", cny)
+}
+
 // GetPaymentModeRevenueDistribution 获取付费方式收入分布
 func GetPaymentModeRevenueDistribution(c *gin.Context) {
 	userId := c.GetInt("id")
@@ -1176,7 +1196,7 @@ func ExportRevenueManagementCsv(c *gin.Context) {
 
 	// 第二部分：订阅套餐
 	buf.WriteString("订阅套餐\n")
-	buf.WriteString("用户名,套餐类型,套餐名,订阅时间,到期时间,实收金额,实得金额(Tokens数量)\n")
+	buf.WriteString("用户名,套餐类型,套餐名,订阅时间,到期时间,实收金额,实得价值\n")
 	for _, item := range data.SubscriptionItems {
 		username := strings.ReplaceAll(item.Username, ",", "，")
 		planName := strings.ReplaceAll(item.PlanName, ",", "，")
@@ -1185,9 +1205,11 @@ func ExportRevenueManagementCsv(c *gin.Context) {
 		if item.ExpireTime > 0 {
 			expireTime = time.Unix(item.ExpireTime, 0).Format("2006-01-02 15:04:05")
 		}
-		buf.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,%s,%d\n",
+		// 实得价值：根据套餐类型区分显示
+		amountValue := formatAmountTotalForCsv(item.AmountTotal, item.TokensAmount, item.PlanType)
+		buf.WriteString(fmt.Sprintf("%s,%s,%s,%s,%s,%s,%s\n",
 			username, item.PlanType, planName, subscribeTime, expireTime,
-			formatMoneyForCsv(item.PaidAmount), item.TokensAmount))
+			formatMoneyForCsv(item.PaidAmount), amountValue))
 	}
 
 	filename := fmt.Sprintf("revenue_management_%s_%s.csv",

@@ -857,17 +857,18 @@ const RegisterForm = () => {
   };
 
   return (
-    <div className='relative overflow-y-auto overflow-x-hidden bg-gray-100 flex items-center justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8 min-h-screen'>
+    <div className='relative flex flex-col items-center justify-center min-h-screen bg-gray-100 overflow-hidden'>
       {/* 背景模糊晕染球 */}
       <div
-        className='blur-ball blur-ball-indigo'
+        className='blur-ball blur-ball-indigo fixed'
         style={{ top: '-80px', right: '-80px', transform: 'none' }}
       />
       <div
-        className='blur-ball blur-ball-teal'
+        className='blur-ball blur-ball-teal fixed'
         style={{ top: '50%', left: '-120px' }}
       />
-      <div className='w-full max-w-sm mt-4 sm:mt-[60px]'>
+      {/* 主内容区 - 可滚动 */}
+      <div className='relative z-10 flex-1 flex flex-col items-center justify-center w-full max-w-sm px-4 py-6 overflow-y-auto'>
         {showEmailRegister ||
         !hasOAuthRegisterOptions
           ? renderEmailRegisterForm()

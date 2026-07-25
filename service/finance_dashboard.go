@@ -619,6 +619,7 @@ func (s *FinanceService) GetSubscriptionOrders(startTime, endTime int64, pageInf
 }
 
 // GetPaymentModeRevenueDistribution 获取付费方式收入分布
+// 数据源与 GetDashboardRevenueTrend 保持一致
 func (s *FinanceService) GetPaymentModeRevenueDistribution(startTime, endTime int64) (*dto.PaymentModeRevenueDist, error) {
 	dist := &dto.PaymentModeRevenueDist{}
 	quotaPerUnit := common.QuotaPerUnit
@@ -626,45 +627,48 @@ func (s *FinanceService) GetPaymentModeRevenueDistribution(startTime, endTime in
 		quotaPerUnit = 50000000
 	}
 
-	// 按量付费收入：从 logs 表统计 type=2 的 quota 转换金额
+	// 获取美元汇率（转换为 CNY）
+	usdToCnyRate := operation_setting.USDExchangeRate
+	if usdToCnyRate <= 0 {
+		usdToCnyRate = 7.3
+	}
+
+	// 1. 按量付费收入：从 logs 表统计 type=2 的 quota 转换金额（排除订阅抵扣）
 	var payAsYouGoRevenue float64
-	query := `SELECT COALESCE(SUM(quota), 0) FROM logs WHERE type = 2`
-	var args []interface{}
-	if startTime > 0 {
-		query += " AND created_at >= ?"
-		args = append(args, startTime)
-	}
-	if endTime > 0 {
-		query += " AND created_at <= ?"
-		args = append(args, endTime)
-	}
-	var totalQuota int64
-	model.DB.Raw(query, args...).Scan(&totalQuota)
-	payAsYouGoRevenue = float64(totalQuota) / float64(quotaPerUnit)
+	paygFilter := getPayAsYouGoFilter()
+	query := fmt.Sprintf(`
+		SELECT COALESCE(SUM(l.quota), 0) / ? * ? as amount
+		FROM logs l
+		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?%s`, paygFilter)
+	model.LOG_DB.Raw(query, quotaPerUnit, usdToCnyRate, startTime, endTime).Scan(&payAsYouGoRevenue)
 	dist.PayAsYouGo = math.Round(payAsYouGoRevenue*100) / 100
 
-	// 订阅收入：从 subscription_orders 表统计
+	// 2. 订阅收入：从 subscription_orders 表统计成功订单（美元 → CNY）
 	var subscriptionRevenue float64
-	subQuery := `SELECT COALESCE(SUM(amount), 0) FROM subscription_orders WHERE status = 'paid'`
-	if startTime > 0 {
-		subQuery += " AND created_at >= ?"
-		subArgs := append([]interface{}{startTime}, args[1:]...)
-		model.DB.Raw(subQuery, subArgs...).Scan(&subscriptionRevenue)
-	} else {
-		model.DB.Raw(subQuery).Scan(&subscriptionRevenue)
-	}
+	subQuery := fmt.Sprintf(`
+		SELECT COALESCE(SUM(money), 0) * ? as amount
+		FROM subscription_orders
+		WHERE status = ? AND create_time >= ? AND create_time <= ?`)
+	model.DB.Raw(subQuery, usdToCnyRate, common.TopUpStatusSuccess, startTime, endTime).Scan(&subscriptionRevenue)
 	dist.Subscription = math.Round(subscriptionRevenue*100) / 100
 
 	return dist, nil
 }
 
 // GetSupplierTrend 获取渠道消费趋势
+// 数据计算与日志页面保持一致：quota / quotaPerUnit * usd_exchange_rate
 func (s *FinanceService) GetSupplierTrend(startTime, endTime int64) ([]dto.SupplierTrendItem, error) {
 	items := make([]dto.SupplierTrendItem, 0)
 	groupByClause := getLogGroupByClause(startTime, endTime)
 	quotaPerUnit := common.QuotaPerUnit
 	if quotaPerUnit <= 0 {
 		quotaPerUnit = 50000000
+	}
+
+	// 获取美元汇率（转换为 CNY，与日志页面 renderQuota 一致）
+	usdToCnyRate := operation_setting.USDExchangeRate
+	if usdToCnyRate <= 0 {
+		usdToCnyRate = 7.3
 	}
 
 	// 构建 channel_id -> channel_name 映射
@@ -696,10 +700,11 @@ func (s *FinanceService) GetSupplierTrend(startTime, endTime int64) ([]dto.Suppl
 		ORDER BY date`, groupByClause)
 
 	var rows []supplierTrendRow
-	model.DB.Raw(query, startTime, endTime).Scan(&rows)
+	model.LOG_DB.Raw(query, startTime, endTime).Scan(&rows)
 
 	for _, row := range rows {
-		cost := float64(row.TotalQuota) / float64(quotaPerUnit)
+		// 美元 → 人民币转换（与日志页面 renderQuota 逻辑一致）
+		cost := float64(row.TotalQuota) / float64(quotaPerUnit) * usdToCnyRate
 		supplierName := channelMap[row.ChannelId]
 		if supplierName == "" {
 			supplierName = fmt.Sprintf("渠道 #%d", row.ChannelId)
@@ -717,8 +722,15 @@ func (s *FinanceService) GetSupplierTrend(startTime, endTime int64) ([]dto.Suppl
 }
 
 // GetSupplierDistribution 获取渠道消费占比
+// 数据计算与日志页面保持一致：quota / quotaPerUnit * usd_exchange_rate
 func (s *FinanceService) GetSupplierDistribution(startTime, endTime int64) (*dto.SupplierDist, error) {
 	dist := &dto.SupplierDist{}
+
+	// 获取美元汇率（转换为 CNY，与日志页面 renderQuota 一致）
+	usdToCnyRate := operation_setting.USDExchangeRate
+	if usdToCnyRate <= 0 {
+		usdToCnyRate = 7.3
+	}
 
 	// 构建 channel_id -> channel_name 映射
 	channelMap := make(map[int]string)
@@ -740,21 +752,22 @@ func (s *FinanceService) GetSupplierDistribution(startTime, endTime int64) (*dto
 		GROUP BY l.channel_id`
 
 	var rows []supplierDistRow
-	model.DB.Raw(query, startTime, endTime).Scan(&rows)
+	model.LOG_DB.Raw(query, startTime, endTime).Scan(&rows)
 
-	// 计算总消费金额
+	// 计算总消费金额（美元 → 人民币）
 	var totalCost float64
 	quotaPerUnit := common.QuotaPerUnit
 	if quotaPerUnit <= 0 {
 		quotaPerUnit = 50000000
 	}
 	for _, row := range rows {
-		totalCost += float64(row.TotalQuota) / float64(quotaPerUnit)
+		totalCost += float64(row.TotalQuota) / float64(quotaPerUnit) * usdToCnyRate
 	}
 
 	dist.Items = make([]dto.SupplierDistItem, 0)
 	for _, row := range rows {
-		cost := float64(row.TotalQuota) / float64(quotaPerUnit)
+		// 美元 → 人民币转换（与日志页面 renderQuota 逻辑一致）
+		cost := float64(row.TotalQuota) / float64(quotaPerUnit) * usdToCnyRate
 		ratio := 0.0
 		if totalCost > 0 {
 			ratio = cost / totalCost

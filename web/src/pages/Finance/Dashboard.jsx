@@ -65,7 +65,7 @@ const StatCard = ({ children, icon, color, title }) => (
   </div>
 );
 
-// 格式化日期为 MM-DD 或 MM-DD HH:MM（保留小时信息）
+// 格式化日期为 YYYY-MM-DD 或 YYYY-MM-DD HH:MM（保留小时信息）
 const formatDateLabel = (dateStr) => {
   if (!dateStr) return '';
   if (dateStr.includes('T')) {
@@ -74,15 +74,10 @@ const formatDateLabel = (dateStr) => {
   // 检查是否包含小时信息（如 "2024-01-15 14:00"）
   const spaceParts = dateStr.split(' ');
   if (spaceParts.length === 2) {
-    // 有小时信息，返回 MM-DD HH:MM
-    const dateParts = spaceParts[0].split('-');
-    return `${dateParts[1]}-${dateParts[2]} ${spaceParts[1]}`;
+    // 有小时信息，返回 YYYY-MM-DD HH:MM
+    return spaceParts[0] + ' ' + spaceParts[1];
   }
-  // 只有日期，返回 MM-DD
-  const parts = dateStr.split('-');
-  if (parts.length === 3) {
-    return `${parts[1]}-${parts[2]}`;
-  }
+  // 只有日期，返回 YYYY-MM-DD
   return dateStr;
 };
 
@@ -177,7 +172,7 @@ export default function FinanceDashboard() {
     topupDist: null,
     consumptionTrend: null,
     paymentModeTokens: null,
-    revenuePie: null,
+    revenuePie: null, // 付费方式收入对比饼图
     supplierTrend: null,
     supplierDist: null,
     revenueTrend: null, // 营收趋势（按量付费 + 订阅套餐合并）
@@ -505,6 +500,79 @@ export default function FinanceDashboard() {
     chartsInstance.current[chartName].setOption(option);
   };
 
+  // 渲染付费方式收入对比饼图
+  // 参数: domElement=DOM元素, payAsYouGo=按量付费金额, subscription=订阅金额
+  const renderRevenuePieChart = (domElement, payAsYouGo, subscription) => {
+    if (!domElement) return;
+    
+    const total = payAsYouGo + subscription;
+    if (total === 0) {
+      if (chartsInstance.current.revenuePie) {
+        chartsInstance.current.revenuePie.setOption({ series: [{ data: [] }] });
+      }
+      return;
+    }
+
+    if (!chartsInstance.current.revenuePie) {
+      chartsInstance.current.revenuePie = echarts.init(domElement);
+    }
+
+    const pieData = [
+      { name: t('按量付费'), value: payAsYouGo },
+      { name: t('订阅'), value: subscription },
+    ].filter(item => item.value > 0);
+
+    const option = {
+      title: {
+        text: t('付费方式收入对比'),
+        left: 'center',
+        top: 8,
+        textStyle: {
+          fontSize: 14,
+          fontWeight: 400,
+          color: 'rgba(0, 0, 0, 0.4)',
+          fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
+          textTransform: 'uppercase',
+          letterSpacing: 0.055,
+        },
+      },
+      tooltip: {
+        show: true,
+        trigger: 'item',
+        formatter: '{b}: {c} ({d}%)',
+      },
+      legend: {
+        orient: 'horizontal',
+        bottom: 0,
+        left: 'center',
+        data: pieData.map(item => item.name),
+        textStyle: {
+          fontSize: 12,
+          color: 'rgba(0, 0, 0, 0.4)',
+        },
+        padding: [0, 0, 0, 0],
+      },
+      series: [{
+        name: t('付费方式收入对比'),
+        type: 'pie',
+        radius: ['35%', '65%'],
+        center: ['50%', '45%'],
+        avoidLabelOverlap: false,
+        itemStyle: {
+          borderRadius: 4,
+          borderColor: '#fff',
+          borderWidth: 2,
+        },
+        label: { show: false },
+        emphasis: { label: { show: false } },
+        labelLine: { show: false },
+        data: pieData,
+        color: pieColors,
+      }],
+    };
+    chartsInstance.current.revenuePie.setOption(option);
+  };
+
   // 渲染各图表
   useEffect(() => {
     const valueLabel = usersTrendMetric === 'daily' ? t('新增用户') : t('累计用户');
@@ -623,11 +691,12 @@ export default function FinanceDashboard() {
   }, [paymentModeTokensDist, t]);
 
   useEffect(() => {
-    const revenueData = [
-      { name: t('按量付费'), value: paymentModeRevenueDist.pay_as_you_go || 0 },
-      { name: t('订阅'), value: paymentModeRevenueDist.subscription || 0 },
-    ].filter(item => item.value > 0);
-    renderPieChart('revenuePie', revenuePieChartRef.current, revenueData, t('付费方式收入占比'));
+    // 渲染付费方式收入对比饼图
+    renderRevenuePieChart(
+      revenuePieChartRef.current,
+      paymentModeRevenueDist.pay_as_you_go || 0,
+      paymentModeRevenueDist.subscription || 0
+    );
   }, [paymentModeRevenueDist, t]);
 
   // 工具函数：四舍五入到两位小数
@@ -839,12 +908,13 @@ export default function FinanceDashboard() {
           left: 'center',
           top: 8,
           textStyle: {
-            fontSize: 14,
-            fontWeight: 400,
+            fontSize: 12,
+            fontWeight: 500,
             color: 'rgba(0, 0, 0, 0.4)',
             fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
             textTransform: 'uppercase',
-            letterSpacing: 0.055,
+            letterSpacing: '0.055px',
+            marginBottom: 20,
           },
         },
         tooltip: {
@@ -955,12 +1025,12 @@ export default function FinanceDashboard() {
         left: 'center',
         top: 8,
         textStyle: {
-          fontSize: 14,
-          fontWeight: 400,
+          fontSize: 12,
+          fontWeight: 500,
           color: 'rgba(0, 0, 0, 0.4)',
           fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
           textTransform: 'uppercase',
-          letterSpacing: 0.055,
+          letterSpacing: '0.055px',
         },
       },
       tooltip: {
@@ -968,7 +1038,7 @@ export default function FinanceDashboard() {
         trigger: 'axis',
         formatter: function(params) {
           if (!params || !params.length) return '';
-          let result = `<strong>${params[0].name}</strong><br/>`;
+          let result = `<strong>${formatDateLabel(params[0].name)}</strong><br/>`;
           const isCost = supplierTrendMetric === 'cost';
           params.forEach(p => {
             result += `${p.marker}${p.seriesName}: ${isCost ? '¥' + p.value.toFixed(2) : p.value.toFixed(0)}<br/>`;
@@ -1971,7 +2041,7 @@ export default function FinanceDashboard() {
           {/* 折线图 */}
           <div ref={revenueTrendChartRef} style={{ width: '100%', height: 240 }} />
         </div>
-        {/* 付费方式收入占比饼图 */}
+        {/* 付费方式收入对比柱状图 */}
         <div style={{
           flex: 1,
           backgroundColor: '#ffffff',
@@ -1981,16 +2051,7 @@ export default function FinanceDashboard() {
           padding: '24px',
           minHeight: 400,
         }}>
-          <div style={{
-            fontSize: 11,
-            fontWeight: 500,
-            color: 'rgba(0, 0, 0, 0.4)',
-            fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
-            textTransform: 'uppercase',
-            letterSpacing: '0.055px',
-            marginBottom: 20,
-          }}>{t('付费方式收入占比')}</div>
-          <div ref={revenuePieChartRef} style={{ width: '100%', height: 240 }} />
+          <div ref={revenuePieChartRef} style={{ width: '100%', height: 320 }} />
         </div>
       </div>
 
