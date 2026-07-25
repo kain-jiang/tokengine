@@ -15,16 +15,17 @@ import (
 // 财务运营概览（Dashboard）v3 相关方法
 // ============================================
 
-// getPayAsYouGoFilter 生成"排除订阅抵扣"的 WHERE 条件
+// getPayAsYouGoFilter 生成"按量付费"的 WHERE 条件
+// 当 billing_source = 'wallet' 时，表示该条消费记录由钱包按量付费
 // 当 billing_source = 'subscription' 时，表示该条消费记录由订阅抵扣，不应计入按量付费
 // 使用跨数据库兼容的 JSON 提取方式
 func getPayAsYouGoFilter() string {
 	if common.UsingPostgreSQL {
-		return "AND (l.other = '' OR l.other IS NULL OR (l.other->>'billing_source') != 'subscription')"
+		return "AND (l.other = '' OR l.other IS NULL OR (l.other->>'billing_source') = 'wallet')"
 	} else if common.UsingSQLite {
-		return "AND (l.other = '' OR l.other IS NULL OR json_extract(l.other, '$.billing_source') != 'subscription')"
+		return "AND (l.other = '' OR l.other IS NULL OR json_extract(l.other, '$.billing_source') = 'wallet')"
 	} else {
-		return "AND (l.other = '' OR l.other IS NULL OR JSON_EXTRACT(l.other, '$.billing_source') != 'subscription')"
+		return "AND (l.other = '' OR l.other IS NULL OR JSON_EXTRACT(l.other, '$.billing_source') = 'wallet')"
 	}
 }
 
@@ -437,6 +438,7 @@ func (s *FinanceService) GetPayAsYouGoByUser(startTime, endTime int64, pageInfo 
 		FROM users u
 		INNER JOIN logs l ON u.id = l.user_id
 		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?`
+	countQuery += getPayAsYouGoFilter()
 	if username != "" {
 		countQuery += " AND u.username LIKE ?"
 	}
@@ -459,6 +461,7 @@ func (s *FinanceService) GetPayAsYouGoByUser(startTime, endTime int64, pageInfo 
 		INNER JOIN logs l ON u.id = l.user_id
 		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?`
 	query += usernameFilter
+	query += getPayAsYouGoFilter()
 	query += `
 		GROUP BY u.id, u.username
 		ORDER BY amount DESC`
@@ -797,21 +800,21 @@ func (s *FinanceService) GetRevenueManagementStats(startTime, endTime int64) (*d
 		usdToCnyRate = 7.3
 	}
 
-	// 1. 消费用户数：logs.type=2 去重用户
+	// 1. 消费用户数：logs.type=2 去重用户（排除订阅抵扣）
 	var consumeUserCount int64
 	model.LOG_DB.Raw(`
 		SELECT COUNT(DISTINCT l.user_id)
 		FROM logs l
-		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?`,
+		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?`+getPayAsYouGoFilter(),
 		startTime, endTime).Scan(&consumeUserCount)
 	stats.ConsumeUserCount = consumeUserCount
 
-	// 2. 按量付费金额：logs.type=2 的 quota 折算（USD → CNY）
+	// 2. 按量付费金额：logs.type=2 的 quota 折算（USD → CNY，排除订阅抵扣）
 	var totalQuota int64
 	model.LOG_DB.Raw(`
 		SELECT COALESCE(SUM(l.quota), 0)
 		FROM logs l
-		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?`,
+		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?`+getPayAsYouGoFilter(),
 		startTime, endTime).Scan(&totalQuota)
 	paygAmountUSD := float64(totalQuota) / float64(quotaPerUnit)
 	paygAmountCNY := paygAmountUSD * usdToCnyRate
@@ -889,9 +892,8 @@ func (s *FinanceService) GetDashboardRevenueTrend(startTime, endTime int64) (*dt
 		usdToCnyRate = 7.3
 	}
 
-	// 1. 按量付费趋势：从 logs 表统计 type=2（消费记录）
-	// 注意：此处与表格数据源保持一致，不排除 billing_source='subscription' 的记录
-	// 订阅套餐营收由单独的 subscription 趋势统计
+	// 1. 按量付费趋势：从 logs 表统计 type=2（消费记录，排除订阅抵扣）
+	// 订阅套餐营收由单独的 subscription 趋势统计，两者互斥不重复
 	type revenueTrendRow struct {
 		Date   string  `db:"date"`
 		Amount float64 `db:"amount"`
@@ -899,12 +901,13 @@ func (s *FinanceService) GetDashboardRevenueTrend(startTime, endTime int64) (*dt
 
 	var paygRows []revenueTrendRow
 	paygGroupBy := getLogGroupByClause(startTime, endTime)
+	paygFilter := getPayAsYouGoFilter()
 	query := fmt.Sprintf(`
 		SELECT %s as date,
 		       COALESCE(SUM(l.quota), 0) / ? * ? as amount
 		FROM logs l
-		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?
-		GROUP BY date ORDER BY date`, paygGroupBy)
+		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?%s
+		GROUP BY date ORDER BY date`, paygGroupBy, paygFilter)
 	model.LOG_DB.Raw(query, quotaPerUnit, usdToCnyRate, startTime, endTime).Scan(&paygRows)
 	for _, row := range paygRows {
 		response.PayAsYouGo = append(response.PayAsYouGo, dto.DashboardRevenueTrendItem{
