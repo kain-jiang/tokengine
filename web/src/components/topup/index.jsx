@@ -161,13 +161,13 @@ const TopUp = () => {
           // 额度充值
           Modal.success({
             title: t('兑换成功！'),
-            content: t('成功兑换额度：') + renderQuota(data),
+            content: t('成功兑换额度：') + renderQuota(data.quota),
             centered: true,
           });
           if (userState.user) {
             const updatedUser = {
               ...userState.user,
-              quota: userState.user.quota + data,
+              quota: userState.user.quota + data.quota,
             };
             userDispatch({ type: 'login', payload: updatedUser });
           }

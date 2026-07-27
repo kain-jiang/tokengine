@@ -333,19 +333,47 @@ func GetByOnlyTaskId(taskId string) (*Task, bool, error) {
 	return task, exist, err
 }
 
+func convertData(task *Task) (*Task, bool, error) {
+	// 鲸纬返回的数据结构不是标准的openai, 套了4层数据结构，因此兼容成openai结构
+	if task.Status == TaskStatusSuccess && task.Platform == constant.TaskPlatform(fmt.Sprintf("%d", constant.ChannelTypeJingWei)) {
+		dic := make(map[string]interface{})
+		err := common.Unmarshal(task.Data, &dic)
+		if err != nil {
+			return task, true, nil
+		}
+		item, ok := dic["data"]
+		if ok {
+			itemMap, ok := item.(map[string]interface{})
+			if ok && itemMap != nil {
+				info, ok := itemMap["data"]
+				if ok {
+					infoMap, ok := info.(map[string]interface{})
+					if ok {
+						dic["data"] = infoMap["data"]
+						task.SetData(dic)
+						return task, true, nil
+					}
+				}
+			}
+		}
+
+	}
+	return task, true, nil
+}
 func GetByTaskId(userId int, taskId string) (*Task, bool, error) {
 	if taskId == "" {
 		return nil, false, nil
 	}
-	fmt.Printf("[GetByTaskId] lookup userId=%d taskId=%s\n", userId, taskId)
+	common.SysLog(fmt.Sprintf("[GetByTaskId] lookup userId=%d taskId=%s\n", userId, taskId))
 
 	var task *Task
 	var err error
 	err = DB.Where("user_id = ? and task_id = ?", userId, taskId).First(&task).Error
 	exist, err := RecordExist(err)
 	if err == nil && exist {
-		fmt.Printf("[GetByTaskId] result exist=%v err=%v task=%+v\n", exist, err, task)
-		return task, true, nil
+		common.SysLog(fmt.Sprintf("[GetByTaskId] result exist=%v err=%v task=%+v\n", exist, err, task.TaskID))
+		return convertData(task)
+		//return task, true, nil
 	}
 
 	// Fallback: some task types may be created with a different user context
@@ -354,11 +382,12 @@ func GetByTaskId(userId int, taskId string) (*Task, bool, error) {
 	task = nil
 	err = DB.Where("task_id = ?", taskId).First(&task).Error
 	exist, err = RecordExist(err)
-	fmt.Printf("[GetByTaskId] fallback result exist=%v err=%v task=%+v\n", exist, err, task)
+	common.SysLog(fmt.Sprintf("[GetByTaskId] result exist=%v err=%v task=%+v\n", exist, err, task.TaskID))
 	if err != nil {
 		return nil, false, err
 	}
-	return task, exist, err
+	return convertData(task)
+	//return task, exist, err
 }
 
 func GetByTaskIds(userId int, taskIds []any) ([]*Task, error) {
