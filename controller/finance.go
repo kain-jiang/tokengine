@@ -1115,8 +1115,8 @@ func GetSupplierDistribution(c *gin.Context) {
 // GetRevenueManagementStats 获取营收管理 头部统计指标
 // @Summary 获取营收管理 头部统计指标
 // @Tags finance
-// @Param start_time query int true "开始时间戳"
-// @Param end_time query int true "结束时间戳"
+// @Param start_time query int false "开始时间戳"
+// @Param end_time query int false "结束时间戳"
 // @Success 200 {object} dto.RevenueManagementStats
 // @Router /finance/revenue-management/stats [get]
 // @Security ApiKeyAuth
@@ -1134,9 +1134,10 @@ func GetRevenueManagementStats(c *gin.Context) {
 	startTime, _ := strconv.ParseInt(c.Query("start_time"), 10, 64)
 	endTime, _ := strconv.ParseInt(c.Query("end_time"), 10, 64)
 
+	// 如果不传时间参数，返回全局统计（所有时间）
 	if startTime == 0 || endTime == 0 {
-		common.ApiErrorMsg(c, "缺少时间参数")
-		return
+		startTime = 0
+		endTime = 0
 	}
 
 	serviceInstance := service.GetFinanceService()
