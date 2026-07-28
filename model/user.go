@@ -59,8 +59,9 @@ type User struct {
 	Setting          string         `json:"setting" gorm:"type:text;column:setting"`
 	Remark           string         `json:"remark,omitempty" gorm:"type:varchar(255)" validate:"max=255"`
 	StripeCustomer   string         `json:"stripe_customer" gorm:"type:varchar(64);column:stripe_customer;index"`
-	TelePhone        *string        `json:"telephone" gorm:"type:varchar(11);column:telephone;unique"` // 手机号
-	UserType         int            `json:"user_type" gorm:"type:smallint;default:0;column:user_type"` //   0 未认证    1 个人    2 企业
+	TelePhone        *string        `json:"telephone" gorm:"type:varchar(11);column:telephone;unique"`           // 手机号
+	UserType         int            `json:"user_type" gorm:"type:smallint;default:0;column:user_type"`           //   0 未认证    1 个人    2 企业
+	SpecifiedModels  string         `json:"specified_models,omitempty" gorm:"type:text;column:specified_models"` // 该用户被单独授权可调用/可见的黑名单模型，逗号分隔
 }
 
 func (user *User) ToBaseUser() *UserBase {
@@ -568,11 +569,12 @@ func (user *User) Edit(updatePassword bool) error {
 
 	newUser := *user
 	updates := map[string]interface{}{
-		"username":     newUser.Username,
-		"display_name": newUser.DisplayName,
-		"group":        newUser.Group,
-		"remark":       newUser.Remark,
-		"user_type":    newUser.UserType,
+		"username":         newUser.Username,
+		"display_name":     newUser.DisplayName,
+		"group":            newUser.Group,
+		"remark":           newUser.Remark,
+		"user_type":        newUser.UserType,
+		"specified_models": newUser.SpecifiedModels,
 	}
 	if updatePassword {
 		updates["password"] = newUser.Password
@@ -906,6 +908,41 @@ func GetUserGroup(id int, fromDB bool) (group string, err error) {
 	}
 
 	return group, nil
+}
+
+// GetUserSpecifiedModelsList 查询该用户被单独授权可调用/可见的黑名单模型列表（逗号分隔字段拆分为数组）
+func GetUserSpecifiedModelsList(userId int) ([]string, error) {
+	var specifiedModels string
+	err := DB.Model(&User{}).Where("id = ?", userId).Select("specified_models").Find(&specifiedModels).Error
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(specifiedModels) == "" {
+		return []string{}, nil
+	}
+	parts := strings.Split(specifiedModels, ",")
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			result = append(result, p)
+		}
+	}
+	return result, nil
+}
+
+// IsModelSpecifiedForUser 判断该用户是否被单独授权调用/查看指定模型（黑名单豁免）
+func IsModelSpecifiedForUser(userId int, modelName string) (bool, error) {
+	specifiedModels, err := GetUserSpecifiedModelsList(userId)
+	if err != nil {
+		return false, err
+	}
+	for _, m := range specifiedModels {
+		if m == modelName {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // GetUserSetting gets setting from Redis first, falls back to DB if needed

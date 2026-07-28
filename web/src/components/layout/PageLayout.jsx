@@ -221,8 +221,12 @@ const PageLayout = () => {
         >
           <Content
             style={{
-              flex: '1 0 auto',
-              overflowY: isMobile ? 'visible' : 'hidden',
+              flex: isConsoleRoute ? '1 0 auto' : '1 1 0',
+              overflowY: isMobile
+                ? 'visible'
+                : isConsoleRoute
+                  ? 'hidden'
+                  : 'auto',
               WebkitOverflowScrolling: 'touch',
               marginTop: bannerVisible ? `${bannerHeight}px` : '0px',
               padding: shouldInnerPadding ? (isMobile ? '5px' : '24px') : '0',

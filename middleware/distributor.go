@@ -36,6 +36,17 @@ func Distribute() func(c *gin.Context) {
 			abortWithOpenAiMessage(c, http.StatusBadRequest, i18n.T(c, i18n.MsgDistributorInvalidRequest, map[string]any{"Error": err.Error()}))
 			return
 		}
+		if modelRequest.Model != "" && model.IsModelBlacklisted(modelRequest.Model) {
+			userId := c.GetInt("id")
+			specified := false
+			if userId > 0 {
+				specified, _ = model.IsModelSpecifiedForUser(userId, modelRequest.Model)
+			}
+			if !specified {
+				abortWithOpenAiMessage(c, http.StatusForbidden, i18n.T(c, i18n.MsgDistributorModelBlacklisted, map[string]any{"Model": modelRequest.Model}))
+				return
+			}
+		}
 		if ok {
 			id, err := strconv.Atoi(channelId.(string))
 			if err != nil {

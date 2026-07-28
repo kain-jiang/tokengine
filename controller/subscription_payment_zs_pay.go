@@ -127,7 +127,7 @@ func SubscriptionZSPayNotify(c *gin.Context) {
 		defer UnlockOrder(notifyData.OrderID)
 
 		if err := model.CompleteSubscriptionOrder(notifyData.OrderID, common.GetJsonString(notifyData)); err != nil {
-			log.Printf("订阅订单完成失败: %v", err)
+			logger.LogError(c, fmt.Sprintf("订阅订单完成失败: %v", err))
 			c.Writer.Write([]byte("fail"))
 			return
 		}
