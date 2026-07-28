@@ -938,11 +938,12 @@ func CreateUser(c *gin.Context) {
 	}
 	// Even for admin users, we cannot fully trust them!
 	cleanUser := model.User{
-		Username:    user.Username,
-		Password:    user.Password,
-		DisplayName: user.DisplayName,
-		Role:        user.Role,     // 保持管理员设置的角色
-		UserType:    user.UserType, // 用户类型：未认证，个人，企业
+		Username:        user.Username,
+		Password:        user.Password,
+		DisplayName:     user.DisplayName,
+		Role:            user.Role,     // 保持管理员设置的角色
+		UserType:        user.UserType, // 用户类型：未认证，个人，企业
+		SpecifiedModels: user.SpecifiedModels,
 	}
 	if err := cleanUser.Insert(0); err != nil {
 		common.ApiError(c, err)

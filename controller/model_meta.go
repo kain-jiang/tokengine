@@ -13,6 +13,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetBlacklistedModels 返回当前已被全局黑名单标记的模型名列表，供用户管理页面的【指定模型】下拉框使用
+func GetBlacklistedModels(c *gin.Context) {
+	names, err := model.GetBlacklistedModelNames()
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, names)
+}
+
 // GetAllModelsMeta 获取模型列表（分页）
 func GetAllModelsMeta(c *gin.Context) {
 

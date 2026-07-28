@@ -192,7 +192,7 @@ export const CHANNEL_OPTIONS = [
   {
     value: 58,
     color: 'purple',
-    label: '字节seedacne代理',
+    label: 'ZLHub',
   },
   {
     value: 59,
