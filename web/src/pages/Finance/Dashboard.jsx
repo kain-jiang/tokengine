@@ -104,6 +104,8 @@ export default function FinanceDashboard() {
     week_revenue: 0,
     top_model_name: '',
     top_model_call_count: 0,
+    avg_rpm: 0,
+    avg_tpm: 0,
   });
   const [statsLoading, setStatsLoading] = useState(false);
 
@@ -1610,7 +1612,54 @@ export default function FinanceDashboard() {
     };
   }, []);
 
-  // 顶部统计卡片（9个指标）
+  // 性能指标文字（右上角独立显示）
+  const performanceIndicatorsText = (
+    <div style={{
+      display: 'flex',
+      gap: 16,
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+      marginBottom: 12,
+      fontSize: 13,
+    }}>
+      <span style={{
+        color: 'rgba(0, 0, 0, 0.5)',
+        fontSize: 12,
+      }}>{t('平均RPM')}:</span>
+      <span style={{
+        fontSize: 18,
+        fontWeight: 600,
+        color: '#6366f1',
+      }}>
+        {statsLoading ? <Spin size="small" /> : (dashboardStats.avg_rpm?.toFixed(2) || '0')}
+      </span>
+      <span style={{
+        color: 'rgba(0, 0, 0, 0.35)',
+        fontSize: 12,
+      }}>{t('请求/分钟')}</span>
+      <span style={{
+        color: 'rgba(0, 0, 0, 0.2)',
+        margin: '0 8px',
+      }}>|</span>
+      <span style={{
+        color: 'rgba(0, 0, 0, 0.5)',
+        fontSize: 12,
+      }}>{t('平均TPM')}:</span>
+      <span style={{
+        fontSize: 18,
+        fontWeight: 600,
+        color: '#f97316',
+      }}>
+        {statsLoading ? <Spin size="small" /> : (dashboardStats.avg_tpm?.toFixed(2) || '0')}
+      </span>
+      <span style={{
+        color: 'rgba(0, 0, 0, 0.35)',
+        fontSize: 12,
+      }}>{t('Tokens/分钟')}</span>
+    </div>
+  );
+
+  // 顶部统计卡片（8个指标）
   const statsCards = (
     <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
       <StatCard
@@ -1642,34 +1691,89 @@ export default function FinanceDashboard() {
         {statsLoading ? <Spin size="small" /> : (dashboardStats.total_token_calls?.toLocaleString() || 0)}
       </StatCard>
       <StatCard
-        title={t('本周充值金额')}
+        title={t('最近7天充值金额')}
         color="#52c41a"
         icon={<IconMoneyExchangeStroked style={{ fontSize: 24 }} />}
       >
         {statsLoading ? <Spin size="small" /> : formatMoney(dashboardStats.week_topup_amount)}
       </StatCard>
       <StatCard
-        title={t('本周模型请求次数')}
+        title={t('最近7天模型请求次数')}
         color="#722ed1"
         icon={<IconClockStroked style={{ fontSize: 24 }} />}
       >
         {statsLoading ? <Spin size="small" /> : (dashboardStats.week_token_calls?.toLocaleString() || 0)}
       </StatCard>
       <StatCard
-        title={t('本周营业收入')}
+        title={t('最近7天营业收入')}
         color="#1890ff"
         icon={<IconCoinMoneyStroked style={{ fontSize: 24 }} />}
       >
         {statsLoading ? <Spin size="small" /> : formatMoney(dashboardStats.week_revenue)}
       </StatCard>
       <StatCard
-        title={t('本周调用最多模型')}
-        color="#fa8c16"
+        title={t('最近7天调用次数最多模型')}
+        color="#722ed1"
+        icon={<IconClockStroked style={{ fontSize: 24 }} />}
       >
-        <div style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {statsLoading ? <Spin size="small" /> : (dashboardStats.top_model_name || '-')}
+        <div style={{ marginBottom: 4 }}>
+          <div style={{
+            fontSize: 16,
+            fontWeight: 500,
+            color: '#722ed1',
+          }}>
+            {statsLoading ? <Spin size="small" /> : (dashboardStats.top_model_name || '-')}
+          </div>
+          <div style={{
+            fontSize: 11,
+            color: 'rgba(0, 0, 0, 0.35)',
+          }}>
+            {t('调用次数')}: {statsLoading ? <Spin size="small" /> : (dashboardStats.top_model_call_count?.toLocaleString() || 0)}
+          </div>
         </div>
       </StatCard>
+    </div>
+  );
+
+  // 最近7天调用次数最多模型面板
+  const topModelCard = (
+    <div style={{
+      backgroundColor: '#ffffff',
+      borderRadius: 4,
+      padding: '20px',
+      flex: 1,
+      minWidth: 200,
+      border: '1px solid rgba(0, 0, 0, 0.08)',
+      boxShadow: 'rgba(1, 1, 32, 0.1) 0px 4px 10px',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div style={{
+            color: 'rgba(0, 0, 0, 0.4)',
+            fontSize: 12,
+            fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
+            textTransform: 'uppercase',
+            letterSpacing: '0.055px',
+            marginBottom: 8,
+          }}>{t('最近7天调用次数最多模型')}</div>
+          <div style={{
+            fontSize: 20,
+            fontWeight: 500,
+            color: '#722ed1',
+            lineHeight: 1.25,
+            letterSpacing: '-0.16px',
+            marginBottom: 4,
+          }}>
+            {statsLoading ? <Spin size="small" /> : (dashboardStats.top_model_name || '-')}
+          </div>
+          <div style={{
+            color: 'rgba(0, 0, 0, 0.3)',
+            fontSize: 11,
+          }}>
+            {t('调用次数')}: {statsLoading ? <Spin size="small" /> : (dashboardStats.top_model_call_count?.toLocaleString() || 0)}
+          </div>
+        </div>
+      </div>
     </div>
   );
 
@@ -1863,7 +1967,10 @@ export default function FinanceDashboard() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      {/* 顶部统计卡片 */}
+      {/* 性能指标文字（右上角独立显示） */}
+      {performanceIndicatorsText}
+
+      {/* 顶部统计卡片（8个指标） */}
       {statsCards}
 
       {/* 筛选栏 */}

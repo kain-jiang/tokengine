@@ -27,16 +27,10 @@ func getPayAsYouGoFilter() string {
 	}
 }
 
-// getWeekStart 获取本周开始时间戳（周一 00:00:00）
+// getWeekStart 获取最近7天的开始时间戳（7天前的 00:00:00）
 func (s *FinanceService) getWeekStart() int64 {
 	now := time.Now()
-	// Go weekday: Sunday=0, Monday=6
-	// We need to calculate days since Monday
-	dayOfWeek := int(now.Weekday())
-	if dayOfWeek == 0 { // Sunday
-		dayOfWeek = 7
-	}
-	weekStart := time.Date(now.Year(), now.Month(), now.Day()-dayOfWeek+1, 0, 0, 0, 0, now.Location()).Unix()
+	weekStart := now.AddDate(0, 0, -7).Truncate(24 * time.Hour).Unix()
 	return weekStart
 }
 
@@ -131,6 +125,23 @@ func (s *FinanceService) GetDashboardStats(startTime, endTime int64) (*dto.Dashb
 	model.DB.Raw(`SELECT model_name, COUNT(*) as count FROM logs WHERE type = 2 AND created_at >= ? GROUP BY model_name ORDER BY count DESC LIMIT 1`, weekStart).Scan(&topModel)
 	stats.TopModelName = topModel.ModelName
 	stats.TopModelCallCount = topModel.Count
+
+	// 10-11. 平均RPM和平均TPM（基于时间范围计算）
+	// RPM = 总请求数 / 时间跨度（分钟）
+	// TPM = 总tokens / 时间跨度（分钟）
+	if endTime > startTime {
+		type rpmTpmResult struct {
+			RequestCount int64 `db:"rpm"`
+			TotalTokens  int64 `db:"tpm"`
+		}
+		var result rpmTpmResult
+		model.DB.Raw(`SELECT COUNT(*) as rpm, COALESCE(SUM(prompt_tokens + completion_tokens), 0) as tpm FROM logs WHERE type = 2 AND created_at >= ? AND created_at <= ?`, startTime, endTime).Scan(&result)
+		timeDiffMinutes := float64(endTime-startTime) / 60.0
+		if timeDiffMinutes > 0 {
+			stats.AvgRPM = float64(result.RequestCount) / timeDiffMinutes
+			stats.AvgTPM = float64(result.TotalTokens) / timeDiffMinutes
+		}
+	}
 
 	return stats, nil
 }
@@ -797,6 +808,7 @@ func (s *FinanceService) GetSupplierDistribution(startTime, endTime int64) (*dto
 
 // GetRevenueManagementStats 获取营收管理 头部统计指标
 // 聚合时间段内 logs（按量付费）与 subscription_orders（订阅）数据
+// 当 startTime 和 endTime 都为 0 时，返回全局统计（所有时间）
 func (s *FinanceService) GetRevenueManagementStats(startTime, endTime int64) (*dto.RevenueManagementStats, error) {
 	stats := &dto.RevenueManagementStats{}
 
@@ -811,22 +823,41 @@ func (s *FinanceService) GetRevenueManagementStats(startTime, endTime int64) (*d
 		usdToCnyRate = 7.3
 	}
 
-	// 1. 消费用户数：logs.type=2 去重用户（排除订阅抵扣）
+	// 判断是否为全局统计（不传时间参数）
+	isGlobal := startTime == 0 && endTime == 0
+
+	// 1. 消费用户数：logs.type=2
 	var consumeUserCount int64
-	model.LOG_DB.Raw(`
-		SELECT COUNT(DISTINCT l.user_id)
-		FROM logs l
-		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?`+getPayAsYouGoFilter(),
-		startTime, endTime).Scan(&consumeUserCount)
+	if isGlobal {
+		model.LOG_DB.Raw(`
+			SELECT COUNT(DISTINCT l.user_id)
+			FROM logs l
+			WHERE l.type = 2 AND l.other IS NOT NULL AND l.other != '' `,
+		).Scan(&consumeUserCount)
+	} else {
+		model.LOG_DB.Raw(`
+			SELECT COUNT(DISTINCT l.user_id)
+			FROM logs l
+			WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?`+getPayAsYouGoFilter(),
+			startTime, endTime).Scan(&consumeUserCount)
+	}
 	stats.ConsumeUserCount = consumeUserCount
 
 	// 2. 按量付费金额：logs.type=2 的 quota 折算（USD → CNY，排除订阅抵扣）
 	var totalQuota int64
-	model.LOG_DB.Raw(`
-		SELECT COALESCE(SUM(l.quota), 0)
-		FROM logs l
-		WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?`+getPayAsYouGoFilter(),
-		startTime, endTime).Scan(&totalQuota)
+	if isGlobal {
+		model.LOG_DB.Raw(`
+			SELECT COALESCE(SUM(l.quota), 0)
+			FROM logs l
+			WHERE l.type = 2 AND l.other IS NOT NULL AND l.other != ''` + getPayAsYouGoFilter(),
+		).Scan(&totalQuota)
+	} else {
+		model.LOG_DB.Raw(`
+			SELECT COALESCE(SUM(l.quota), 0)
+			FROM logs l
+			WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?`+getPayAsYouGoFilter(),
+			startTime, endTime).Scan(&totalQuota)
+	}
 	paygAmountUSD := float64(totalQuota) / float64(quotaPerUnit)
 	paygAmountCNY := paygAmountUSD * usdToCnyRate
 	stats.PayAsYouGoAmount = math.Round(paygAmountCNY*100) / 100
@@ -835,12 +866,21 @@ func (s *FinanceService) GetRevenueManagementStats(startTime, endTime int64) (*d
 	// money 列是美元，已在上文获取 usdToCnyRate
 	var subscriptionAmountUSD float64
 	var subscriptionCount int64
-	model.DB.Model(&model.SubscriptionOrder{}).
-		Where("status = ? AND create_time >= ? AND create_time <= ?", common.TopUpStatusSuccess, startTime, endTime).
-		Select("COALESCE(SUM(money), 0)").Scan(&subscriptionAmountUSD)
-	model.DB.Model(&model.SubscriptionOrder{}).
-		Where("status = ? AND create_time >= ? AND create_time <= ?", common.TopUpStatusSuccess, startTime, endTime).
-		Count(&subscriptionCount)
+	if isGlobal {
+		model.DB.Model(&model.SubscriptionOrder{}).
+			Where("status = ?", common.TopUpStatusSuccess).
+			Select("COALESCE(SUM(money), 0)").Scan(&subscriptionAmountUSD)
+		model.DB.Model(&model.SubscriptionOrder{}).
+			Where("status = ?", common.TopUpStatusSuccess).
+			Count(&subscriptionCount)
+	} else {
+		model.DB.Model(&model.SubscriptionOrder{}).
+			Where("status = ? AND create_time >= ? AND create_time <= ?", common.TopUpStatusSuccess, startTime, endTime).
+			Select("COALESCE(SUM(money), 0)").Scan(&subscriptionAmountUSD)
+		model.DB.Model(&model.SubscriptionOrder{}).
+			Where("status = ? AND create_time >= ? AND create_time <= ?", common.TopUpStatusSuccess, startTime, endTime).
+			Count(&subscriptionCount)
+	}
 	subscriptionAmountCNY := subscriptionAmountUSD * usdToCnyRate
 	stats.SubscriptionAmount = math.Round(subscriptionAmountCNY*100) / 100
 	stats.SubscriptionCount = subscriptionCount
@@ -851,15 +891,27 @@ func (s *FinanceService) GetRevenueManagementStats(startTime, endTime int64) (*d
 		Cnt      int64  `db:"cnt"`
 	}
 	var topRow topPlanRow
-	model.DB.Raw(`
-		SELECT COALESCE(p.title, ?) as plan_name, COUNT(*) as cnt
-		FROM subscription_orders o
-		LEFT JOIN subscription_plans p ON p.id = o.plan_id
-		WHERE o.status = ? AND o.create_time >= ? AND o.create_time <= ?
-		GROUP BY plan_name
-		ORDER BY cnt DESC
-		LIMIT 1`,
-		"未知套餐", common.TopUpStatusSuccess, startTime, endTime).Scan(&topRow)
+	if isGlobal {
+		model.DB.Raw(`
+			SELECT COALESCE(p.title, ?) as plan_name, COUNT(*) as cnt
+			FROM subscription_orders o
+			LEFT JOIN subscription_plans p ON p.id = o.plan_id
+			WHERE o.status = ?
+			GROUP BY plan_name
+			ORDER BY cnt DESC
+			LIMIT 1`,
+			"未知套餐", common.TopUpStatusSuccess).Scan(&topRow)
+	} else {
+		model.DB.Raw(`
+			SELECT COALESCE(p.title, ?) as plan_name, COUNT(*) as cnt
+			FROM subscription_orders o
+			LEFT JOIN subscription_plans p ON p.id = o.plan_id
+			WHERE o.status = ? AND o.create_time >= ? AND o.create_time <= ?
+			GROUP BY plan_name
+			ORDER BY cnt DESC
+			LIMIT 1`,
+			"未知套餐", common.TopUpStatusSuccess, startTime, endTime).Scan(&topRow)
+	}
 	stats.TopSubscription = topRow.PlanName
 
 	return stats, nil

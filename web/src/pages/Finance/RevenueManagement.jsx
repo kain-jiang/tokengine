@@ -20,6 +20,7 @@ For commercial licensing, please contact support@quantumnous.com
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import {
   DatePicker, Table, Typography, Button, Tabs, TabPane, Input,
   Spin, Empty,
@@ -69,6 +70,7 @@ const StatCard = ({ children, icon, color, title }) => (
     </div>
   </div>
 );
+
 
 export default function RevenueManagement() {
   const { t } = useTranslation();
@@ -152,14 +154,12 @@ export default function RevenueManagement() {
     setDateRange({ startDate, endDate });
   }, []);
 
-  // ===== 获取统计数据 =====
+  // ===== 获取统计数据（全局统计，不受时间控件控制） =====
   const fetchStats = async () => {
-    if (startTime === 0 || endTime === 0) return;
     setStatsLoading(true);
     try {
-      const res = await API.get('/api/finance/revenue-management/stats', {
-        params: { start_time: startTime, end_time: endTime },
-      });
+      // 不传时间参数，获取全局统计
+      const res = await API.get('/api/finance/revenue-management/stats');
       if (res.data.success) {
         setStats(res.data.data || {
           consume_user_count: 0,
@@ -240,9 +240,10 @@ export default function RevenueManagement() {
   };
 
   // ===== 数据加载 =====
+  // 顶部统计卡片：只在组件挂载时加载一次全局统计，不受时间控件控制
   useEffect(() => {
     fetchStats();
-  }, [startTime, endTime]);
+  }, []);
 
   // 切换视图时重置当前 tab 的页码和强制表格重新渲染
   useEffect(() => {
@@ -264,28 +265,80 @@ export default function RevenueManagement() {
       }
     }, [startTime, endTime, revenueTab, payAsYouGoPage, payAsYouGoPageSize, subscriptionPage, subscriptionPageSize, searchKeyword]);
 
-  // ===== 导出 CSV =====
+  // ===== 导出 Excel（一个文件，两个 sheet） =====
   const handleExportCsv = async () => {
     if (startTime === 0 || endTime === 0) return;
     setExportLoading(true);
     try {
-      const res = await API.get('/api/finance/revenue-management/export-csv', {
-        params: { start_time: startTime, end_time: endTime },
-        responseType: 'blob',
+      const params = { start_time: startTime, end_time: endTime };
+      const dateStr = new Date().toISOString().slice(0, 10);
+
+      // 1. 获取按量付费数据
+      const paygRes = await API.get('/api/finance/pay-as-you-go-by-user', {
+        params: {
+          ...params,
+          p: 1,
+          page_size: 10000, // 获取所有数据
+          keyword: searchKeyword || '',
+        },
+        responseType: 'json',
       });
-      const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' });
+
+      // 2. 获取订阅套餐数据
+      const subRes = await API.get('/api/finance/subscription-orders', {
+        params: {
+          ...params,
+          p: 1,
+          page_size: 10000, // 获取所有数据
+          keyword: searchKeyword || '',
+        },
+        responseType: 'json',
+      });
+
+      // 3. 创建工作簿
+      const wb = XLSX.utils.book_new();
+
+      // 4. 转换按量付费数据为 sheet
+      if (paygRes.data.success && paygRes.data.data && paygRes.data.data.length > 0) {
+        const paygData = paygRes.data.data.map(row => {
+          const item = {};
+          payAsYouGoColumns.forEach(col => {
+            item[col.title] = row[col.dataIndex] || '';
+          });
+          return item;
+        });
+        const ws1 = XLSX.utils.json_to_sheet(paygData);
+        XLSX.utils.book_append_sheet(wb, ws1, '按量付费');
+      }
+
+      // 5. 转换订阅套餐数据为 sheet
+      if (subRes.data.success && subRes.data.data && subRes.data.data.length > 0) {
+        const subData = subRes.data.data.map(row => {
+          const item = {};
+          subscriptionColumns.forEach(col => {
+            item[col.title] = row[col.dataIndex] || '';
+          });
+          return item;
+        });
+        const ws2 = XLSX.utils.json_to_sheet(subData);
+        XLSX.utils.book_append_sheet(wb, ws2, '订阅套餐');
+      }
+
+      // 6. 导出文件
+      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      const filename = `revenue_management_${new Date().toISOString().slice(0, 10)}.csv`;
-      link.setAttribute('download', filename);
+      link.setAttribute('download', `revenue_management_${dateStr}.xlsx`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
+
       showSuccess(t('导出成功'));
     } catch (error) {
-      console.error('导出CSV失败:', error);
+      console.error('导出Excel失败:', error);
       showError(t('导出失败'));
     } finally {
       setExportLoading(false);
@@ -415,74 +468,110 @@ export default function RevenueManagement() {
       dataIndex: 'source',
       key: 'source',
       width: 100,
+      render: (text) => text || '-',
     },
     {
       title: t('订阅时间'),
       dataIndex: 'subscribe_time',
       key: 'subscribe_time',
       width: 160,
-      render: (val) => <span>{val ? timestamp2string(val) : '-'}</span>,
+      render: (val) => val ? timestamp2string(val) : '-',
+    },
+    {
+      title: t('开始时间'),
+      dataIndex: 'start_time',
+      key: 'start_time',
+      width: 160,
+      render: (val) => val ? timestamp2string(val) : '-',
     },
     {
       title: t('到期时间'),
       dataIndex: 'expire_time',
       key: 'expire_time',
       width: 160,
-      render: (val) => <span>{val > 0 ? timestamp2string(val) : '-'}</span>,
+      render: (val) => val ? timestamp2string(val) : '-',
     },
     {
-      title: t('实收金额'),
+      title: t('状态'),
+      dataIndex: 'status',
+      key: 'status',
+      width: 100,
+      render: (val) => {
+        const statusMap = {
+          'active': t('生效中'),
+          'expired': t('已过期'),
+          'cancelled': t('已取消'),
+          'refunded': t('已退款'),
+        };
+        return <Text type={val === 'active' ? 'success' : 'secondary'}>{statusMap[val] || val || '-'}</Text>;
+      },
+    },
+    {
+      title: t('金额'),
       dataIndex: 'paid_amount',
       key: 'paid_amount',
       width: 120,
-      render: (val) => <Text type='success'>{formatMoney(val)}</Text>,
+      render: (val, record) => (
+        <Text type='primary'>{formatMoney(val)} {record.currency || 'CNY'}</Text>
+      ),
     },
     {
-      title: t('实得价值'),
+      title: t('额度类型'),
       dataIndex: 'amount_total',
       key: 'amount_total',
       width: 150,
-      render: (val, record) => {
-        // 优先使用 amount_total，如果没有则使用 tokens_amount
-        const total = (val && val > 0) ? val : (record.tokens_amount || 0);
-        return renderQuotaOrTokens(total, record.plan_type);
-      },
+      render: (val, record) => renderQuotaOrTokens(val, record.plan_type),
     },
     {
       title: t('已用额度'),
       dataIndex: 'amount_used',
       key: 'amount_used',
       width: 150,
-      render: (val, record) => {
-        const total = (record.amount_total && record.amount_total > 0)
-          ? record.amount_total
-          : (record.tokens_amount || 0);
-        const used = record.tokens_used && record.plan_type === 'tokens'
-          ? record.tokens_used
-          : (val || 0);
-        return renderUsedQuota(used, total, record.plan_type);
-      },
+      render: (val, record) => renderUsedQuota(val, record.amount_total, record.plan_type),
     },
     {
       title: t('剩余额度'),
-      key: 'remain_quota',
+      dataIndex: 'remain',
+      key: 'remain',
       width: 150,
-      render: (_, record) => {
-        const total = (record.amount_total && record.amount_total > 0)
-          ? record.amount_total
-          : (record.tokens_amount || 0);
-        const used = record.tokens_used && record.plan_type === 'tokens'
-          ? record.tokens_used
-          : (record.amount_used || 0);
-        return renderRemainQuota(total, used, record.plan_type);
+      render: (_, record) => renderRemainQuota(record.amount_total, record.amount_used, record.plan_type),
+    },
+    {
+      title: t('Tokens 额度'),
+      dataIndex: 'tokens_amount',
+      key: 'tokens_amount',
+      width: 130,
+      render: (val, record) => {
+        if (record.plan_type !== 'tokens') return '-';
+        return renderQuotaOrTokens(val, record.plan_type);
       },
     },
-  ], [t, navigate, startTime, endTime]);
+    {
+      title: t('已用 Tokens'),
+      dataIndex: 'tokens_used',
+      key: 'tokens_used',
+      width: 130,
+      render: (val, record) => {
+        if (record.plan_type !== 'tokens') return '-';
+        return renderUsedQuota(val, record.tokens_amount, record.plan_type);
+      },
+    },
+    {
+      title: t('剩余 Tokens'),
+      dataIndex: 'tokens_remain',
+      key: 'tokens_remain',
+      width: 130,
+      render: (_, record) => {
+        if (record.plan_type !== 'tokens') return '-';
+        return renderRemainQuota(record.tokens_amount, record.tokens_used, record.plan_type);
+      },
+    },
+  ], [t, navigate, startTime, endTime, renderQuotaOrTokens, renderUsedQuota, renderRemainQuota]);
 
   // ===== 渲染 =====
   return (
-    <div>
-      {/* 头部统计卡片（5个指标） */}
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {/* 顶部统计卡片（5 个指标） */}
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
         <StatCard
           title={t('消费用户数')}
