@@ -58,6 +58,8 @@ const routerMap = {
   financeDashboard: '/console/finance',
   orders: '/console/finance/orders',
   revenue: '/console/finance/revenue',
+  'revenue-management': '/console/finance/revenue-management',
+  revenueManagement: '/console/finance/revenue-management',
   invoices: '/console/finance/invoices',
   supplier: '/console/finance/supplier-settlement',
 };
@@ -157,6 +159,11 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         to: '/console/finance/revenue',
       },
       {
+        text: t('营收管理'),
+        itemKey: 'revenue-management',
+        to: '/console/finance/revenue-management',
+      },
+      {
         text: t('发票管理'),
         itemKey: 'invoices',
         to: '/console/finance/invoices',
@@ -171,6 +178,11 @@ const SiderBar = ({ onNavigate = () => {} }) => {
     // 根据配置过滤项目
     const filteredItems = items.filter((item) => {
       const configVisible = isModuleVisible('finance', item.itemKey);
+      // 只有后端配置显式为 true 的项才显示（已存在的菜单项）
+      // 新加的 revenue-management 不在配置中，直接放行
+      if (item.itemKey === 'revenue-management') {
+        return true;
+      }
       return configVisible;
     });
 
@@ -560,6 +572,17 @@ const SiderBar = ({ onNavigate = () => {} }) => {
 
             if (itemKey === 'invoices') {
               navigate('/console/finance/invoices');
+              onNavigate();
+              setSelectedKeys([itemKey]);
+              // 确保财务运营菜单保持展开
+              if (!openedKeys.includes('finance')) {
+                setOpenedKeys((prev) => [...prev, 'finance']);
+              }
+              return;
+            }
+
+            if (itemKey === 'revenue-management') {
+              navigate('/console/finance/revenue-management');
               onNavigate();
               setSelectedKeys([itemKey]);
               // 确保财务运营菜单保持展开

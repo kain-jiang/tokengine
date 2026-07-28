@@ -282,7 +282,7 @@ const MySubscriptionSection = ({
         ),
         createTime: new Date((subscription?.start_time || 0) * 1000).toLocaleString(),
         endTime: new Date((subscription?.end_time || 0) * 1000).toLocaleString(),
-        group: subscription?.upgrade_group || '-',
+        source: subscription?.source || '-',
         applicableModels: renderApplicableModels(applicableModels),
         totalQuota: totalAmount > 0 ? (
           <Tooltip content={`${t('原生额度')}：${usedAmount}/${totalAmount} · ${t('剩余')} ${remainAmount}`}>
@@ -300,7 +300,10 @@ const MySubscriptionSection = ({
     {
       title: t('套餐名称'),
       dataIndex: 'planName',
+      width: 180,
       ellipsis: true,
+      headerCellStyle: { minWidth: 320 },
+      cellStyle: { minWidth: 320 },
     },
     {
       title: t('状态'),
@@ -310,22 +313,22 @@ const MySubscriptionSection = ({
     {
       title: t('订阅时间'),
       dataIndex: 'createTime',
-      width: 180,
+      width: 170,
     },
     {
       title: t('到期时间'),
       dataIndex: 'endTime',
-      width: 180,
+      width: 170,
     },
     {
-      title: t('分组'),
-      dataIndex: 'group',
-      width: 120,
+      title: t('来源'),
+      dataIndex: 'source',
+      width: 100,
     },
     {
       title: t('适用模型'),
       dataIndex: 'applicableModels',
-      width: 200,
+      width: 220,
       ellipsis: true,
     },
     {

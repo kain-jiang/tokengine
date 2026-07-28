@@ -1314,3 +1314,18 @@ html.dark .with-pastel-balls::before {
 }
 
 .ec-dbcd0a3c01b55203 { forced-color-adjust: auto; }
+
+/* ==================== 我的订阅 - 套餐名称列宽 ==================== */
+.my-plan-section {
+  --my-plan-min-col-width: 200px;
+}
+
+.my-plan-section .semi-table,
+.my-plan-section .semi-table * {
+  box-sizing: border-box;
+}
+
+.my-plan-section .semi-table-header > div > div:first-child,
+.my-plan-section .semi-table-body > div > div:first-child {
+  min-width: var(--my-plan-min-col-width) !important;
+}

@@ -132,7 +132,7 @@ export const useUsersData = () => {
   };
 
   // Manage user operations (promote, demote, enable, disable, delete)
-  const manageUser = async (userId, record, action) => {
+  const manageUser = async (userId, action, record) => {
     // Trigger loading state to force table re-render
     setLoading(true);
 

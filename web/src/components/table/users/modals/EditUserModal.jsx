@@ -77,6 +77,7 @@ const EditUserModal = (props) => {
   const [showAdjustQuotaRaw, setShowAdjustQuotaRaw] = useState(false);
   const [showQuotaInput, setShowQuotaInput] = useState(false);
   const [inputs, setInputs] = useState(null);
+  const [blacklistOptions, setBlacklistOptions] = useState([]);
 
   const isEdit = Boolean(userId);
 
@@ -96,6 +97,7 @@ const EditUserModal = (props) => {
     group: 'default',
     remark: '',
     user_type: 0,
+    specified_models: [],
   });
 
   const fetchGroups = async () => {
@@ -104,6 +106,18 @@ const EditUserModal = (props) => {
       setGroupOptions(res.data.data.map((g) => ({ label: g, value: g })));
     } catch (e) {
       showError(e.message);
+    }
+  };
+
+  const fetchBlacklistModels = async () => {
+    try {
+      const res = await API.get('/api/models/blacklist');
+      if (res.data.success) {
+        const names = res.data.data || [];
+        setBlacklistOptions(names.map((n) => ({ label: n, value: n })));
+      }
+    } catch (e) {
+      // ignore
     }
   };
 
@@ -119,6 +133,19 @@ const EditUserModal = (props) => {
       data.quota_amount = Number(
         quotaToDisplayAmount(data.quota || 0).toFixed(6),
       );
+      // 映射 telephone 字段到 phone（表单字段名）
+      if (data.telephone) {
+        data.phone = data.telephone;
+      }
+      // 将逗号分隔的 specified_models 字符串转为数组
+      if (data.specified_models) {
+        data.specified_models = data.specified_models
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+      } else {
+        data.specified_models = [];
+      }
       setInputs({ ...getInitValues(), ...data });
     } else {
       showError(message);
@@ -135,6 +162,7 @@ const EditUserModal = (props) => {
   useEffect(() => {
     loadUser();
     if (userId) fetchGroups();
+    fetchBlacklistModels();
     setBindingModalVisible(false);
   }, [props.editingUser.id]);
 
@@ -150,6 +178,15 @@ const EditUserModal = (props) => {
   const submit = async (values) => {
     setLoading(true);
     let payload = { ...values };
+    // 将 phone 字段映射回 telephone（后端字段名）
+    if (payload.phone) {
+      payload.telephone = payload.phone;
+    }
+    delete payload.phone;
+    // 将 specified_models 数组转为逗号分隔字符串
+    payload.specified_models = Array.isArray(payload.specified_models)
+      ? payload.specified_models.join(',')
+      : '';
     delete payload.quota;
     delete payload.quota_amount;
     if (userId) {
@@ -434,6 +471,46 @@ const EditUserModal = (props) => {
                             readonly
                           />
                         </div>
+                      </Col>
+                    </Row>
+                  </Card>
+                )}
+
+                {/* 指定模型 */}
+                {userId && blacklistOptions.length > 0 && (
+                  <Card className='!rounded-2xl shadow-sm border-0'>
+                    <div className='flex items-center mb-2'>
+                      <Avatar
+                        size='small'
+                        color='orange'
+                        className='mr-2 shadow-md'
+                      >
+                        <IconUserGroup size={16} />
+                      </Avatar>
+                      <div>
+                        <Text className='text-lg font-medium'>
+                          {t('指定模型')}
+                        </Text>
+                        <div className='text-xs text-gray-600'>
+                          {t('为该用户单独授权可使用的黑名单模型')}
+                        </div>
+                      </div>
+                    </div>
+                    <Row gutter={12}>
+                      <Col span={24}>
+                        <Form.Select
+                          field='specified_models'
+                          label={t('指定模型')}
+                          placeholder={t('请选择需要授权的模型')}
+                          optionList={blacklistOptions}
+                          multiple
+                          filter
+                          allowAdditions
+                          style={{ width: '100%' }}
+                          extraText={t(
+                            '仅可选择已被全局加入黑名单的模型，被选中的模型该用户可正常调用和查看',
+                          )}
+                        />
                       </Col>
                     </Row>
                   </Card>

@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { API, showError, showSuccess } from '../../../../helpers';
 import { useIsMobile } from '../../../../hooks/common/useIsMobile';
 import {
@@ -33,7 +33,7 @@ import {
   Row,
   Col,
 } from '@douyinfe/semi-ui';
-import { IconSave, IconClose, IconUserAdd } from '@douyinfe/semi-icons';
+import { IconSave, IconClose, IconUserAdd, IconUserGroup } from '@douyinfe/semi-icons';
 import { useTranslation } from 'react-i18next';
 
 const { Text, Title } = Typography;
@@ -43,6 +43,7 @@ const AddUserModal = (props) => {
   const formApiRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const isMobile = useIsMobile();
+  const [blacklistOptions, setBlacklistOptions] = useState([]);
 
   const getInitValues = () => ({
     username: '',
@@ -51,11 +52,35 @@ const AddUserModal = (props) => {
     phone: '',
     remark: '',
     user_type: 0,
+    specified_models: [],
   });
+
+  const fetchBlacklistModels = async () => {
+    try {
+      const res = await API.get('/api/models/blacklist');
+      if (res.data.success) {
+        const names = res.data.data || [];
+        setBlacklistOptions(names.map((n) => ({ label: n, value: n })));
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    fetchBlacklistModels();
+  }, []);
 
   const submit = async (values) => {
     setLoading(true);
-    const res = await API.post(`/api/user/`, values);
+    // 将 specified_models 数组转为逗号分隔字符串
+    const payload = {
+      ...values,
+      specified_models: Array.isArray(values.specified_models)
+        ? values.specified_models.join(',')
+        : '',
+    };
+    const res = await API.post(`/api/user/`, payload);
     const { success, message } = res.data;
     if (success) {
       showSuccess(t('用户账户创建成功！'));
@@ -197,6 +222,45 @@ const AddUserModal = (props) => {
                   </Col>
                 </Row>
               </Card>
+
+              {blacklistOptions.length > 0 && (
+                  <Card className='!rounded-2xl shadow-sm border-0'>
+                    <div className='flex items-center mb-2'>
+                      <Avatar
+                        size='small'
+                        color='orange'
+                        className='mr-2 shadow-md'
+                      >
+                        <IconUserGroup size={16} />
+                      </Avatar>
+                      <div>
+                        <Text className='text-lg font-medium'>
+                          {t('指定模型')}
+                        </Text>
+                        <div className='text-xs text-gray-600'>
+                          {t('为该用户单独授权可使用的黑名单模型')}
+                        </div>
+                      </div>
+                    </div>
+                    <Row gutter={12}>
+                      <Col span={24}>
+                        <Form.Select
+                          field='specified_models'
+                          label={t('指定模型')}
+                          placeholder={t('请选择需要授权的模型')}
+                          optionList={blacklistOptions}
+                          multiple
+                          filter
+                          allowAdditions
+                          style={{ width: '100%' }}
+                          extraText={t(
+                            '仅可选择已被全局加入黑名单的模型，被选中的模型该用户可正常调用和查看',
+                          )}
+                        />
+                      </Col>
+                    </Row>
+                  </Card>
+                )}
             </div>
           </Form>
         </Spin>

@@ -94,7 +94,7 @@ func GetLogByKey(c *gin.Context) {
 }
 
 func GetLogsStat(c *gin.Context) {
-	//_, _ := strconv.Atoi(c.Query("type"))
+	//_, _ := strconv.Atoi(c.Query("type"))   // 忽略前端传值，固定使用 Consume 类型统计
 	startTimestamp, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
 	endTimestamp, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
 	tokenName := c.Query("token_name")
@@ -129,21 +129,21 @@ func GetLogsStat(c *gin.Context) {
 
 func GetLogsSelfStat(c *gin.Context) {
 	username := c.GetString("username")
-	logType, _ := strconv.Atoi(c.Query("type"))
+	// logType, _ := strconv.Atoi(c.Query("type"))
 	startTimestamp, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
 	endTimestamp, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
 	tokenName := c.Query("token_name")
 	modelName := c.Query("model_name")
 	channel, _ := strconv.Atoi(c.Query("channel"))
 	group := c.Query("group")
-	quotaNum, err := model.SumUsedQuota(logType, startTimestamp, endTimestamp, modelName, username, tokenName, channel, group)
+	quotaNum, err := model.SumUsedQuota(model.LogTypeConsume, startTimestamp, endTimestamp, modelName, username, tokenName, channel, group)
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
 	//tokenNum := model.SumUsedToken(logType, startTimestamp, endTimestamp, modelName, username, tokenName)
 	// 获取退款总额度
-	refundStat, _ := model.SumUsedQuota(6, startTimestamp, endTimestamp, modelName, username, tokenName, channel, group)
+	refundStat, _ := model.SumUsedQuota(model.LogTypeRefund, startTimestamp, endTimestamp, modelName, username, tokenName, channel, group)
 	c.JSON(200, gin.H{
 		"success": true,
 		"message": "",

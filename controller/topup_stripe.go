@@ -185,23 +185,6 @@ func sessionCompleted(event stripe.Event) {
 		log.Println("错误的Stripe Checkout完成状态:", status, ",", referenceId)
 		return
 	}
-
-	// Try complete subscription order first
-	LockOrder(referenceId)
-	defer UnlockOrder(referenceId)
-	payload := map[string]any{
-		"customer":     customerId,
-		"amount_total": event.GetObjectValue("amount_total"),
-		"currency":     strings.ToUpper(event.GetObjectValue("currency")),
-		"event_type":   string(event.Type),
-	}
-	if err := model.CompleteSubscriptionOrder(referenceId, common.GetJsonString(payload)); err == nil {
-		return
-	} else if err != nil && !errors.Is(err, model.ErrSubscriptionOrderNotFound) {
-		log.Println("complete subscription order failed:", err.Error(), referenceId)
-		return
-	}
-
 	err := model.Recharge(referenceId, customerId)
 	if err != nil {
 		log.Println(err.Error(), referenceId)

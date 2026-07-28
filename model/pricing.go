@@ -53,6 +53,10 @@ var (
 	modelEnableGroups     = make(map[string][]string)
 	modelQuotaTypeMap     = make(map[string]int)
 	modelEnableGroupsLock = sync.RWMutex{}
+
+	// 缓存：已被全局黑名单标记的模型名集合
+	blacklistedModelNames = make(map[string]bool)
+	blacklistedModelsLock = sync.RWMutex{}
 )
 
 var (
@@ -164,6 +168,17 @@ func updatePricing() {
 
 	// 初始化默认供应商映射
 	initDefaultVendorMapping(metaMap, vendorMap, enableAbilities)
+
+	// 刷新全局黑名单模型名集合（不影响下方模型广场数据构建，仅供 IsModelBlacklisted 查询）
+	newBlacklistedNames := make(map[string]bool)
+	for _, m := range allMeta {
+		if m.IsBlacklisted == 1 {
+			newBlacklistedNames[m.ModelName] = true
+		}
+	}
+	blacklistedModelsLock.Lock()
+	blacklistedModelNames = newBlacklistedNames
+	blacklistedModelsLock.Unlock()
 
 	// 构建对前端友好的供应商列表
 	vendorsList = make([]PricingVendor, 0, len(vendorMap))
@@ -343,4 +358,15 @@ func updatePricing() {
 // GetSupportedEndpointMap 返回全局端点到路径的映射
 func GetSupportedEndpointMap() map[string]common.EndpointInfo {
 	return supportedEndpointMap
+}
+
+// IsModelBlacklisted 判断指定模型是否被全局黑名单标记，供中间件/定价接口调用
+func IsModelBlacklisted(modelName string) bool {
+	// 保证缓存已被初始化一次
+	if time.Since(lastGetPricingTime) > time.Minute*1 || len(pricingMap) == 0 {
+		GetPricing()
+	}
+	blacklistedModelsLock.RLock()
+	defer blacklistedModelsLock.RUnlock()
+	return blacklistedModelNames[modelName]
 }

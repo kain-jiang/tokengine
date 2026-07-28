@@ -9,6 +9,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// filterPricingByBlacklist 按全局黑名单与用户【指定模型】授权过滤模型广场结果：
+// 未被全局拉黑的模型正常保留；被拉黑的模型仅当用户被单独授权（在 allowedModels 中）时保留。
+func filterPricingByBlacklist(pricing []model.Pricing, allowedModels map[string]bool) []model.Pricing {
+	if len(pricing) == 0 {
+		return pricing
+	}
+	filtered := make([]model.Pricing, 0, len(pricing))
+	for _, item := range pricing {
+		if model.IsModelBlacklisted(item.ModelName) && !allowedModels[item.ModelName] {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	return filtered
+}
+
 func filterPricingByUsableGroups(pricing []model.Pricing, usableGroup map[string]string) []model.Pricing {
 	if len(pricing) == 0 {
 		return pricing
@@ -57,6 +73,18 @@ func GetPricing(c *gin.Context) {
 
 	usableGroup = service.GetUserUsableGroups(group)
 	pricing = filterPricingByUsableGroups(pricing, usableGroup)
+
+	// 按黑名单与用户【指定模型】授权过滤：未被授权的用户看不到已被全局拉黑的模型
+	allowedModels := map[string]bool{}
+	if exists {
+		if specifiedModels, err := model.GetUserSpecifiedModelsList(userId.(int)); err == nil {
+			for _, m := range specifiedModels {
+				allowedModels[m] = true
+			}
+		}
+	}
+	pricing = filterPricingByBlacklist(pricing, allowedModels)
+
 	// check groupRatio contains usableGroup
 	for group := range ratio_setting.GetGroupRatioCopy() {
 		if _, ok := usableGroup[group]; !ok {
