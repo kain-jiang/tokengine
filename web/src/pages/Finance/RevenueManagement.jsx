@@ -383,32 +383,44 @@ export default function RevenueManagement() {
   ], [t, navigate, startTime, endTime]);
 
   // 格式化额度显示：根据套餐类型区分
-  // 使用 renderQuota 与 MyPlan 保持一致（quota → USD → CNY 汇率转换）
+  // tokens 套餐：显示 tokens_amount（实际得到的 tokens 数量）
+  // 额度套餐：使用 renderQuota 与 MyPlan 保持一致（quota → USD → CNY 汇率转换）
   const renderQuotaOrTokens = (val, planType) => {
     if (!val || val <= 0) return '-';
     if (planType === 'tokens') {
-      return <Text type='primary'>{val.toLocaleString()} Tokens</Text>;
+      return <Text type='primary'>{parseFloat(val).toFixed(4)}</Text>;
     }
     return <Text type='primary'>{renderQuota(val)}</Text>;
   };
 
   // 格式化已用额度显示
-  const renderUsedQuota = (used, total, planType) => {
+  // tokens 套餐：使用 tokens_used / tokens_amount 计算百分比
+  // 额度套餐：使用 amount_used / amount_total 计算百分比
+  const renderUsedQuota = (used, total, planType, record) => {
     if (total <= 0 || used <= 0) return '-';
-    const percent = Math.round((used / total) * 100);
+    let percent;
     if (planType === 'tokens') {
-      return <span>{used.toLocaleString()} Tokens ({percent}%)</span>;
+      const tokensAmount = record.tokens_amount || 0;
+      percent = tokensAmount > 0 ? Math.round((used / tokensAmount) * 100) : 0;
+      return <span>{parseFloat(used).toFixed(4)} ({percent}%)</span>;
     }
+    percent = Math.round((used / total) * 100);
     return <span>{renderQuota(used)} ({percent}%)</span>;
   };
 
   // 格式化剩余额度显示
-  const renderRemainQuota = (total, used, planType) => {
+  // tokens 套餐：使用 tokens_amount - tokens_used
+  // 额度套餐：使用 amount_total - amount_used
+  const renderRemainQuota = (total, used, planType, record) => {
     if (total <= 0) return '-';
-    const remain = Math.max(0, total - used);
+    let remain;
     if (planType === 'tokens') {
-      return <Text type='warning'>{remain.toLocaleString()} Tokens</Text>;
+      const tokensAmount = record.tokens_amount || 0;
+      const tokensUsed = record.tokens_used || 0;
+      remain = Math.max(0, tokensAmount - tokensUsed);
+      return <Text type='warning'>{parseFloat(remain).toFixed(4)}</Text>;
     }
+    remain = Math.max(0, total - used);
     return <Text type='warning'>{renderQuota(remain)}</Text>;
   };
 
@@ -507,7 +519,7 @@ export default function RevenueManagement() {
       },
     },
     {
-      title: t('金额'),
+      title: t('实收金额'),
       dataIndex: 'paid_amount',
       key: 'paid_amount',
       width: 120,
@@ -516,55 +528,29 @@ export default function RevenueManagement() {
       ),
     },
     {
-      title: t('额度类型'),
-      dataIndex: 'amount_total',
-      key: 'amount_total',
+      title: t('实得价值'),
+      dataIndex: 'tokens_amount',
+      key: 'tokens_amount',
       width: 150,
-      render: (val, record) => renderQuotaOrTokens(val, record.plan_type),
+      render: (val, record) => {
+        // tokens 套餐显示 tokens_amount，额度套餐显示 amount_total
+        const displayVal = record.plan_type === 'tokens' ? (val || record.amount_total) : record.amount_total;
+        return renderQuotaOrTokens(displayVal, record.plan_type);
+      },
     },
     {
       title: t('已用额度'),
       dataIndex: 'amount_used',
       key: 'amount_used',
       width: 150,
-      render: (val, record) => renderUsedQuota(val, record.amount_total, record.plan_type),
+      render: (val, record) => renderUsedQuota(val, record.amount_total, record.plan_type, record),
     },
     {
       title: t('剩余额度'),
       dataIndex: 'remain',
       key: 'remain',
       width: 150,
-      render: (_, record) => renderRemainQuota(record.amount_total, record.amount_used, record.plan_type),
-    },
-    {
-      title: t('Tokens 额度'),
-      dataIndex: 'tokens_amount',
-      key: 'tokens_amount',
-      width: 130,
-      render: (val, record) => {
-        if (record.plan_type !== 'tokens') return '-';
-        return renderQuotaOrTokens(val, record.plan_type);
-      },
-    },
-    {
-      title: t('已用 Tokens'),
-      dataIndex: 'tokens_used',
-      key: 'tokens_used',
-      width: 130,
-      render: (val, record) => {
-        if (record.plan_type !== 'tokens') return '-';
-        return renderUsedQuota(val, record.tokens_amount, record.plan_type);
-      },
-    },
-    {
-      title: t('剩余 Tokens'),
-      dataIndex: 'tokens_remain',
-      key: 'tokens_remain',
-      width: 130,
-      render: (_, record) => {
-        if (record.plan_type !== 'tokens') return '-';
-        return renderRemainQuota(record.tokens_amount, record.tokens_used, record.plan_type);
-      },
+      render: (_, record) => renderRemainQuota(record.amount_total, record.amount_used, record.plan_type, record),
     },
   ], [t, navigate, startTime, endTime, renderQuotaOrTokens, renderUsedQuota, renderRemainQuota]);
 
