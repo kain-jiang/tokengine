@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as echarts from 'echarts';
 import {
@@ -148,6 +148,13 @@ export default function FinanceDashboard() {
   const [cumulativeTopup, setCumulativeTopup] = useState(0);
   const [cumulativeConsumption, setCumulativeConsumption] = useState(0);
 
+  // 大屏模式状态
+  const [isDashboardMode, setIsDashboardMode] = useState(false);
+  const [countdown, setCountdown] = useState(30);
+  const [lastUpdateTime, setLastUpdateTime] = useState(null);
+  const [dataFlash, setDataFlash] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
   // 图表实例引用
   const usersTrendChartRef = useRef(null);
   const authDistChartRef = useRef(null);
@@ -167,6 +174,26 @@ export default function FinanceDashboard() {
   const callRankChartRef = useRef(null);          // 4. 调用次数排行 - 水平柱状图
   const userQuotaRankChartRef = useRef(null);     // 5. 用户消耗排行 - 水平柱状图
   const userQuotaTrendChartRef = useRef(null);    // 6. 用户消耗趋势 - 面积图
+
+  // 大屏模式专用图表引用
+  const dashboardChartsRef = useRef({
+    usersTrend: null,
+    authDist: null,
+    topupTrend: null,
+    topupDist: null,
+    consumptionTrend: null,
+    paymentModeTokens: null,
+    revenuePie: null,
+    supplierTrend: null,
+    supplierDist: null,
+    revenueTrend: null,
+    quotaDist: null,
+    callTrend: null,
+    callDist: null,
+    callRank: null,
+    userQuotaRank: null,
+    userQuotaTrend: null,
+  });
 
   const chartsInstance = useRef({
     usersTrend: null,
@@ -1612,6 +1639,383 @@ export default function FinanceDashboard() {
     };
   }, []);
 
+  // 大屏模式：定时刷新逻辑
+  useEffect(() => {
+    if (!isDashboardMode) return;
+
+    // 进入时立即刷新一次
+    const refreshData = () => {
+      fetchDashboardStats();
+      fetchChartData();
+      setLastUpdateTime(new Date());
+      setDataFlash(true);
+      setTimeout(() => setDataFlash(false), 600);
+    };
+
+    refreshData();
+
+    // 30 秒定时刷新
+    const refreshTimer = setInterval(refreshData, 30000);
+
+    // 倒计时
+    const countdownTimer = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) return 30;
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      clearInterval(refreshTimer);
+      clearInterval(countdownTimer);
+    };
+  }, [isDashboardMode]);
+
+  // ESC 键退出大屏模式
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape' && isDashboardMode) {
+        setIsDashboardMode(false);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isDashboardMode]);
+
+  // 大屏模式：实时时钟更新
+  useEffect(() => {
+    if (!isDashboardMode) return;
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isDashboardMode]);
+
+  // 大屏模式：图表渲染（使用独立的 ref 和图表实例）
+  const renderDashboardChart = useCallback(() => {
+    if (!isDashboardMode) return;
+
+    const ref = dashboardChartsRef.current;
+
+    // 辅助函数：获取 DOM 元素
+    const getDom = (id) => {
+      const dom = document.getElementById(id);
+      if (!dom) {
+        console.warn(`[Dashboard] DOM not found: ${id}`);
+        return null;
+      }
+      return dom;
+    };
+
+    // 辅助函数：初始化或更新图表（自动处理 DOM 变化）
+    const initOrUpdate = (key, dom, option) => {
+      if (!dom) return;
+      // 如果已有实例但 DOM 已变化（被 React 重新创建），则销毁旧实例
+      if (ref[key] && ref[key].getDom && ref[key].getDom() !== dom) {
+        ref[key].dispose();
+        ref[key] = null;
+      }
+      if (!ref[key] || ref[key].isDisposed()) {
+        ref[key] = echarts.init(dom);
+      }
+      ref[key].setOption(option, true);
+    };
+
+    // 1. 注册用户趋势
+    if (usersTrend?.length) {
+      const dom = getDom('dashboard-usersTrend');
+      initOrUpdate('usersTrend', dom, {
+        backgroundColor: 'transparent',
+        title: { text: t('注册用户趋势'), textStyle: { color: 'rgba(255,255,255,0.8)', fontSize: 16 }, left: 'center' },
+        tooltip: { trigger: 'axis', backgroundColor: 'rgba(10,14,39,0.9)', borderColor: 'rgba(30,144,255,0.3)', textStyle: { color: '#fff' } },
+        grid: { left: '3%', right: '4%', bottom: '3%', top: 40, containLabel: true },
+        xAxis: { type: 'category', data: usersTrend.map(i => formatDateLabel(i.date)), axisLabel: { color: 'rgba(255,255,255,0.6)' }, axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } } },
+        yAxis: { type: 'value', axisLabel: { color: 'rgba(255,255,255,0.6)' }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } } },
+        series: [{ type: 'line', smooth: true, data: usersTrend.map(i => i.count), itemStyle: { color: '#1e90ff' }, areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(30,144,255,0.4)'},{offset:1,color:'rgba(30,144,255,0.05)'}]) } }]
+      });
+    }
+
+    // 2. 用户认证占比
+    const authData = [
+      { name: t('未认证'), value: usersAuthDist.unverified || 0 },
+      { name: t('个人用户'), value: usersAuthDist.individual || 0 },
+      { name: t('企业用户'), value: usersAuthDist.enterprise || 0 },
+    ].filter(i => i.value > 0);
+    if (authData.length) {
+      initOrUpdate('authDist', getDom('dashboard-authDist'), {
+        backgroundColor: 'transparent',
+        title: { text: t('用户认证占比'), textStyle: { color: 'rgba(255,255,255,0.8)', fontSize: 16 }, left: 'center' },
+        tooltip: { trigger: 'item', backgroundColor: 'rgba(10,14,39,0.9)', borderColor: 'rgba(30,144,255,0.3)', textStyle: { color: '#fff' } },
+        legend: { orient: 'horizontal', bottom: 0, textStyle: { color: 'rgba(255,255,255,0.6)' } },
+        series: [{ type: 'pie', radius: ['35%', '65%'], center: ['50%', '45%'], itemStyle: { borderRadius: 4, borderColor: '#0a0e27', borderWidth: 2 }, label: { show: false }, labelLine: { show: false }, data: authData, color: ['#1e90ff', '#52c41a', '#722ed1'] }]
+      });
+    }
+
+    // 3. 有效充值趋势
+    if (topupTrend?.length) {
+      initOrUpdate('topupTrend', getDom('dashboard-topupTrend'), {
+        backgroundColor: 'transparent',
+        title: { text: t('有效充值趋势'), textStyle: { color: 'rgba(255,255,255,0.8)', fontSize: 16 }, left: 'center' },
+        tooltip: { trigger: 'axis', backgroundColor: 'rgba(10,14,39,0.9)', borderColor: 'rgba(30,144,255,0.3)', textStyle: { color: '#fff' } },
+        grid: { left: '3%', right: '4%', bottom: '3%', top: 40, containLabel: true },
+        xAxis: { type: 'category', data: topupTrend.map(i => formatDateLabel(i.date)), axisLabel: { color: 'rgba(255,255,255,0.6)' }, axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } } },
+        yAxis: { type: 'value', axisLabel: { color: 'rgba(255,255,255,0.6)', formatter: '¥{value}' }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } } },
+        series: [{ type: 'line', smooth: true, data: topupTrend.map(i => i.amount), itemStyle: { color: '#52c41a' }, areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(82,196,26,0.4)'},{offset:1,color:'rgba(82,196,26,0.05)'}]) } }]
+      });
+    }
+
+    // 4. 用户充值分布
+    const topupDistData = [
+      { name: t('未认证用户'), value: topupUserTypeDist.unverified || 0 },
+      { name: t('个人用户'), value: topupUserTypeDist.individual || 0 },
+      { name: t('企业用户'), value: topupUserTypeDist.enterprise || 0 },
+    ].filter(i => i.value > 0);
+    if (topupDistData.length) {
+      initOrUpdate('topupDist', getDom('dashboard-topupDist'), {
+        backgroundColor: 'transparent',
+        title: { text: t('用户充值分布'), textStyle: { color: 'rgba(255,255,255,0.8)', fontSize: 16 }, left: 'center' },
+        tooltip: { trigger: 'item', backgroundColor: 'rgba(10,14,39,0.9)', borderColor: 'rgba(30,144,255,0.3)', textStyle: { color: '#fff' } },
+        legend: { orient: 'horizontal', bottom: 0, textStyle: { color: 'rgba(255,255,255,0.6)' } },
+        series: [{ type: 'pie', radius: ['35%', '65%'], center: ['50%', '45%'], itemStyle: { borderRadius: 4, borderColor: '#0a0e27', borderWidth: 2 }, label: { show: false }, labelLine: { show: false }, data: topupDistData, color: ['#1e90ff', '#52c41a', '#722ed1'] }]
+      });
+    }
+
+    // 5. 消费趋势
+    if (consumptionTrend?.length) {
+      initOrUpdate('consumptionTrend', getDom('dashboard-consumptionTrend'), {
+        backgroundColor: 'transparent',
+        title: { text: t('消费趋势'), textStyle: { color: 'rgba(255,255,255,0.8)', fontSize: 16 }, left: 'center' },
+        tooltip: { trigger: 'axis', backgroundColor: 'rgba(10,14,39,0.9)', borderColor: 'rgba(30,144,255,0.3)', textStyle: { color: '#fff' } },
+        grid: { left: '3%', right: '4%', bottom: '3%', top: 40, containLabel: true },
+        xAxis: { type: 'category', data: consumptionTrend.map(i => formatDateLabel(i.date)), axisLabel: { color: 'rgba(255,255,255,0.6)' }, axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } } },
+        yAxis: { type: 'value', axisLabel: { color: 'rgba(255,255,255,0.6)', formatter: '¥{value}' }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } } },
+        series: [{ type: 'line', smooth: true, data: consumptionTrend.map(i => i.cost), itemStyle: { color: '#722ed1' }, areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(114,46,209,0.4)'},{offset:1,color:'rgba(114,46,209,0.05)'}]) } }]
+      });
+    }
+
+    // 6. 客户端分布
+    const uaData = userAgentDist.map(i => ({ name: i.user_agent || '未知客户端', value: i.count || 0 })).filter(i => i.value > 0).slice(0, 10);
+    if (uaData.length) {
+      initOrUpdate('paymentModeTokens', getDom('dashboard-paymentModeTokens'), {
+        backgroundColor: 'transparent',
+        title: { text: t('客户端分布'), textStyle: { color: 'rgba(255,255,255,0.8)', fontSize: 16 }, left: 'center' },
+        tooltip: { trigger: 'item', backgroundColor: 'rgba(10,14,39,0.9)', borderColor: 'rgba(30,144,255,0.3)', textStyle: { color: '#fff' } },
+        legend: { orient: 'horizontal', bottom: 0, textStyle: { color: 'rgba(255,255,255,0.6)' } },
+        series: [{ type: 'pie', radius: ['35%', '65%'], center: ['50%', '45%'], itemStyle: { borderRadius: 4, borderColor: '#0a0e27', borderWidth: 2 }, label: { show: false }, labelLine: { show: false }, data: uaData, color: pieColors }]
+      });
+    }
+
+    // 7. 营收趋势
+    const hasData = (revenueTrend?.pay_as_you_go?.length > 0) || (revenueTrend?.subscription?.length > 0);
+    if (hasData) {
+      const dateSet = new Set();
+      revenueTrend?.pay_as_you_go?.forEach(i => dateSet.add(i.date));
+      revenueTrend?.subscription?.forEach(i => dateSet.add(i.date));
+      const allDates = Array.from(dateSet).sort();
+      const paygMap = {}, subMap = {};
+      revenueTrend?.pay_as_you_go?.forEach(i => { paygMap[i.date] = i.amount; });
+      revenueTrend?.subscription?.forEach(i => { subMap[i.date] = i.amount; });
+      initOrUpdate('revenueTrend', getDom('dashboard-revenueTrend'), {
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis', backgroundColor: 'rgba(10,14,39,0.9)', borderColor: 'rgba(30,144,255,0.3)', textStyle: { color: '#fff' } },
+        legend: { data: [t('按量付费'), t('订阅套餐')], top: 0, textStyle: { color: 'rgba(255,255,255,0.6)' } },
+        grid: { left: '3%', right: '4%', bottom: '3%', top: 40, containLabel: true },
+        xAxis: { type: 'category', data: allDates.map(formatDateLabel), axisLabel: { color: 'rgba(255,255,255,0.6)', rotate: allDates.length > 15 ? 45 : 0 }, axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } } },
+        yAxis: { type: 'value', axisLabel: { color: 'rgba(255,255,255,0.6)', formatter: '¥{value}' }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } } },
+        series: [
+          { name: t('按量付费'), type: 'line', smooth: true, data: allDates.map(d => paygMap[d] || 0), itemStyle: { color: '#52c41a' }, areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(82,196,26,0.4)'},{offset:1,color:'rgba(82,196,26,0.05)'}]) } },
+          { name: t('订阅套餐'), type: 'line', smooth: true, data: allDates.map(d => subMap[d] || 0), itemStyle: { color: '#722ed1' }, areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(114,46,209,0.4)'},{offset:1,color:'rgba(114,46,209,0.05)'}]) } }
+        ]
+      });
+    }
+
+    // 8. 付费方式收入占比
+    const total = (paymentModeRevenueDist.pay_as_you_go || 0) + (paymentModeRevenueDist.subscription || 0);
+    if (total > 0) {
+      initOrUpdate('revenuePie', getDom('dashboard-revenuePie'), {
+        backgroundColor: 'transparent',
+        title: { text: t('付费方式收入占比'), textStyle: { color: 'rgba(255,255,255,0.8)', fontSize: 16 }, left: 'center' },
+        tooltip: { trigger: 'item', backgroundColor: 'rgba(10,14,39,0.9)', borderColor: 'rgba(30,144,255,0.3)', textStyle: { color: '#fff' } },
+        legend: { orient: 'horizontal', bottom: 0, textStyle: { color: 'rgba(255,255,255,0.6)' } },
+        series: [{ type: 'pie', radius: ['35%', '65%'], center: ['50%', '45%'], itemStyle: { borderRadius: 4, borderColor: '#0a0e27', borderWidth: 2 }, label: { show: false }, labelLine: { show: false }, data: [{ name: t('按量付费'), value: paymentModeRevenueDist.pay_as_you_go || 0 }, { name: t('订阅套餐'), value: paymentModeRevenueDist.subscription || 0 }], color: ['#52c41a', '#722ed1'] }]
+      });
+    }
+
+    // 9. 渠道消费趋势（按渠道分组，每个渠道一条折线）
+    if (supplierTrend?.length) {
+      // 按日期和渠道聚合
+      const dateChannelMap = {};
+      const channelSet = new Set();
+      supplierTrend.forEach(item => {
+        const date = item.date;
+        const channel = item.supplier || '未知';
+        channelSet.add(channel);
+        if (!dateChannelMap[date]) dateChannelMap[date] = {};
+        dateChannelMap[date][channel] = (dateChannelMap[date][channel] || 0) + (item.cost || 0);
+      });
+      const dates = Object.keys(dateChannelMap).sort();
+      const channels = Array.from(channelSet).sort();
+      initOrUpdate('supplierTrend', getDom('dashboard-supplierTrend'), {
+        backgroundColor: 'transparent',
+        title: { text: t('渠道消费趋势'), textStyle: { color: 'rgba(255,255,255,0.8)', fontSize: 16 }, left: 'center' },
+        tooltip: { trigger: 'axis', backgroundColor: 'rgba(10,14,39,0.9)', borderColor: 'rgba(30,144,255,0.3)', textStyle: { color: '#fff' } },
+        legend: { type: 'scroll', orient: 'horizontal', bottom: 0, data: channels, textStyle: { color: 'rgba(255,255,255,0.6)' } },
+        grid: { left: '3%', right: '4%', bottom: '15%', top: 40, containLabel: true },
+        xAxis: { type: 'category', data: dates.map(formatDateLabel), axisLabel: { color: 'rgba(255,255,255,0.6)', rotate: 45 }, axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } } },
+        yAxis: { type: 'value', axisLabel: { color: 'rgba(255,255,255,0.6)', formatter: '¥{value}' }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } } },
+        series: channels.map((ch, idx) => ({
+          name: ch,
+          type: 'line',
+          smooth: true,
+          data: dates.map(d => dateChannelMap[d][ch] || 0),
+          itemStyle: { color: pieColors[idx % pieColors.length] },
+          areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:pieColors[idx % pieColors.length]+'66'},{offset:1,color:pieColors[idx % pieColors.length]+'0D'}]) }
+        }))
+      });
+    }
+
+    // 10. 渠道消费占比
+    const distData = (supplierDist.items || []).map(i => ({ name: i.supplier || '未知', value: i.cost || 0 })).filter(i => i.value > 0);
+    if (distData.length) {
+      initOrUpdate('supplierDist', getDom('dashboard-supplierDist'), {
+        backgroundColor: 'transparent',
+        title: { text: t('渠道消费占比'), textStyle: { color: 'rgba(255,255,255,0.8)', fontSize: 16 }, left: 'center' },
+        tooltip: { trigger: 'item', backgroundColor: 'rgba(10,14,39,0.9)', borderColor: 'rgba(30,144,255,0.3)', textStyle: { color: '#fff' } },
+        legend: { orient: 'horizontal', bottom: 0, textStyle: { color: 'rgba(255,255,255,0.6)', width: 200, overflow: 'truncate' } },
+        series: [{ type: 'pie', radius: ['35%', '65%'], center: ['50%', '45%'], itemStyle: { borderRadius: 4, borderColor: '#0a0e27', borderWidth: 2 }, label: { show: false }, labelLine: { show: false }, data: distData, color: pieColors }]
+      });
+    }
+
+    // 11-16. 模型数据分析（6 个 Tab 图表）
+    if (chartData) {
+      // 1. 消耗分布
+      if (activeChartTab === '1' && chartData.quota_distribution?.length) {
+        const modelSet = new Set();
+        chartData.quota_distribution.forEach(i => i.model && modelSet.add(i.model));
+        const modelList = Array.from(modelSet);
+        const quotaDivisor = 500000;
+        const modelData = {};
+        modelList.forEach(m => { modelData[m] = {}; });
+        chartData.quota_distribution.forEach(i => { if (!modelData[i.model]) modelData[i.model] = {}; modelData[i.model][i.time] = (i.raw_quota || 0) / quotaDivisor; });
+        const timeSet = new Set();
+        chartData.quota_distribution.forEach(i => timeSet.add(i.time));
+        const times = Array.from(timeSet).sort();
+        initOrUpdate('quotaDist', getDom('dashboard-quotaDist'), {
+          backgroundColor: 'transparent',
+          tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: 'rgba(10,14,39,0.9)', borderColor: 'rgba(30,144,255,0.3)', textStyle: { color: '#fff' } },
+          legend: { type: 'scroll', orient: 'horizontal', bottom: 10, data: modelList, textStyle: { color: 'rgba(255,255,255,0.6)' } },
+          grid: { left: '3%', right: '4%', bottom: '18%', top: 35, containLabel: true },
+          xAxis: { type: 'category', data: times.map(formatDateLabel), axisLabel: { color: 'rgba(255,255,255,0.6)', rotate: 45 } },
+          yAxis: { type: 'value', axisLabel: { color: 'rgba(255,255,255,0.6)' } },
+          series: modelList.map(m => ({ name: m, type: 'bar', stack: 'total', data: times.map(t => modelData[m][t] || 0), itemStyle: { color: modelToColor(m) } }))
+        });
+      }
+      // 2. 调用趋势
+      if (activeChartTab === '2' && chartData.call_trend?.length) {
+        initOrUpdate('callTrend', getDom('dashboard-callTrend'), {
+          backgroundColor: 'transparent',
+          tooltip: { trigger: 'axis', backgroundColor: 'rgba(10,14,39,0.9)', borderColor: 'rgba(30,144,255,0.3)', textStyle: { color: '#fff' } },
+          grid: { left: '3%', right: '4%', bottom: '3%', top: 35, containLabel: true },
+          xAxis: { type: 'category', data: chartData.call_trend.map(i => formatDateLabel(i.time)), axisLabel: { color: 'rgba(255,255,255,0.6)', rotate: 45 } },
+          yAxis: { type: 'value', axisLabel: { color: 'rgba(255,255,255,0.6)' } },
+          series: [{ type: 'line', smooth: true, data: chartData.call_trend.map(i => i.count || 0), itemStyle: { color: '#1e90ff' }, areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(30,144,255,0.4)'},{offset:1,color:'rgba(30,144,255,0.05)'}]) } }]
+        });
+      }
+      // 3. 调用次数分布
+      if (activeChartTab === '3' && chartData.call_distribution?.length) {
+        initOrUpdate('callDist', getDom('dashboard-callDist'), {
+          backgroundColor: 'transparent',
+          tooltip: { trigger: 'item', backgroundColor: 'rgba(10,14,39,0.9)', borderColor: 'rgba(30,144,255,0.3)', textStyle: { color: '#fff' } },
+          legend: { orient: 'horizontal', bottom: 10, textStyle: { color: 'rgba(255,255,255,0.6)' } },
+          series: [{ type: 'pie', radius: ['35%', '65%'], center: ['50%', '45%'], itemStyle: { borderRadius: 4, borderColor: '#0a0e27', borderWidth: 2 }, label: { show: false }, labelLine: { show: false }, data: chartData.call_distribution.map(i => ({ name: i.model, value: i.count || 0 })), color: pieColors }]
+        });
+      }
+      // 4. 调用次数排行
+      if (activeChartTab === '4' && chartData.call_rank?.length) {
+        const data = [...chartData.call_rank].sort((a, b) => (b.count || 0) - (a.count || 0)).slice(0, 10);
+        initOrUpdate('callRank', getDom('dashboard-callRank'), {
+          backgroundColor: 'transparent',
+          tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: 'rgba(10,14,39,0.9)', borderColor: 'rgba(30,144,255,0.3)', textStyle: { color: '#fff' } },
+          grid: { left: '3%', right: '10%', bottom: '3%', top: 10, containLabel: true },
+          xAxis: { type: 'value', axisLabel: { color: 'rgba(255,255,255,0.6)' } },
+          yAxis: { type: 'category', data: data.map(i => i.model), axisLabel: { color: 'rgba(255,255,255,0.6)' } },
+          series: [{ type: 'bar', data: data.map((i, idx) => ({ value: i.count || 0, itemStyle: { color: pieColors[idx % pieColors.length] } })) }]
+        });
+      }
+      // 5. 用户消耗排行
+      if (activeChartTab === '5' && chartData.user_quota_rank?.length) {
+        const data = [...chartData.user_quota_rank].sort((a, b) => (b.raw_quota || 0) - (a.raw_quota || 0)).slice(0, 10);
+        initOrUpdate('userQuotaRank', getDom('dashboard-userQuotaRank'), {
+          backgroundColor: 'transparent',
+          tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: 'rgba(10,14,39,0.9)', borderColor: 'rgba(30,144,255,0.3)', textStyle: { color: '#fff' } },
+          grid: { left: '3%', right: '10%', bottom: '3%', top: 10, containLabel: true },
+          xAxis: { type: 'value', axisLabel: { color: 'rgba(255,255,255,0.6)' } },
+          yAxis: { type: 'category', data: data.map(i => i.user || i.username || '未知用户'), axisLabel: { color: 'rgba(255,255,255,0.6)' } },
+          series: [{ type: 'bar', data: data.map((i, idx) => ({ value: i.raw_quota || 0, itemStyle: { color: pieColors[idx % pieColors.length] } })) }]
+        });
+      }
+      // 6. 用户消耗趋势
+      if (activeChartTab === '6' && chartData.user_quota_trend?.length) {
+        const userMap = {};
+        chartData.user_quota_trend.forEach(i => { if (!userMap[i.user]) userMap[i.user] = {}; userMap[i.user][i.time] = i.raw_quota || 0; });
+        const users = Object.keys(userMap).slice(0, 5);
+        const timeSet = new Set();
+        chartData.user_quota_trend.forEach(i => timeSet.add(i.time));
+        const times = Array.from(timeSet).sort();
+        initOrUpdate('userQuotaTrend', getDom('dashboard-userQuotaTrend'), {
+          backgroundColor: 'transparent',
+          tooltip: { trigger: 'axis', backgroundColor: 'rgba(10,14,39,0.9)', borderColor: 'rgba(30,144,255,0.3)', textStyle: { color: '#fff' } },
+          legend: { data: users, top: 5, textStyle: { color: 'rgba(255,255,255,0.6)' } },
+          grid: { left: '3%', right: '4%', bottom: '3%', top: 35, containLabel: true },
+          xAxis: { type: 'category', data: times.map(formatDateLabel), axisLabel: { color: 'rgba(255,255,255,0.6)', rotate: 45 } },
+          yAxis: { type: 'value', axisLabel: { color: 'rgba(255,255,255,0.6)' } },
+          series: users.map((u, idx) => ({ name: u, type: 'line', smooth: true, data: times.map(t => userMap[u][t] || 0), itemStyle: { color: pieColors[idx % pieColors.length] }, areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:pieColors[idx % pieColors.length]+'66'},{offset:1,color:pieColors[idx % pieColors.length]+'0D'}]) } }))
+        });
+      }
+    }
+
+    // 调整所有图表尺寸
+    Object.values(ref).forEach(chart => { if (chart?.resize) chart.resize(); });
+  }, [isDashboardMode, usersTrend, usersAuthDist, topupTrend, topupUserTypeDist, consumptionTrend, userAgentDist, revenueTrend, paymentModeRevenueDist, supplierTrend, supplierDist, chartData, activeChartTab, t]);
+
+  // 大屏模式激活时渲染图表
+  useEffect(() => {
+    if (!isDashboardMode) return;
+    // 等待 DOM 渲染完成
+    const timer = setTimeout(() => {
+      renderDashboardChart();
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [isDashboardMode, renderDashboardChart]);
+
+  // 数据变化时重新渲染大屏图表
+  useEffect(() => {
+    if (!isDashboardMode) return;
+    const timer = setTimeout(() => {
+      renderDashboardChart();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [usersTrend, usersAuthDist, topupTrend, topupUserTypeDist, consumptionTrend, userAgentDist, revenueTrend, paymentModeRevenueDist, supplierTrend, supplierDist, chartData, activeChartTab, renderDashboardChart]);
+
+  // 退出大屏模式时清理图表实例
+  useEffect(() => {
+    if (isDashboardMode) return;
+    const ref = dashboardChartsRef.current;
+    Object.values(ref).forEach(chart => { if (chart?.dispose) chart.dispose(); });
+    Object.keys(ref).forEach(k => { ref[k] = null; });
+  }, [isDashboardMode]);
+
+  // 窗口大小变化时调整大屏图表
+  useEffect(() => {
+    if (!isDashboardMode) return;
+    const handleResize = () => {
+      const ref = dashboardChartsRef.current;
+      Object.values(ref).forEach(chart => { if (chart?.resize) chart.resize(); });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isDashboardMode]);
+
   // 性能指标文字（右上角独立显示）
   const performanceIndicatorsText = (
     <div style={{
@@ -1818,6 +2222,19 @@ export default function FinanceDashboard() {
           style={{ borderRadius: 4 }}
         >
           {t('查询')}
+        </Button>
+        <Button
+          type='secondary'
+          theme='solid'
+          onClick={() => setIsDashboardMode(true)}
+          style={{
+            borderRadius: 4,
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            border: 'none',
+            color: '#fff',
+          }}
+        >
+          🖥️ {t('进入大屏模式')}
         </Button>
       </div>
     </div>
@@ -2202,6 +2619,337 @@ export default function FinanceDashboard() {
       {renderChartRow(
         t('渠道消费趋势'), null, null, null,
         t('渠道消费占比'), null
+      )}
+
+      {/* ========== 大屏模式覆盖层 ========== */}
+      {isDashboardMode && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'linear-gradient(135deg, #0a0e27 0%, #1a1c3a 40%, #0f1429 100%)',
+          zIndex: 10000,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          animation: 'dashboard-enter 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+        }}>
+          {/* 粒子背景 */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            overflow: 'hidden',
+          }}>
+            {Array.from({ length: 30 }).map((_, i) => (
+              <div key={i} style={{
+                position: 'absolute',
+                width: `${2 + Math.random() * 3}px`,
+                height: `${2 + Math.random() * 3}px`,
+                background: `rgba(${30 + Math.random() * 30}, ${144 + Math.random() * 30}, ${255}, ${0.3 + Math.random() * 0.4})`,
+                borderRadius: '50%',
+                left: `${Math.random() * 100}%`,
+                animation: `float-up ${8 + Math.random() * 12}s linear infinite`,
+                animationDelay: `${-Math.random() * 20}s`,
+              }} />
+            ))}
+          </div>
+
+          {/* 网格背景 */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundImage: `
+              linear-gradient(rgba(30, 144, 255, 0.03) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(30, 144, 255, 0.03) 1px, transparent 1px)
+            `,
+            backgroundSize: '60px 60px',
+            pointerEvents: 'none',
+          }} />
+
+          {/* 顶部栏 */}
+          <div style={{
+            position: 'relative',
+            zIndex: 100,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '12px 40px',
+            background: 'linear-gradient(180deg, rgba(10, 14, 39, 0.95) 0%, rgba(10, 14, 39, 0) 100%)',
+            borderBottom: '1px solid rgba(30, 144, 255, 0.2)',
+          }}>
+            <div style={{
+              fontSize: '28px',
+              fontWeight: '600',
+              background: 'linear-gradient(90deg, #1e90ff, #00bfff, #1e90ff)',
+              backgroundSize: '200% auto',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              animation: 'text-shine 3s linear infinite',
+              letterSpacing: '3px',
+            }}>
+              📊 {t('财务运营数据大屏')}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+              <div style={{
+                fontSize: '16px',
+                color: 'rgba(255, 255, 255, 0.7)',
+                fontFamily: "'Courier New', monospace",
+              }}>
+                {currentTime.toLocaleTimeString('zh-CN', { hour12: false })}
+              </div>
+              {/* 性能指标：平均 RPM / TPM */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '6px 16px',
+                background: 'rgba(99, 102, 241, 0.1)',
+                border: '1px solid rgba(99, 102, 241, 0.3)',
+                borderRadius: '20px',
+                fontSize: '13px',
+              }}>
+                <span style={{ color: 'rgba(255, 255, 255, 0.5)' }}>{t('平均RPM')}</span>
+                <span style={{ fontWeight: 'bold', fontSize: '18px', color: '#818cf8', textShadow: '0 0 10px rgba(99, 102, 241, 0.5)' }}>
+                  {dashboardStats.avg_rpm?.toFixed(2) || '0'}
+                </span>
+                <span style={{ color: 'rgba(255, 255, 255, 0.35)', fontSize: 11 }}>{t('请求/分钟')}</span>
+                <span style={{ color: 'rgba(255, 255, 255, 0.2)' }}>|</span>
+                <span style={{ color: 'rgba(255, 255, 255, 0.5)' }}>{t('平均TPM')}</span>
+                <span style={{ fontWeight: 'bold', fontSize: '18px', color: '#fb923c', textShadow: '0 0 10px rgba(249, 115, 22, 0.5)' }}>
+                  {dashboardStats.avg_tpm?.toFixed(2) || '0'}
+                </span>
+                <span style={{ color: 'rgba(255, 255, 255, 0.35)', fontSize: 11 }}>{t('Tokens/分钟')}</span>
+              </div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 16px',
+                background: 'rgba(30, 144, 255, 0.1)',
+                border: '1px solid rgba(30, 144, 255, 0.3)',
+                borderRadius: '20px',
+                color: '#1e90ff',
+                fontSize: '13px',
+              }}>
+                <span>{t('自动刷新')}</span>
+                <span style={{
+                  fontWeight: 'bold',
+                  fontSize: '16px',
+                  minWidth: '24px',
+                  textAlign: 'center',
+                }}>{countdown}</span>
+                <span>{t('秒')}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 内容区域 */}
+          <div style={{
+            position: 'relative',
+            zIndex: 10,
+            flex: 1,
+            padding: '20px 40px',
+            overflowY: 'auto',
+          }}>
+            {/* 全局指标 - 放大版 */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: '20px',
+              marginBottom: '24px',
+            }}>
+              {[
+                { label: t('总用户数'), value: dashboardStats.total_users?.toLocaleString() || 0, color: '#1e90ff' },
+                { label: t('有效充值金额'), value: formatMoney(dashboardStats.total_effective_topup), color: '#52c41a' },
+                { label: t('成功订单数'), value: dashboardStats.success_order_count?.toLocaleString() || 0, color: '#1e90ff' },
+                { label: t('Token 调用量'), value: dashboardStats.total_token_calls?.toLocaleString() || 0, color: '#722ed1' },
+                { label: t('最近7天充值'), value: formatMoney(dashboardStats.week_topup_amount), color: '#52c41a' },
+                { label: t('最近7天请求'), value: dashboardStats.week_token_calls?.toLocaleString() || 0, color: '#722ed1' },
+                { label: t('最近7天营收'), value: formatMoney(dashboardStats.week_revenue), color: '#1e90ff' },
+                { label: t('热门模型'), value: dashboardStats.top_model_name || '-', color: '#722ed1' },
+              ].map((item, i) => (
+                <div key={i} style={{
+                  position: 'relative',
+                  background: 'rgba(20, 24, 52, 0.7)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(30, 144, 255, 0.15)',
+                  borderRadius: '12px',
+                  padding: '24px',
+                  overflow: 'hidden',
+                  transition: 'all 0.3s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(30, 144, 255, 0.4)';
+                  e.currentTarget.style.boxShadow = '0 0 30px rgba(30, 144, 255, 0.15), inset 0 0 30px rgba(30, 144, 255, 0.05)';
+                  e.currentTarget.style.transform = 'translateY(-3px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(30, 144, 255, 0.15)';
+                  e.currentTarget.style.boxShadow = 'none';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}>
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: '3px',
+                    background: 'linear-gradient(90deg, #1e90ff, #00bfff, #722ed1)',
+                  }} />
+                  <div style={{
+                    position: 'absolute',
+                    top: '-100px',
+                    right: '-100px',
+                    width: '200px',
+                    height: '200px',
+                    background: 'radial-gradient(circle, rgba(30, 144, 255, 0.08) 0%, transparent 70%)',
+                    pointerEvents: 'none',
+                  }} />
+                  <div style={{
+                    fontSize: '13px',
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    marginBottom: '10px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px',
+                  }}>{item.label}</div>
+                  <div style={{
+                    fontSize: '36px',
+                    fontWeight: '700',
+                    color: '#fff',
+                    textShadow: `0 0 20px ${item.color}80`,
+                    transition: 'all 0.3s',
+                    className: dataFlash ? 'data-flash' : '',
+                  }}>{item.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* 图表区域 - 使用独立 DOM id */}
+            {/* 第一排：用户趋势 + 用户认证占比 */}
+            <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+              <div style={{ flex: 3, background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '350px' }}>
+                <div id="dashboard-usersTrend" style={{ width: '100%', height: '300px' }} />
+              </div>
+              <div style={{ flex: 1, background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '350px' }}>
+                <div id="dashboard-authDist" style={{ width: '100%', height: '300px' }} />
+              </div>
+            </div>
+
+            {/* 第二排：充值趋势 + 用户充值分布 */}
+            <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+              <div style={{ flex: 3, background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '350px' }}>
+                <div id="dashboard-topupTrend" style={{ width: '100%', height: '300px' }} />
+              </div>
+              <div style={{ flex: 1, background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '350px' }}>
+                <div id="dashboard-topupDist" style={{ width: '100%', height: '300px' }} />
+              </div>
+            </div>
+
+            {/* 第三排：消费趋势 Tabs + 客户端分布 */}
+            <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+              <div style={{ flex: 3, background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '450px' }}>
+                <div style={{ height: '410px', width: '100%', position: 'relative' }}>
+                  {activeChartTab === '1' && <div id="dashboard-quotaDist" style={{ width: '100%', height: '100%' }} />}
+                  {activeChartTab === '2' && <div id="dashboard-callTrend" style={{ width: '100%', height: '100%' }} />}
+                  {activeChartTab === '3' && <div id="dashboard-callDist" style={{ width: '100%', height: '100%' }} />}
+                  {activeChartTab === '4' && <div id="dashboard-callRank" style={{ width: '100%', height: '100%' }} />}
+                  {activeChartTab === '5' && <div id="dashboard-userQuotaRank" style={{ width: '100%', height: '100%' }} />}
+                  {activeChartTab === '6' && <div id="dashboard-userQuotaTrend" style={{ width: '100%', height: '100%' }} />}
+                </div>
+              </div>
+              <div style={{ flex: 1, background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '450px' }}>
+                <div id="dashboard-paymentModeTokens" style={{ width: '100%', height: '410px' }} />
+              </div>
+            </div>
+
+            {/* 第四排：营收趋势 + 付费方式收入对比 */}
+            <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+              <div style={{ flex: 3, background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px' }}>
+                <div id="dashboard-revenueTrend" style={{ width: '100%', height: '300px' }} />
+              </div>
+              <div style={{ flex: 1, background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '400px' }}>
+                <div id="dashboard-revenuePie" style={{ width: '100%', height: '320px' }} />
+              </div>
+            </div>
+
+            {/* 第五排：渠道消费趋势 + 渠道消费占比 */}
+            <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+              <div style={{ flex: 3, background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '350px' }}>
+                <div id="dashboard-supplierTrend" style={{ width: '100%', height: '300px' }} />
+              </div>
+              <div style={{ flex: 1, background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '350px' }}>
+                <div id="dashboard-supplierDist" style={{ width: '100%', height: '300px' }} />
+              </div>
+            </div>
+          </div>
+
+          {/* 刷新提示 */}
+          {dataFlash && (
+            <div style={{
+              position: 'fixed',
+              top: '70px',
+              right: '220px',
+              zIndex: 10001,
+              padding: '10px 20px',
+              background: 'rgba(82, 196, 26, 0.15)',
+              border: '1px solid rgba(82, 196, 26, 0.4)',
+              borderRadius: '8px',
+              color: '#52c41a',
+              fontSize: '14px',
+              animation: 'fadeInOut 1s ease-out',
+              backdropFilter: 'blur(10px)',
+            }}>
+              ✓ {t('数据已刷新')}
+            </div>
+          )}
+
+          {/* 动画样式 */}
+          <style>{`
+            @keyframes dashboard-enter {
+              0% { opacity: 0; transform: scale(0.92); filter: blur(10px); }
+              100% { opacity: 1; transform: scale(1); filter: blur(0); }
+            }
+            @keyframes float-up {
+              0% { transform: translateY(100vh) translateX(0) scale(0); opacity: 0; }
+              10% { opacity: 1; transform: translateY(90vh) translateX(10px) scale(1); }
+              90% { opacity: 0.8; }
+              100% { transform: translateY(-10vh) translateX(-20px) scale(0.5); opacity: 0; }
+            }
+            @keyframes text-shine {
+              0% { background-position: 0% center; }
+              100% { background-position: 200% center; }
+            }
+            @keyframes flash {
+              0% { text-shadow: 0 0 30px rgba(30, 144, 255, 0.9); filter: brightness(1.5); }
+              100% { text-shadow: none; filter: brightness(1); }
+            }
+            @keyframes fadeInOut {
+              0% { opacity: 0; transform: translateX(20px); }
+              20% { opacity: 1; transform: translateX(0); }
+              80% { opacity: 1; transform: translateX(0); }
+              100% { opacity: 0; transform: translateX(20px); }
+            }
+            .data-flash {
+              animation: flash 0.6s ease-out;
+            }
+            /* 自定义滚动条 */
+            ::-webkit-scrollbar { width: 6px; }
+            ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.03); }
+            ::-webkit-scrollbar-thumb { background: rgba(30, 144, 255, 0.3); border-radius: 3px; }
+            ::-webkit-scrollbar-thumb:hover { background: rgba(30, 144, 255, 0.5); }
+          `}</style>
+        </div>
       )}
     </div>
   );
