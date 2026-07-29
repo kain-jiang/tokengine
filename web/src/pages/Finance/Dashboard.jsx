@@ -1721,17 +1721,27 @@ export default function FinanceDashboard() {
       ref[key].setOption(option, true);
     };
 
-    // 1. 注册用户趋势
+    // 1. 注册用户趋势（支持每日/累计指标切换）
     if (usersTrend?.length) {
       const dom = getDom('dashboard-usersTrend');
+      // 根据指标切换计算数据
+      let usersData = usersTrend;
+      let yAxisFormatter = '{value}';
+      if (usersTrendMetric === 'cumulative') {
+        usersData = usersTrend.reduce((acc, item, index) => {
+          const cumulative = index === 0 ? item.count : acc[index - 1].count + item.count;
+          acc.push({ ...item, count: cumulative });
+          return acc;
+        }, []);
+      }
       initOrUpdate('usersTrend', dom, {
         backgroundColor: 'transparent',
-        title: { text: t('注册用户趋势'), textStyle: { color: 'rgba(255,255,255,0.8)', fontSize: 16 }, left: 'center' },
+        title: { text: usersTrendMetric === 'cumulative' ? t('累计注册用户趋势') : t('注册用户趋势'), textStyle: { color: 'rgba(255,255,255,0.8)', fontSize: 16 }, left: 'center' },
         tooltip: { trigger: 'axis', backgroundColor: 'rgba(10,14,39,0.9)', borderColor: 'rgba(30,144,255,0.3)', textStyle: { color: '#fff' } },
         grid: { left: '3%', right: '4%', bottom: '3%', top: 40, containLabel: true },
-        xAxis: { type: 'category', data: usersTrend.map(i => formatDateLabel(i.date)), axisLabel: { color: 'rgba(255,255,255,0.6)' }, axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } } },
-        yAxis: { type: 'value', axisLabel: { color: 'rgba(255,255,255,0.6)' }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } } },
-        series: [{ type: 'line', smooth: true, data: usersTrend.map(i => i.count), itemStyle: { color: '#1e90ff' }, areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(30,144,255,0.4)'},{offset:1,color:'rgba(30,144,255,0.05)'}]) } }]
+        xAxis: { type: 'category', data: usersData.map(i => formatDateLabel(i.date)), axisLabel: { color: 'rgba(255,255,255,0.6)' }, axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } } },
+        yAxis: { type: 'value', axisLabel: { color: 'rgba(255,255,255,0.6)', formatter: yAxisFormatter }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } } },
+        series: [{ type: 'line', smooth: true, data: usersData.map(i => i.count), itemStyle: { color: '#1e90ff' }, areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(30,144,255,0.4)'},{offset:1,color:'rgba(30,144,255,0.05)'}]) } }]
       });
     }
 
@@ -1751,16 +1761,37 @@ export default function FinanceDashboard() {
       });
     }
 
-    // 3. 有效充值趋势
+    // 3. 有效充值趋势（支持金额/订单数/累计指标切换）
     if (topupTrend?.length) {
+      let topupData = topupTrend;
+      let valueKey = 'amount';
+      let unit = '¥';
+      let titleText = t('有效充值趋势');
+      let yAxisFormatter = '¥{value}';
+      if (trendMetric === 'count') {
+        valueKey = 'count';
+        unit = '';
+        titleText = t('有效充值订单趋势');
+        yAxisFormatter = '{value}';
+      } else if (trendMetric === 'cumulative') {
+        topupData = topupTrend.reduce((acc, item, index) => {
+          const cumulative = index === 0 ? item.amount : acc[index - 1].amount + item.amount;
+          acc.push({ ...item, amount: cumulative });
+          return acc;
+        }, []);
+        valueKey = 'amount';
+        unit = '¥';
+        titleText = t('累计有效充值趋势');
+        yAxisFormatter = '¥{value}';
+      }
       initOrUpdate('topupTrend', getDom('dashboard-topupTrend'), {
         backgroundColor: 'transparent',
-        title: { text: t('有效充值趋势'), textStyle: { color: 'rgba(255,255,255,0.8)', fontSize: 16 }, left: 'center' },
+        title: { text: titleText, textStyle: { color: 'rgba(255,255,255,0.8)', fontSize: 16 }, left: 'center' },
         tooltip: { trigger: 'axis', backgroundColor: 'rgba(10,14,39,0.9)', borderColor: 'rgba(30,144,255,0.3)', textStyle: { color: '#fff' } },
         grid: { left: '3%', right: '4%', bottom: '3%', top: 40, containLabel: true },
-        xAxis: { type: 'category', data: topupTrend.map(i => formatDateLabel(i.date)), axisLabel: { color: 'rgba(255,255,255,0.6)' }, axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } } },
-        yAxis: { type: 'value', axisLabel: { color: 'rgba(255,255,255,0.6)', formatter: '¥{value}' }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } } },
-        series: [{ type: 'line', smooth: true, data: topupTrend.map(i => i.amount), itemStyle: { color: '#52c41a' }, areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(82,196,26,0.4)'},{offset:1,color:'rgba(82,196,26,0.05)'}]) } }]
+        xAxis: { type: 'category', data: topupData.map(i => formatDateLabel(i.date)), axisLabel: { color: 'rgba(255,255,255,0.6)' }, axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } } },
+        yAxis: { type: 'value', axisLabel: { color: 'rgba(255,255,255,0.6)', formatter: yAxisFormatter }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } } },
+        series: [{ type: 'line', smooth: true, data: topupData.map(i => i[valueKey]), itemStyle: { color: '#52c41a' }, areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(82,196,26,0.4)'},{offset:1,color:'rgba(82,196,26,0.05)'}]) } }]
       });
     }
 
@@ -1796,12 +1827,55 @@ export default function FinanceDashboard() {
     // 6. 客户端分布
     const uaData = userAgentDist.map(i => ({ name: i.user_agent || '未知客户端', value: i.count || 0 })).filter(i => i.value > 0).slice(0, 10);
     if (uaData.length) {
+      // 截断过长的图例名称（最多 30 字符）
+      const MAX_LEGEND_LENGTH = 30;
+      const legendData = uaData.map(item => ({
+        name: item.name.length > MAX_LEGEND_LENGTH
+          ? item.name.slice(0, MAX_LEGEND_LENGTH) + '...'
+          : item.name,
+        value: item.value,
+        originalName: item.name
+      }));
+      
       initOrUpdate('paymentModeTokens', getDom('dashboard-paymentModeTokens'), {
         backgroundColor: 'transparent',
         title: { text: t('客户端分布'), textStyle: { color: 'rgba(255,255,255,0.8)', fontSize: 16 }, left: 'center' },
-        tooltip: { trigger: 'item', backgroundColor: 'rgba(10,14,39,0.9)', borderColor: 'rgba(30,144,255,0.3)', textStyle: { color: '#fff' } },
-        legend: { orient: 'horizontal', bottom: 0, textStyle: { color: 'rgba(255,255,255,0.6)' } },
-        series: [{ type: 'pie', radius: ['35%', '65%'], center: ['50%', '45%'], itemStyle: { borderRadius: 4, borderColor: '#0a0e27', borderWidth: 2 }, label: { show: false }, labelLine: { show: false }, data: uaData, color: pieColors }]
+        tooltip: {
+          trigger: 'item',
+          backgroundColor: 'rgba(10,14,39,0.9)',
+          borderColor: 'rgba(30,144,255,0.3)',
+          textStyle: { color: '#fff' },
+          formatter: (params) => {
+            const originalName = params.data?.originalName || params.name;
+            return `${originalName}<br/>${params.marker}${params.value} (${params.percent}%)`;
+          }
+        },
+        legend: {
+          orient: 'vertical',
+          right: '5%',
+          top: 'center',
+          textStyle: {
+            color: 'rgba(255,255,255,0.6)',
+            fontSize: 11,
+            width: 120,
+            overflow: 'truncate'
+          },
+          padding: [0, 0, 0, 0],
+          itemWidth: 12,
+          itemHeight: 8,
+          itemGap: 12,
+          data: legendData.map(item => item.name)
+        },
+        series: [{
+          type: 'pie',
+          radius: ['35%', '60%'],
+          center: ['38%', '50%'],
+          itemStyle: { borderRadius: 4, borderColor: '#0a0e27', borderWidth: 2 },
+          label: { show: false },
+          labelLine: { show: false },
+          data: legendData,
+          color: pieColors
+        }]
       });
     }
 
@@ -1841,9 +1915,9 @@ export default function FinanceDashboard() {
       });
     }
 
-    // 9. 渠道消费趋势（按渠道分组，每个渠道一条折线）
+    // 9. 渠道消费趋势（支持 Tokens/请求次数/消费金额/累计 指标切换）
     if (supplierTrend?.length) {
-      // 按日期和渠道聚合
+      // 按日期和渠道聚合（同时聚合 cost/tokens/request_count）
       const dateChannelMap = {};
       const channelSet = new Set();
       supplierTrend.forEach(item => {
@@ -1851,23 +1925,84 @@ export default function FinanceDashboard() {
         const channel = item.supplier || '未知';
         channelSet.add(channel);
         if (!dateChannelMap[date]) dateChannelMap[date] = {};
-        dateChannelMap[date][channel] = (dateChannelMap[date][channel] || 0) + (item.cost || 0);
+        if (!dateChannelMap[date][channel]) dateChannelMap[date][channel] = { cost: 0, tokens: 0, request_count: 0 };
+        dateChannelMap[date][channel].cost += item.cost || 0;
+        dateChannelMap[date][channel].tokens += item.tokens || 0;
+        dateChannelMap[date][channel].request_count += item.request_count || 0;
       });
       const dates = Object.keys(dateChannelMap).sort();
       const channels = Array.from(channelSet).sort();
+
+      // 根据指标切换确定数据键、单位、标题
+      let dataKey = 'cost';
+      let yAxisFormatter = '¥{value}';
+      let titleText = t('渠道消费趋势');
+      let isCost = true;
+      if (supplierTrendMetric === 'tokens') {
+        dataKey = 'tokens';
+        yAxisFormatter = '{value}';
+        titleText = t('渠道消耗Tokens趋势');
+        isCost = false;
+      } else if (supplierTrendMetric === 'count') {
+        dataKey = 'request_count';
+        yAxisFormatter = '{value}';
+        titleText = t('渠道请求次数趋势');
+        isCost = false;
+      } else if (supplierTrendMetric === 'cumulative') {
+        dataKey = 'cost';
+        yAxisFormatter = '¥{value}';
+        titleText = t('渠道累计消费趋势');
+        isCost = true;
+      } else {
+        dataKey = 'cost';
+        yAxisFormatter = '¥{value}';
+        titleText = t('渠道消费趋势');
+        isCost = true;
+      }
+
+      // 累计模式：按渠道分别计算累计值
+      let seriesDataBuilder;
+      if (supplierTrendMetric === 'cumulative') {
+        const cumulativeByChannel = {};
+        channels.forEach(ch => {
+          cumulativeByChannel[ch] = dates.reduce((acc, date, index) => {
+            const daily = dateChannelMap[date][ch]?.cost || 0;
+            const cumulative = index === 0 ? daily : acc[index - 1] + daily;
+            acc.push(cumulative);
+            return acc;
+          }, []);
+        });
+        seriesDataBuilder = (ch) => cumulativeByChannel[ch];
+      } else {
+        seriesDataBuilder = (ch) => dates.map(d => dateChannelMap[d][ch]?.[dataKey] || 0);
+      }
+
       initOrUpdate('supplierTrend', getDom('dashboard-supplierTrend'), {
         backgroundColor: 'transparent',
-        title: { text: t('渠道消费趋势'), textStyle: { color: 'rgba(255,255,255,0.8)', fontSize: 16 }, left: 'center' },
-        tooltip: { trigger: 'axis', backgroundColor: 'rgba(10,14,39,0.9)', borderColor: 'rgba(30,144,255,0.3)', textStyle: { color: '#fff' } },
+        title: { text: titleText, textStyle: { color: 'rgba(255,255,255,0.8)', fontSize: 16 }, left: 'center' },
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: 'rgba(10,14,39,0.9)',
+          borderColor: 'rgba(30,144,255,0.3)',
+          textStyle: { color: '#fff' },
+          formatter: function(params) {
+            if (!params || !params.length) return '';
+            let result = `<strong>${formatDateLabel(params[0].name)}</strong><br/>`;
+            params.forEach(p => {
+              result += `${p.marker}${p.seriesName}: ${isCost ? '¥' + p.value.toFixed(2) : p.value.toFixed(0)}<br/>`;
+            });
+            return result;
+          }
+        },
         legend: { type: 'scroll', orient: 'horizontal', bottom: 0, data: channels, textStyle: { color: 'rgba(255,255,255,0.6)' } },
         grid: { left: '3%', right: '4%', bottom: '15%', top: 40, containLabel: true },
         xAxis: { type: 'category', data: dates.map(formatDateLabel), axisLabel: { color: 'rgba(255,255,255,0.6)', rotate: 45 }, axisLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } } },
-        yAxis: { type: 'value', axisLabel: { color: 'rgba(255,255,255,0.6)', formatter: '¥{value}' }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } } },
+        yAxis: { type: 'value', axisLabel: { color: 'rgba(255,255,255,0.6)', formatter: yAxisFormatter }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } } },
         series: channels.map((ch, idx) => ({
           name: ch,
           type: 'line',
           smooth: true,
-          data: dates.map(d => dateChannelMap[d][ch] || 0),
+          data: seriesDataBuilder(ch),
           itemStyle: { color: pieColors[idx % pieColors.length] },
           areaStyle: { color: new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:pieColors[idx % pieColors.length]+'66'},{offset:1,color:pieColors[idx % pieColors.length]+'0D'}]) }
         }))
@@ -1976,7 +2111,7 @@ export default function FinanceDashboard() {
 
     // 调整所有图表尺寸
     Object.values(ref).forEach(chart => { if (chart?.resize) chart.resize(); });
-  }, [isDashboardMode, usersTrend, usersAuthDist, topupTrend, topupUserTypeDist, consumptionTrend, userAgentDist, revenueTrend, paymentModeRevenueDist, supplierTrend, supplierDist, chartData, activeChartTab, t]);
+  }, [isDashboardMode, usersTrend, usersAuthDist, topupTrend, topupUserTypeDist, consumptionTrend, userAgentDist, revenueTrend, paymentModeRevenueDist, supplierTrend, supplierDist, chartData, activeChartTab, t, usersTrendMetric, trendMetric, supplierTrendMetric]);
 
   // 大屏模式激活时渲染图表
   useEffect(() => {
@@ -2237,6 +2372,48 @@ export default function FinanceDashboard() {
           🖥️ {t('进入大屏模式')}
         </Button>
       </div>
+    </div>
+  );
+
+  // 大屏模式：暗色主题指标切换按钮组
+  // options: [{ key, label }], activeKey: 当前选中项, onSelect: 切换回调
+  const renderDashboardMetricSwitch = (options, activeKey, onSelect) => (
+    <div style={{
+      position: 'absolute',
+      right: 16,
+      top: 12,
+      zIndex: 10,
+      display: 'flex',
+      gap: 4,
+      background: 'rgba(10, 14, 39, 0.6)',
+      border: '1px solid rgba(30, 144, 255, 0.2)',
+      borderRadius: 6,
+      padding: 3,
+      backdropFilter: 'blur(8px)',
+    }}>
+      {options.map(opt => (
+        <button
+          key={opt.key}
+          onClick={() => onSelect(opt.key)}
+          style={{
+            background: activeKey === opt.key
+              ? 'linear-gradient(135deg, rgba(30, 144, 255, 0.9) 0%, rgba(0, 191, 255, 0.9) 100%)'
+              : 'transparent',
+            border: 'none',
+            color: activeKey === opt.key ? '#fff' : 'rgba(255, 255, 255, 0.55)',
+            fontSize: 11,
+            fontWeight: activeKey === opt.key ? 600 : 400,
+            padding: '4px 10px',
+            borderRadius: 4,
+            cursor: 'pointer',
+            transition: 'all 0.25s ease',
+            boxShadow: activeKey === opt.key ? '0 0 12px rgba(30, 144, 255, 0.4)' : 'none',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {opt.label}
+        </button>
+      ))}
     </div>
   );
 
@@ -2838,7 +3015,15 @@ export default function FinanceDashboard() {
             {/* 图表区域 - 使用独立 DOM id */}
             {/* 第一排：用户趋势 + 用户认证占比 */}
             <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-              <div style={{ flex: 3, background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '350px' }}>
+              <div style={{ flex: 3, position: 'relative', background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '350px' }}>
+                {renderDashboardMetricSwitch(
+                  [
+                    { key: 'daily', label: t('每日注册用户数') },
+                    { key: 'cumulative', label: t('累计注册用户数') },
+                  ],
+                  usersTrendMetric,
+                  setUsersTrendMetric
+                )}
                 <div id="dashboard-usersTrend" style={{ width: '100%', height: '300px' }} />
               </div>
               <div style={{ flex: 1, background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '350px' }}>
@@ -2848,7 +3033,16 @@ export default function FinanceDashboard() {
 
             {/* 第二排：充值趋势 + 用户充值分布 */}
             <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-              <div style={{ flex: 3, background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '350px' }}>
+              <div style={{ flex: 3, position: 'relative', background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '350px' }}>
+                {renderDashboardMetricSwitch(
+                  [
+                    { key: 'amount', label: t('充值金额') },
+                    { key: 'count', label: t('订单数') },
+                    { key: 'cumulative', label: t('累计充值') },
+                  ],
+                  trendMetric,
+                  setTrendMetric
+                )}
                 <div id="dashboard-topupTrend" style={{ width: '100%', height: '300px' }} />
               </div>
               <div style={{ flex: 1, background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '350px' }}>
@@ -2858,7 +3052,28 @@ export default function FinanceDashboard() {
 
             {/* 第三排：消费趋势 Tabs + 客户端分布 */}
             <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-              <div style={{ flex: 3, background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '450px' }}>
+              <div style={{ flex: 3, position: 'relative', background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '450px' }}>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  fontFamily: "'PP Neue Montreal Mono', Georgia, sans-serif",
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.055px',
+                  marginBottom: '16px',
+                }}>{t('消费趋势')}</div>
+                {renderDashboardMetricSwitch(
+                  [
+                    { key: '1', label: t('消耗分布') },
+                    { key: '2', label: t('调用趋势') },
+                    { key: '3', label: t('调用次数分布') },
+                    { key: '4', label: t('调用次数排行') },
+                    { key: '5', label: t('用户消耗排行') },
+                    { key: '6', label: t('用户消耗趋势') },
+                  ],
+                  activeChartTab,
+                  setActiveChartTab
+                )}
                 <div style={{ height: '410px', width: '100%', position: 'relative' }}>
                   {activeChartTab === '1' && <div id="dashboard-quotaDist" style={{ width: '100%', height: '100%' }} />}
                   {activeChartTab === '2' && <div id="dashboard-callTrend" style={{ width: '100%', height: '100%' }} />}
@@ -2876,6 +3091,15 @@ export default function FinanceDashboard() {
             {/* 第四排：营收趋势 + 付费方式收入对比 */}
             <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
               <div style={{ flex: 3, background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px' }}>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  fontFamily: "'PP Neue Montreal Mono', Georgia, sans-serif",
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.055px',
+                  marginBottom: '16px',
+                }}>{t('营收趋势')}</div>
                 <div id="dashboard-revenueTrend" style={{ width: '100%', height: '300px' }} />
               </div>
               <div style={{ flex: 1, background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '400px' }}>
@@ -2885,7 +3109,17 @@ export default function FinanceDashboard() {
 
             {/* 第五排：渠道消费趋势 + 渠道消费占比 */}
             <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-              <div style={{ flex: 3, background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '350px' }}>
+              <div style={{ flex: 3, position: 'relative', background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '350px' }}>
+                {renderDashboardMetricSwitch(
+                  [
+                    { key: 'tokens', label: t('消耗Tokens') },
+                    { key: 'count', label: t('请求次数') },
+                    { key: 'cost', label: t('消费金额') },
+                    { key: 'cumulative', label: t('累计消费') },
+                  ],
+                  supplierTrendMetric,
+                  setSupplierTrendMetric
+                )}
                 <div id="dashboard-supplierTrend" style={{ width: '100%', height: '300px' }} />
               </div>
               <div style={{ flex: 1, background: 'rgba(20, 24, 52, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(30, 144, 255, 0.15)', borderRadius: '12px', padding: '24px', minHeight: '350px' }}>
