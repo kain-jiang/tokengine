@@ -450,6 +450,8 @@ export function getChannelIcon(channelType) {
       return <OpenAI size={iconSize} />;
     case 60: // 鲸纬 Jingwei（使用通用图标）
       return <OpenAI size={iconSize} />;
+    case 61: // 好易智算 Haoee（使用通用图标）
+      return <OpenAI size={iconSize} />;
     case 53: // SubModel
       return <OpenAI size={iconSize} />;
     case 8: // 自定义渠道

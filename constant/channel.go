@@ -58,7 +58,8 @@ const (
 	ChannelTypeZLHub          = 58
 	ChannelTypeAgnesAI        = 59 // Agnes AI 渠道
 	ChannelTypeJingWei        = 60 // 鲸纬
-	ChannelTypeDummy          = 61 // this one is only for count, do not add any channel after this
+	ChannelTypeHaoee          = 61 // 好易智算
+	ChannelTypeDummy          = 62 // this one is only for count, do not add any channel after this
 
 )
 
@@ -124,6 +125,7 @@ var ChannelBaseURLs = []string{
 	"https://api.zlhub.cn",                      //58
 	"https://apihub.agnes-ai.com/v1",            //59 - Agnes AI
 	"https://ai.fzjinglin.com",                  //60 - 鲸纬
+	"https://maas.haoee.com",                    //61 - 好易智算
 }
 
 var ChannelTypeNames = map[int]string{
@@ -183,6 +185,7 @@ var ChannelTypeNames = map[int]string{
 	ChannelTypeCodex:          "Codex",
 	ChannelTypeZLHub:          "ZLHub",
 	ChannelTypeAgnesAI:        "AgnesAI",
+	ChannelTypeHaoee:          "Haoee",
 }
 
 func GetChannelTypeName(channelType int) string {
