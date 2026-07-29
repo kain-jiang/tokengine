@@ -300,7 +300,7 @@ type ModelConsumptionItem struct {
 // 财务运营概览（Dashboard）相关 DTO - v3
 // ============================================
 
-// DashboardStats 统计指标（9个指标）
+// DashboardStats 统计指标（9个指标 + 性能指标）
 type DashboardStats struct {
 	TotalUsers          int     `json:"total_users"`           // 用户数量
 	TotalEffectiveTopup float64 `json:"total_effective_topup"` // 有效充值金额
@@ -311,6 +311,8 @@ type DashboardStats struct {
 	WeekRevenue         float64 `json:"week_revenue"`          // 本周营业收入
 	TopModelName        string  `json:"top_model_name"`        // 本周调用次数最多的模型名称
 	TopModelCallCount   int64   `json:"top_model_call_count"`  // 本周调用次数最多的模型调用次数
+	AvgRPM              float64 `json:"avg_rpm"`               // 平均RPM（请求数/分钟）
+	AvgTPM              float64 `json:"avg_tpm"`               // 平均TPM（tokens/分钟）
 }
 
 // UserTrendItem 用户注册趋势项
