@@ -2369,7 +2369,7 @@ export default function FinanceDashboard() {
             color: '#fff',
           }}
         >
-          🖥️ {t('进入大屏模式')}
+          🖥️ {t('大屏模式')}
         </Button>
       </div>
     </div>
@@ -2950,7 +2950,7 @@ export default function FinanceDashboard() {
                 { label: t('总用户数'), value: dashboardStats.total_users?.toLocaleString() || 0, color: '#1e90ff' },
                 { label: t('有效充值金额'), value: formatMoney(dashboardStats.total_effective_topup), color: '#52c41a' },
                 { label: t('成功订单数'), value: dashboardStats.success_order_count?.toLocaleString() || 0, color: '#1e90ff' },
-                { label: t('Token 调用量'), value: dashboardStats.total_token_calls?.toLocaleString() || 0, color: '#722ed1' },
+                { label: t('模型请求次数'), value: dashboardStats.total_token_calls?.toLocaleString() || 0, color: '#722ed1' },
                 { label: t('最近7天充值'), value: formatMoney(dashboardStats.week_topup_amount), color: '#52c41a' },
                 { label: t('最近7天请求'), value: dashboardStats.week_token_calls?.toLocaleString() || 0, color: '#722ed1' },
                 { label: t('最近7天营收'), value: formatMoney(dashboardStats.week_revenue), color: '#1e90ff' },
