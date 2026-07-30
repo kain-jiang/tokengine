@@ -144,19 +144,22 @@ func (s *FinanceService) GetDashboardStats(startTime, endTime int64) (*dto.Dashb
 	stats.TopModelName = topModel.ModelName
 	stats.TopModelCallCount = topModel.Count
 
-	// 10-11. 平均RPM和平均TPM（基于时间范围计算）
+	// 10-11. 平均RPM和平均TPM（基于最近24小时计算，与 /console 页面性能指标保持一致）
 	// RPM = 总请求数 / 时间跨度（分钟）
 	// TPM = 总tokens / 时间跨度（分钟）
-	if endTime > startTime {
+	{
 		type rpmTpmResult struct {
 			RequestCount int64 `gorm:"column:rpm"`
 			TotalTokens  int64 `gorm:"column:tpm"`
 		}
 		var result rpmTpmResult
+		// 使用最近24小时的数据计算性能指标
+		now := time.Now().Unix()
+		twentyFourHoursAgo := now - 24*60*60
 		// 使用 LOG_DB 以兼容日志独立数据库（LOG_SQL_DSN）的场景，
 		// 与 model/log.go 中其它日志查询保持一致
-		model.LOG_DB.Raw(`SELECT COUNT(*) as rpm, COALESCE(SUM(prompt_tokens + completion_tokens), 0) as tpm FROM logs WHERE type = 2 AND created_at >= ? AND created_at <= ?`, startTime, endTime).Scan(&result)
-		timeDiffMinutes := float64(endTime-startTime) / 60.0
+		model.LOG_DB.Raw(`SELECT COUNT(*) as rpm, COALESCE(SUM(prompt_tokens + completion_tokens), 0) as tpm FROM logs WHERE type = 2 AND created_at >= ? AND created_at <= ?`, twentyFourHoursAgo, now).Scan(&result)
+		timeDiffMinutes := 24.0 * 60.0
 		if timeDiffMinutes > 0 {
 			stats.AvgRPM = float64(result.RequestCount) / timeDiffMinutes
 			stats.AvgTPM = float64(result.TotalTokens) / timeDiffMinutes
