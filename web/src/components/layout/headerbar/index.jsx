@@ -141,6 +141,8 @@ const HeaderBar = ({ onMobileMenuToggle, drawerOpen, onBannerVisibilityChange, o
             logout={logout}
             navigate={navigate}
             t={t}
+            theme={theme}
+            onThemeToggle={handleThemeToggle}
           />
         </div>
       </div>
