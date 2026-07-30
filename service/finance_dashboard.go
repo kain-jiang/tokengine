@@ -113,8 +113,26 @@ func (s *FinanceService) GetDashboardStats(startTime, endTime int64) (*dto.Dashb
 	model.DB.Raw(`SELECT COUNT(*) FROM logs WHERE type = 2 AND created_at >= ?`, weekStart).Scan(&weekTokenCalls)
 	stats.WeekTokenCalls = weekTokenCalls
 
-	// 7. 本周营业收入 = 本周充值金额（简化处理）
-	stats.WeekRevenue = stats.WeekTopupAmount
+	// 7. 本周营业收入 = 本周按量付费营收 + 本周订阅套餐营收
+	quotaPerUnit := common.QuotaPerUnit
+	if quotaPerUnit <= 0 {
+		quotaPerUnit = 50000000
+	}
+	usdToCnyRate := operation_setting.USDExchangeRate
+	if usdToCnyRate <= 0 {
+		usdToCnyRate = 7.3
+	}
+
+	// 按量付费营收：从 logs 表统计 type=2（消费记录）
+	var weekPayAsYouGoQuota int64
+	model.LOG_DB.Raw(`SELECT COALESCE(SUM(quota), 0) FROM logs WHERE type = 2 AND created_at >= ?`, weekStart).Scan(&weekPayAsYouGoQuota)
+	weekPayAsYouGoRevenue := float64(weekPayAsYouGoQuota) / float64(quotaPerUnit) * usdToCnyRate
+
+	// 订阅套餐营收：从 subscription_orders 表统计成功订单
+	var weekSubscriptionRevenue float64
+	model.DB.Raw(`SELECT COALESCE(SUM(money), 0) * ? FROM subscription_orders WHERE status = ? AND create_time >= ?`, usdToCnyRate, common.TopUpStatusSuccess, weekStart).Scan(&weekSubscriptionRevenue)
+
+	stats.WeekRevenue = math.Round((weekPayAsYouGoRevenue+weekSubscriptionRevenue)*100) / 100
 
 	// 8-9. 本周调用次数最多的模型
 	type topModelResult struct {

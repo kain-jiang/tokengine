@@ -322,12 +322,11 @@ export default function FinanceDashboard() {
     }
   };
 
-  // 初始化默认日期范围：最近一个月
+  // 初始化默认日期范围：最近24小时（与 /console 页面性能指标保持一致）
   useEffect(() => {
     const endDate = new Date();
     const startDate = new Date();
-    startDate.setMonth(startDate.getMonth() - 1);
-    startDate.setHours(0, 0, 0, 0);
+    startDate.setHours(startDate.getHours() - 24);
     setDateRange({ startDate, endDate });
     setStartTime(Math.floor(startDate.getTime() / 1000));
     setEndTime(Math.floor(endDate.getTime() / 1000));
