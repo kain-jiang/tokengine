@@ -2369,7 +2369,7 @@ export default function FinanceDashboard() {
             color: '#fff',
           }}
         >
-          🖥️ {t('进入大屏模式')}
+          🖥️ {t('大屏模式')}
         </Button>
       </div>
     </div>
