@@ -27,6 +27,17 @@ func getPayAsYouGoFilter() string {
 	}
 }
 
+// getPayAsYouGoFilterForTopModel 生成"按量付费"的 WHERE 条件（不带表别名，用于 TopModel 查询）
+func getPayAsYouGoFilterForTopModel() string {
+	if common.UsingPostgreSQL {
+		return " AND ((other)::jsonb->>'billing_source') = 'wallet'"
+	} else if common.UsingSQLite {
+		return " AND json_extract(other, '$.billing_source') = 'wallet'"
+	} else {
+		return " AND (other->>'$.billing_source') = 'wallet'"
+	}
+}
+
 // getWeekStart 获取最近7天的开始时间戳（7天前的 00:00:00）
 func (s *FinanceService) getWeekStart() int64 {
 	now := time.Now()
@@ -1017,6 +1028,144 @@ func (s *FinanceService) GetDashboardRevenueTrend(startTime, endTime int64) (*dt
 			Date:   row.Date,
 			Amount: math.Round(row.Amount*100) / 100,
 		})
+	}
+
+	return response, nil
+}
+
+// ============================================
+// 营收管理 Dashboard（RevenueManagement 图表板块）
+// ============================================
+
+// GetRevenueManagementDashboard 获取营收管理 Dashboard 数据（折线图 + 饼图）
+// revenueType: "payg" 或 "subscription"
+func (s *FinanceService) GetRevenueManagementDashboard(startTime, endTime int64, revenueType string, username string) (*dto.RevenueManagementDashboardResponse, error) {
+	response := &dto.RevenueManagementDashboardResponse{
+		Trend: make([]dto.RevenueManagementTrendItem, 0),
+		TopN:  make([]dto.RevenueManagementTopItem, 0),
+	}
+
+	quotaPerUnit := common.QuotaPerUnit
+	if quotaPerUnit <= 0 {
+		quotaPerUnit = 50000000
+	}
+
+	usdToCnyRate := operation_setting.USDExchangeRate
+	if usdToCnyRate <= 0 {
+		usdToCnyRate = 7.3
+	}
+
+	if revenueType == "payg" {
+		// 按量付费
+		// 1. 趋势：从 logs 表统计 type=2 且 billing_source='wallet' 的记录，按天聚合
+		type revenueTrendRow struct {
+			Date   string  `db:"date"`
+			Amount float64 `db:"amount"`
+		}
+
+		var paygRows []revenueTrendRow
+		paygGroupBy := getLogGroupByClause(startTime, endTime)
+		usernameFilter := ""
+		if username != "" {
+			if common.UsingPostgreSQL {
+				usernameFilter = fmt.Sprintf(" AND l.username = '%s'", username)
+			} else if common.UsingSQLite {
+				usernameFilter = fmt.Sprintf(" AND l.username = '%s'", username)
+			} else {
+				usernameFilter = fmt.Sprintf(" AND l.username = '%s'", username)
+			}
+		}
+		query := fmt.Sprintf(`
+			SELECT %s as date,
+			       COALESCE(SUM(l.quota), 0) / ? * ? as amount
+			FROM logs l
+			WHERE l.type = 2 AND l.created_at >= ? AND l.created_at <= ?%s%s
+			GROUP BY date ORDER BY date`, paygGroupBy, getPayAsYouGoFilter(), usernameFilter)
+		model.LOG_DB.Raw(query, quotaPerUnit, usdToCnyRate, startTime, endTime).Scan(&paygRows)
+		for _, row := range paygRows {
+			response.Trend = append(response.Trend, dto.RevenueManagementTrendItem{
+				Date:   row.Date,
+				Amount: math.Round(row.Amount*100) / 100,
+			})
+		}
+
+		// 2. Top5 模型：从 logs 表统计 model_name 的聚合金额
+		type topModelRow struct {
+			ModelName  string `db:"model_name"`
+			TotalQuota int64  `db:"total_quota"`
+		}
+		var topModelRows []topModelRow
+		modelNameFilter := ""
+		if username != "" {
+			modelNameFilter = fmt.Sprintf(" AND username = '%s'", username)
+		}
+		model.LOG_DB.Raw(fmt.Sprintf(`
+			SELECT model_name as model_name,
+			       COALESCE(SUM(quota), 0) as total_quota
+			FROM logs
+			WHERE type = 2 AND created_at >= ? AND created_at <= ?%s%s
+			GROUP BY model_name
+			ORDER BY total_quota DESC
+			LIMIT 5`, getPayAsYouGoFilterForTopModel(), modelNameFilter), startTime, endTime).Scan(&topModelRows)
+		for _, row := range topModelRows {
+			response.TopN = append(response.TopN, dto.RevenueManagementTopItem{
+				Name:  row.ModelName,
+				Value: math.Round(float64(row.TotalQuota)/float64(quotaPerUnit)*usdToCnyRate*100) / 100,
+			})
+		}
+	} else if revenueType == "subscription" {
+		// 订阅套餐
+		// 用户名过滤：通过用户名获取 user_id
+		userIDFilter := ""
+		if username != "" {
+			var user model.User
+			if err := model.DB.Where("username = ?", username).First(&user).Error; err == nil {
+				userIDFilter = fmt.Sprintf(" AND user_id = %d", user.Id)
+			}
+		}
+
+		// 1. 趋势：从 subscription_orders 表统计成功订单，按天聚合
+		type subRevenueTrendRow struct {
+			Date   string  `db:"date"`
+			Amount float64 `db:"amount"`
+		}
+		var subRows []subRevenueTrendRow
+		subGroupBy := getGroupByClause(startTime, endTime)
+		subQuery := fmt.Sprintf(`
+			SELECT %s as date,
+			       COALESCE(SUM(money), 0) * ? as amount
+			FROM subscription_orders
+			WHERE status = ? AND create_time >= ? AND create_time <= ?%s
+			GROUP BY date ORDER BY date`, subGroupBy, userIDFilter)
+		model.DB.Raw(subQuery, usdToCnyRate, common.TopUpStatusSuccess, startTime, endTime).Scan(&subRows)
+		for _, row := range subRows {
+			response.Trend = append(response.Trend, dto.RevenueManagementTrendItem{
+				Date:   row.Date,
+				Amount: math.Round(row.Amount*100) / 100,
+			})
+		}
+
+		// 2. Top5 套餐：关联 subscription_orders 和 subscription_plans，按套餐 title 聚合
+		type topPlanRow struct {
+			Title      string  `db:"title"`
+			TotalMoney float64 `db:"total_money"`
+		}
+		var topPlanRows []topPlanRow
+		model.DB.Raw(fmt.Sprintf(`
+			SELECT COALESCE(p.title, '未知套餐') as title,
+			       COALESCE(SUM(SO.money), 0) as total_money
+			FROM subscription_orders SO
+			LEFT JOIN subscription_plans p ON p.id = SO.plan_id
+			WHERE SO.status = ? AND SO.create_time >= ? AND SO.create_time <= ?%s
+			GROUP BY COALESCE(p.title, '未知套餐')
+			ORDER BY total_money DESC
+			LIMIT 5`, userIDFilter), common.TopUpStatusSuccess, startTime, endTime).Scan(&topPlanRows)
+		for _, row := range topPlanRows {
+			response.TopN = append(response.TopN, dto.RevenueManagementTopItem{
+				Name:  row.Title,
+				Value: math.Round(row.TotalMoney*usdToCnyRate*100) / 100,
+			})
+		}
 	}
 
 	return response, nil

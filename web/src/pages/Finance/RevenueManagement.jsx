@@ -17,7 +17,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import * as echarts from 'echarts';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
@@ -114,6 +115,14 @@ export default function RevenueManagement() {
   const [subLoading, setSubLoading] = useState(false);
 
   const [exportLoading, setExportLoading] = useState(false);
+
+  // ===== 图表数据 =====
+  const [dashboardChartData, setDashboardChartData] = useState({ trend: [], top_n: [] });
+  const [chartLoading, setChartLoading] = useState(false);
+  const trendChartRef = useRef(null);
+  const pieChartRef = useRef(null);
+  const trendChartInstance = useRef(null);
+  const pieChartInstance = useRef(null);
 
   // ===== 时间戳计算 =====
   const startTime = useMemo(() => {
@@ -232,6 +241,204 @@ export default function RevenueManagement() {
       setSubLoading(false);
     }
   };
+
+  // ===== 获取图表数据 =====
+  const fetchDashboardChartData = async () => {
+    if (startTime === 0 || endTime === 0) return;
+    setChartLoading(true);
+    try {
+      const revenueType = revenueTab === 'payg' ? 'payg' : 'subscription';
+      const params = {
+        start_time: startTime,
+        end_time: endTime,
+        revenue_type: revenueType,
+      };
+      if (searchKeyword) {
+        params.keyword = searchKeyword;
+      }
+      const res = await API.get('/api/finance/revenue-management/dashboard', { params });
+      if (res.data.success) {
+        setDashboardChartData(res.data.data || { trend: [], top_n: [] });
+      }
+    } catch (error) {
+      console.error('获取营收管理图表数据失败:', error);
+    } finally {
+      setChartLoading(false);
+    }
+  };
+
+  // 格式化日期标签
+  const formatDateLabel = (dateStr) => {
+    if (!dateStr) return '';
+    if (dateStr.includes('T')) {
+      return dateStr.split('T')[0];
+    }
+    return dateStr;
+  };
+
+  // 渲染折线图
+  const renderTrendChart = () => {
+    if (!trendChartRef.current) return;
+    
+    const trendData = dashboardChartData.trend || [];
+    if (trendChartInstance.current) {
+      trendChartInstance.current.dispose();
+      trendChartInstance.current = null;
+    }
+    
+    if (trendData.length === 0) return;
+    
+    trendChartInstance.current = echarts.init(trendChartRef.current);
+    
+    const option = {
+      title: {
+        text: revenueTab === 'payg' ? t('按量付费消费趋势') : t('订阅套餐购买趋势'),
+        left: 'center',
+        top: 8,
+        textStyle: {
+          fontSize: 14,
+          fontWeight: 400,
+          color: 'rgba(0, 0, 0, 0.4)',
+          fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
+          textTransform: 'uppercase',
+          letterSpacing: 0.055,
+        },
+      },
+      tooltip: {
+        trigger: 'axis',
+        formatter: function(params) {
+          const data = params[0];
+          return `${formatDateLabel(data.name)}<br/>¥${data.value.toLocaleString()}`;
+        },
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        top: 45,
+        containLabel: true,
+      },
+      xAxis: {
+        type: 'category',
+        data: trendData.map(item => formatDateLabel(item.date)),
+        axisLabel: {
+          rotate: trendData.length > 15 ? 45 : 0,
+          interval: 0,
+        },
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: {
+          formatter: '¥{value}',
+        },
+      },
+      series: [{
+        name: revenueTab === 'payg' ? t('按量付费') : t('订阅套餐'),
+        type: 'line',
+        smooth: true,
+        data: trendData.map(item => item.amount || 0),
+        itemStyle: { color: revenueTab === 'payg' ? '#52c41a' : '#722ed1' },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: revenueTab === 'payg' ? 'rgba(82, 196, 26, 0.25)' : 'rgba(114, 46, 209, 0.25)' },
+            { offset: 1, color: revenueTab === 'payg' ? 'rgba(82, 196, 26, 0.02)' : 'rgba(114, 46, 209, 0.02)' },
+          ]),
+        },
+      }],
+    };
+    
+    trendChartInstance.current.setOption(option);
+  };
+
+  // 渲染饼图
+  const renderPieChart = () => {
+    if (!pieChartRef.current) return;
+    
+    const topNData = dashboardChartData.top_n || [];
+    if (pieChartInstance.current) {
+      pieChartInstance.current.dispose();
+      pieChartInstance.current = null;
+    }
+    
+    if (topNData.length === 0) return;
+    
+    pieChartInstance.current = echarts.init(pieChartRef.current);
+    
+    const pieData = topNData.map(item => ({
+      name: item.name,
+      value: item.value || 0,
+    }));
+    
+    const option = {
+      title: {
+        text: revenueTab === 'payg' ? t('Top5 使用模型') : t('Top5 订阅套餐'),
+        left: 'center',
+        top: 8,
+        textStyle: {
+          fontSize: 14,
+          fontWeight: 400,
+          color: 'rgba(0, 0, 0, 0.4)',
+          fontFamily: 'PP Neue Montreal Mono, Georgia, sans-serif',
+          textTransform: 'uppercase',
+          letterSpacing: 0.055,
+        },
+      },
+      tooltip: {
+        trigger: 'item',
+        formatter: '{b}: {c} ({d}%)',
+      },
+      legend: {
+        orient: 'vertical',
+        left: 'left',
+        top: 'middle',
+        textStyle: {
+          fontSize: 12,
+          color: 'rgba(0, 0, 0, 0.4)',
+        },
+      },
+      series: [{
+        name: revenueTab === 'payg' ? t('使用模型') : t('订阅套餐'),
+        type: 'pie',
+        radius: ['40%', '70%'],
+        center: ['60%', '50%'],
+        avoidLabelOverlap: false,
+        itemStyle: {
+          borderRadius: 4,
+          borderColor: '#fff',
+          borderWidth: 2,
+        },
+        label: { show: false },
+        labelLine: { show: false },
+        data: pieData,
+        color: ['#E8A87C', '#f5c542', '#1890ff', '#52c41a', '#fa8c16'],
+      }],
+    };
+    
+    pieChartInstance.current.setOption(option);
+  };
+
+  // 图表数据加载
+  useEffect(() => {
+    fetchDashboardChartData();
+  }, [startTime, endTime, revenueTab, searchKeyword]);
+
+  // 图表渲染
+  useEffect(() => {
+    renderTrendChart();
+    renderPieChart();
+  }, [dashboardChartData, revenueTab]);
+
+  // 窗口大小变化时重新调整图表
+  useEffect(() => {
+    const handleResize = () => {
+      if (trendChartInstance.current) trendChartInstance.current.resize();
+      if (pieChartInstance.current) pieChartInstance.current.resize();
+    };
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
 
   // ===== 数据加载 =====
   // 顶部统计卡片：只在组件挂载时加载一次全局统计，不受时间控件控制
@@ -697,6 +904,34 @@ export default function RevenueManagement() {
         >
           {t('导出 CSV')}
         </Button>
+      </div>
+
+      {/* 图表板块 */}
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 16 }}>
+        {/* 折线图 */}
+        <div style={{
+          flex: '2 2 500px',
+          minWidth: 400,
+          backgroundColor: '#ffffff',
+          borderRadius: 4,
+          border: '1px solid rgba(0, 0, 0, 0.08)',
+          boxShadow: 'rgba(1, 1, 32, 0.1) 0px 4px 10px',
+          padding: '16px',
+        }}>
+          <div ref={trendChartRef} style={{ height: 320 }} />
+        </div>
+        {/* 饼图 */}
+        <div style={{
+          flex: '1 1 300px',
+          minWidth: 280,
+          backgroundColor: '#ffffff',
+          borderRadius: 4,
+          border: '1px solid rgba(0, 0, 0, 0.08)',
+          boxShadow: 'rgba(1, 1, 32, 0.1) 0px 4px 10px',
+          padding: '16px',
+        }}>
+          <div ref={pieChartRef} style={{ height: 320 }} />
+        </div>
       </div>
 
       {/* 表格区域 */}
