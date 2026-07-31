@@ -202,6 +202,27 @@ func Register(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgUserInputInvalid, map[string]any{"Error": err.Error()})
 		return
 	}
+
+	conflictField, exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email, user.TelePhone)
+	if err != nil {
+		common.ApiErrorI18n(c, i18n.MsgDatabaseError)
+		common.SysLog(fmt.Sprintf("CheckUserExistOrDeleted error: %v", err))
+		return
+	}
+	if exist {
+		switch conflictField {
+		case "username":
+			common.ApiErrorMsg(c, "用户名已被注册")
+		case "email":
+			common.ApiErrorMsg(c, "邮箱已被注册")
+		case "telephone":
+			common.ApiErrorMsg(c, "手机号已被注册")
+		default:
+			common.ApiErrorI18n(c, i18n.MsgUserExists)
+		}
+		return
+	}
+
 	if common.EmailVerificationEnabled {
 		if user.Email == "" || user.VerificationCode == "" {
 			common.ApiErrorI18n(c, i18n.MsgUserEmailVerificationRequired)
@@ -212,32 +233,14 @@ func Register(c *gin.Context) {
 			return
 		}
 	}
-	// 先检查 TelePhone 是否为 nil，避免 nil 指针解引用 panic
-	if user.TelePhone == nil {
-		common.ApiErrorMsg(c, "请填写手机号")
-		return
-	}
-	if *user.TelePhone == "" || len(*user.TelePhone) != 11 {
-		common.ApiErrorMsg(c, "请填写11位的手机号")
-		return
-	}
 
 	// 验证短信验证码
-	if !common.VerifySMSCodeWithKey(*user.TelePhone, user.VerificationCode) {
+	if !common.VerifySMSCodeWithKey(user.TelePhone, user.VerificationCode) {
 		common.ApiErrorMsg(c, i18n.MsgUserVerificationCodeError)
 		return
 	}
-	common.DeleteSMSCode(*user.TelePhone)
-	exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email, *user.TelePhone)
-	if err != nil {
-		common.ApiErrorI18n(c, i18n.MsgDatabaseError)
-		common.SysLog(fmt.Sprintf("CheckUserExistOrDeleted error: %v", err))
-		return
-	}
-	if exist {
-		common.ApiErrorI18n(c, i18n.MsgUserExists)
-		return
-	}
+	common.DeleteSMSCode(user.TelePhone)
+
 	affCode := user.AffCode // this code is the inviter's code, not the user's own code
 	inviterId, _ := model.GetUserIdByAffCode(affCode)
 	cleanUser := model.User{
@@ -1135,7 +1138,7 @@ func PhoneBind(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	user.TelePhone = &req.Telephone
+	user.TelePhone = req.Telephone
 	// 绑定手机号
 	err = user.Update(false)
 	if err != nil {
