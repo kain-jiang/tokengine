@@ -103,6 +103,12 @@ h4 {
 .caption {
   font-size: 0.88rem; /* 14px */
   line-height: 1.40;
+  color: var(--semi-color-text-2);
+}
+
+/* 深色模式说明文字 */
+html.dark .caption {
+  color: rgba(255, 255, 255, 0.6);
 }
 
 /* 等宽标签 */
@@ -517,6 +523,18 @@ code {
 }
 
 .card-new:hover {
+  box-shadow: var(--color-shadow) 0px 6px 14px;
+  transform: translateY(-2px);
+}
+
+/* 深色模式卡片样式 */
+html.dark .card-new {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--color-border-dark);
+  color: #ffffff;
+}
+
+html.dark .card-new:hover {
   box-shadow: var(--color-shadow) 0px 6px 14px;
   transform: translateY(-2px);
 }
@@ -1224,6 +1242,27 @@ html.dark .with-pastel-balls::before {
 .semi-card-header,
 .semi-card-body {
   padding: 10px !important;
+}
+
+/* 深色模式下 Semi Design Card 组件样式修复 */
+html.dark .semi-card {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: var(--color-border-dark) !important;
+}
+
+html.dark .semi-card-body {
+  background: transparent !important;
+  color: #ffffff !important;
+}
+
+html.dark .semi-card-header {
+  background: transparent !important;
+  border-bottom-color: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+html.dark .semi-card-header-title {
+  color: #ffffff !important;
 }
 
 /* ==================== 使用日志: channel affinity tag ==================== */

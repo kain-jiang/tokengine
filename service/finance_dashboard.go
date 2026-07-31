@@ -131,11 +131,13 @@ func (s *FinanceService) GetDashboardStats(startTime, endTime int64) (*dto.Dashb
 	// TPM = 总tokens / 时间跨度（分钟）
 	if endTime > startTime {
 		type rpmTpmResult struct {
-			RequestCount int64 `db:"rpm"`
-			TotalTokens  int64 `db:"tpm"`
+			RequestCount int64 `gorm:"column:rpm"`
+			TotalTokens  int64 `gorm:"column:tpm"`
 		}
 		var result rpmTpmResult
-		model.DB.Raw(`SELECT COUNT(*) as rpm, COALESCE(SUM(prompt_tokens + completion_tokens), 0) as tpm FROM logs WHERE type = 2 AND created_at >= ? AND created_at <= ?`, startTime, endTime).Scan(&result)
+		// 使用 LOG_DB 以兼容日志独立数据库（LOG_SQL_DSN）的场景，
+		// 与 model/log.go 中其它日志查询保持一致
+		model.LOG_DB.Raw(`SELECT COUNT(*) as rpm, COALESCE(SUM(prompt_tokens + completion_tokens), 0) as tpm FROM logs WHERE type = 2 AND created_at >= ? AND created_at <= ?`, startTime, endTime).Scan(&result)
 		timeDiffMinutes := float64(endTime-startTime) / 60.0
 		if timeDiffMinutes > 0 {
 			stats.AvgRPM = float64(result.RequestCount) / timeDiffMinutes

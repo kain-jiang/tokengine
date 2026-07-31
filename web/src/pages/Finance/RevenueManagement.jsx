@@ -218,15 +218,9 @@ export default function RevenueManagement() {
       if (searchKeyword) {
         params.keyword = searchKeyword;
       }
-      console.log('[RevenueManagement] 请求订阅套餐数据:', params);
       const res = await API.get('/api/finance/subscription-orders', { params });
-      console.log('[RevenueManagement] 订阅套餐响应 (完整):', JSON.stringify(res.data, null, 2));
-      console.log('[RevenueManagement] res.data.success:', res.data.success);
-      console.log('[RevenueManagement] res.data.data:', res.data.data);
-      console.log('[RevenueManagement] res.data.total:', res.data.total);
       if (res.data.success) {
         const items = res.data.data || [];
-        console.log('[RevenueManagement] 设置 items:', items.length, '条记录');
         setSubscriptionData({
           items: items,
           total: res.data.total || 0,
@@ -303,7 +297,14 @@ export default function RevenueManagement() {
         const paygData = paygRes.data.data.map(row => {
           const item = {};
           payAsYouGoColumns.forEach(col => {
-            item[col.title] = row[col.dataIndex] || '';
+            // 直接使用与表格相同的渲染逻辑
+            if (col.dataIndex === 'username') {
+              item[col.title] = row[col.dataIndex] || '-';
+            } else if (col.dataIndex === 'amount') {
+              item[col.title] = formatMoney(row[col.dataIndex]);
+            } else {
+              item[col.title] = row[col.dataIndex] || '';
+            }
           });
           return item;
         });
@@ -311,12 +312,68 @@ export default function RevenueManagement() {
         XLSX.utils.book_append_sheet(wb, ws1, '按量付费');
       }
 
-      // 5. 转换订阅套餐数据为 sheet
+      // 5. 转换订阅套餐数据为 sheet（使用与表格相同的渲染逻辑）
       if (subRes.data.success && subRes.data.data && subRes.data.data.length > 0) {
         const subData = subRes.data.data.map(row => {
           const item = {};
           subscriptionColumns.forEach(col => {
-            item[col.title] = row[col.dataIndex] || '';
+            // 直接使用与表格相同的渲染逻辑，确保导出值与表格显示一致
+            if (col.dataIndex === 'username') {
+              item[col.title] = row[col.dataIndex] || '-';
+            } else if (col.dataIndex === 'plan_type') {
+              item[col.title] = row[col.dataIndex] === 'tokens' ? t('tokens') : t('额度');
+            } else if (col.dataIndex === 'plan_name') {
+              item[col.title] = row[col.dataIndex] ? `${row[col.dataIndex]} · ${t('订阅')} #${row.user_id}` : '-';
+            } else if (col.dataIndex === 'source') {
+              item[col.title] = row[col.dataIndex] || '-';
+            } else if (['subscribe_time', 'expire_time'].includes(col.dataIndex)) {
+              item[col.title] = row[col.dataIndex] ? timestamp2string(row[col.dataIndex]) : '-';
+            } else if (col.dataIndex === 'status') {
+              const statusMap = {
+                'active': t('生效中'),
+                'expired': t('已过期'),
+                'cancelled': t('已取消'),
+                'refunded': t('已退款'),
+              };
+              item[col.title] = statusMap[row[col.dataIndex]] || row[col.dataIndex] || '-';
+            } else if (col.dataIndex === 'paid_amount') {
+              item[col.title] = `${formatMoney(row[col.dataIndex])} ${row.currency || 'CNY'}`;
+            } else if (col.dataIndex === 'tokens_amount') {
+              // 实得价值：tokens 套餐显示 tokens_amount，额度套餐显示 amount_total
+              const displayVal = row.plan_type === 'tokens' ? (row.tokens_amount || row.amount_total) : row.amount_total;
+              item[col.title] = displayVal && displayVal > 0 ? (row.plan_type === 'tokens' ? parseFloat(displayVal).toFixed(4) : renderQuota(displayVal)) : '-';
+            } else if (col.dataIndex === 'amount_used') {
+              // 已用额度：显示额度 + 百分比
+              const used = row.amount_used || 0;
+              const total = row.amount_total || 0;
+              if (total <= 0 || used <= 0) {
+                item[col.title] = '-';
+              } else if (row.plan_type === 'tokens') {
+                const tokensAmount = row.tokens_amount || 0;
+                const percent = tokensAmount > 0 ? Math.round((used / tokensAmount) * 100) : 0;
+                item[col.title] = `${parseFloat(used).toFixed(4)} (${percent}%)`;
+              } else {
+                const percent = Math.round((used / total) * 100);
+                item[col.title] = `${renderQuota(used)} (${percent}%)`;
+              }
+            } else if (col.dataIndex === 'remain') {
+              // 剩余额度
+              const total = row.amount_total || 0;
+              const used = row.amount_used || 0;
+              if (total <= 0) {
+                item[col.title] = '-';
+              } else if (row.plan_type === 'tokens') {
+                const tokensAmount = row.tokens_amount || 0;
+                const tokensUsed = row.tokens_used || 0;
+                const remain = Math.max(0, tokensAmount - tokensUsed);
+                item[col.title] = parseFloat(remain).toFixed(4);
+              } else {
+                const remain = Math.max(0, total - used);
+                item[col.title] = renderQuota(remain);
+              }
+            } else {
+              item[col.title] = row[col.dataIndex] || '';
+            }
           });
           return item;
         });
@@ -481,20 +538,6 @@ export default function RevenueManagement() {
       key: 'source',
       width: 100,
       render: (text) => text || '-',
-    },
-    {
-      title: t('订阅时间'),
-      dataIndex: 'subscribe_time',
-      key: 'subscribe_time',
-      width: 160,
-      render: (val) => val ? timestamp2string(val) : '-',
-    },
-    {
-      title: t('开始时间'),
-      dataIndex: 'start_time',
-      key: 'start_time',
-      width: 160,
-      render: (val) => val ? timestamp2string(val) : '-',
     },
     {
       title: t('到期时间'),

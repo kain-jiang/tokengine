@@ -22,6 +22,7 @@ import NewYearButton from './NewYearButton';
 import NotificationButton from './NotificationButton';
 import RealNameAuthPrompt from './RealNameAuthPrompt';
 import UserArea from './UserArea';
+import ThemeToggle from './ThemeToggle';
 
 const ActionButtons = ({
   isNewYear,
@@ -34,6 +35,8 @@ const ActionButtons = ({
   logout,
   navigate,
   t,
+  theme,
+  onThemeToggle,
 }) => {
   return (
     <div className='flex items-center gap-2 md:gap-3'>
@@ -44,6 +47,8 @@ const ActionButtons = ({
         onNoticeOpen={onNoticeOpen}
         t={t}
       />
+
+      <ThemeToggle theme={theme} onThemeToggle={onThemeToggle} t={t} />
 
       <RealNameAuthPrompt
         userState={userState}

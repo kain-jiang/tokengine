@@ -91,6 +91,8 @@ func (s *BillingSummaryService) GetModelSummary(userId int, req dto.BillingSumma
 			v.QuotaConsumed -= dic[v.ModelName]
 			info = append(info, v)
 		}
+	} else {
+		info = items
 	}
 
 	return &dto.BillingSummaryResponse{
@@ -160,6 +162,8 @@ func (s *BillingSummaryService) GetTokenSummary(userId int, req dto.BillingSumma
 			v.QuotaConsumed -= dic[v.TokenName]
 			info = append(info, v)
 		}
+	} else {
+		info = items
 	}
 
 	return &dto.BillingSummaryResponse{

@@ -11,6 +11,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/service"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -103,6 +104,9 @@ func WeChatAuth(c *gin.Context) {
 				})
 				return
 			}
+			// 为通过微信注册的新用户生成默认令牌（名称为 default，默认分组，永不过期，无限额度）
+			// 创建失败仅记录日志，不中断登录流程
+			_ = service.CreateDefaultTokenForUser(user.Id, user.Username)
 		} else {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
