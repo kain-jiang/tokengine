@@ -540,6 +540,13 @@ export default function RevenueManagement() {
       render: (text) => text || '-',
     },
     {
+      title: t('订阅时间'),
+      dataIndex: 'subscribe_time',
+      key: 'subscribe_time',
+      width: 160,
+      render: (val) => val ? timestamp2string(val) : '-',
+    },
+    {
       title: t('到期时间'),
       dataIndex: 'expire_time',
       key: 'expire_time',
