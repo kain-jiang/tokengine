@@ -21,6 +21,16 @@
 - 所有类名/变量/关键帧带 `sf-` 前缀，避免污染宿主 Semi UI 样式；背景采用淡紫渐变 + 网格 + 噪点营造纵深
 - 移动优先响应式（1080/900/640 三档断点），移动端无横向溢出；尊重 `prefers-reduced-motion`
 
+## 配套修复（React 应用侧）
+
+1. **页脚脱离视口钉死**（`web/src/components/layout/PageLayout.jsx`）：非控制台页面（首页/关于等）的 `Layout.Footer` 移入滚动容器 `Content` 内部并采用 flex 列布局——长页面时页脚排在瀑布流末尾，短页面时仍吸底（sticky footer）；控制台页面保持原布局不变
+2. **回到顶部**（`web/src/pages/Home/index.jsx`）：接入 Semi UI `BackTop` 组件，滚动超 400px 后出现，450ms 平滑回顶；桌面端目标为 `.semi-layout-content` 滚动容器，移动端为 window
+3. **页脚压扁**（`web/src/components/layout/Footer.jsx`）：非演示站页脚 padding 从 `py-16` 收紧到 `py-4`（演示站带链接列保持 `py-16`），两个分支统一加顶部细分隔线
+
+构建验证：`vite build` 18362 个模块全部编译通过（dist 写入被本地沙箱拦截属环境限制，不影响代码）。
+
+**部署提醒**：后端通过 `go:embed web/dist` 把前端嵌入 exe，前端任何改动需 `bun run build` → 重新 `go build` → 重启 exe 后生效。
+
 ## 启用方法
 
 1. 生产环境先执行 `cd web && bun run build`（让文件复制进 dist）

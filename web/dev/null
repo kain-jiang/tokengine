@@ -1,0 +1,158 @@
+import React, { useEffect, useState, useMemo, useContext } from "react";
+import { useTranslation } from "react-i18next";
+import { Typography } from "@douyinfe/semi-ui";
+import { getFooterHTML, getLogo, getSystemName, getIcpVersion } from "../../helpers";
+import { StatusContext } from "../../context/Status";
+const FooterBar = () => {
+  const { t } = useTranslation();
+  const [footer, setFooter] = useState(getFooterHTML());
+  const systemName = getSystemName();
+  const icpVersion = getIcpVersion();
+  const logo = getLogo();
+  const [statusState] = useContext(StatusContext);
+  const isDemoSiteMode = statusState?.status?.demo_site_enabled || false;
+  const loadFooter = () => {
+    let footer_html = localStorage.getItem("footer_html");
+    if (footer_html) {
+      setFooter(footer_html);
+    }
+  };
+  const currentYear = (/* @__PURE__ */ new Date()).getFullYear();
+  const customFooter = useMemo(
+    () => /* @__PURE__ */ React.createElement(
+      "footer",
+      {
+        className: `relative h-auto ${isDemoSiteMode ? "py-16" : "py-4"} px-6 md:px-24 w-full flex flex-col items-center justify-between overflow-hidden bg-dark-blue text-white border-t border-semi-color-border`
+      },
+      isDemoSiteMode && /* @__PURE__ */ React.createElement("div", { className: "flex flex-col md:flex-row justify-between w-full max-w-[1110px] mb-10 gap-8" }, /* @__PURE__ */ React.createElement("div", { className: "flex-shrink-0" }, /* @__PURE__ */ React.createElement(
+        "img",
+        {
+          src: logo,
+          alt: systemName,
+          className: "w-16 h-16 rounded-full bg-gray-800 p-1.5 object-contain"
+        }
+      )), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 w-full" }, /* @__PURE__ */ React.createElement("div", { className: "text-left" }, /* @__PURE__ */ React.createElement("p", { className: "mb-5 feature-title" }, t("\u5173\u4E8E\u6211\u4EEC")), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-4" }, /* @__PURE__ */ React.createElement(
+        "a",
+        {
+          href: "https://docs.newapi.pro/wiki/project-introduction/",
+          target: "_blank",
+          rel: "noopener noreferrer",
+          className: "body text-white/80 hover:text-white"
+        },
+        t("\u5173\u4E8E\u9879\u76EE")
+      ), /* @__PURE__ */ React.createElement(
+        "a",
+        {
+          href: "https://docs.newapi.pro/support/community-interaction/",
+          target: "_blank",
+          rel: "noopener noreferrer",
+          className: "body text-white/80 hover:text-white"
+        },
+        t("\u8054\u7CFB\u6211\u4EEC")
+      ), /* @__PURE__ */ React.createElement(
+        "a",
+        {
+          href: "https://docs.newapi.pro/wiki/features-introduction/",
+          target: "_blank",
+          rel: "noopener noreferrer",
+          className: "body text-white/80 hover:text-white"
+        },
+        t("\u529F\u80FD\u7279\u6027")
+      ))), /* @__PURE__ */ React.createElement("div", { className: "text-left" }, /* @__PURE__ */ React.createElement("p", { className: "mb-5 feature-title" }, t("\u6587\u6863")), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-4" }, /* @__PURE__ */ React.createElement(
+        "a",
+        {
+          href: "https://docs.newapi.pro/getting-started/",
+          target: "_blank",
+          rel: "noopener noreferrer",
+          className: "body text-white/80 hover:text-white"
+        },
+        t("\u5FEB\u901F\u5F00\u59CB")
+      ), /* @__PURE__ */ React.createElement(
+        "a",
+        {
+          href: "https://docs.newapi.pro/installation/",
+          target: "_blank",
+          rel: "noopener noreferrer",
+          className: "body text-white/80 hover:text-white"
+        },
+        t("\u5B89\u88C5\u6307\u5357")
+      ), /* @__PURE__ */ React.createElement(
+        "a",
+        {
+          href: "https://docs.newapi.pro/api/",
+          target: "_blank",
+          rel: "noopener noreferrer",
+          className: "body text-white/80 hover:text-white"
+        },
+        t("API \u6587\u6863")
+      ))), /* @__PURE__ */ React.createElement("div", { className: "text-left" }, /* @__PURE__ */ React.createElement("p", { className: "mb-5 feature-title" }, t("\u76F8\u5173\u9879\u76EE")), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-4" }, /* @__PURE__ */ React.createElement(
+        "a",
+        {
+          href: "https://github.com/songquanpeng/one-api",
+          target: "_blank",
+          rel: "noopener noreferrer",
+          className: "body text-white/80 hover:text-white"
+        },
+        "One API"
+      ), /* @__PURE__ */ React.createElement(
+        "a",
+        {
+          href: "https://github.com/novicezk/midjourney-proxy",
+          target: "_blank",
+          rel: "noopener noreferrer",
+          className: "body text-white/80 hover:text-white"
+        },
+        "Midjourney-Proxy"
+      ), /* @__PURE__ */ React.createElement(
+        "a",
+        {
+          href: "https://github.com/Calcium-Ion/neko-api-key-tool",
+          target: "_blank",
+          rel: "noopener noreferrer",
+          className: "body text-white/80 hover:text-white"
+        },
+        "neko-api-key-tool"
+      ))), /* @__PURE__ */ React.createElement("div", { className: "text-left" }, /* @__PURE__ */ React.createElement("p", { className: "mb-5 feature-title" }, t("\u53CB\u60C5\u94FE\u63A5")), /* @__PURE__ */ React.createElement("div", { className: "flex flex-col gap-4" }, /* @__PURE__ */ React.createElement(
+        "a",
+        {
+          href: "https://github.com/Calcium-Ion/new-api-horizon",
+          target: "_blank",
+          rel: "noopener noreferrer",
+          className: "body text-white/80 hover:text-white"
+        },
+        "new-api-horizon"
+      ), /* @__PURE__ */ React.createElement(
+        "a",
+        {
+          href: "https://github.com/coaidev/coai",
+          target: "_blank",
+          rel: "noopener noreferrer",
+          className: "body text-white/80 hover:text-white"
+        },
+        "CoAI"
+      ), /* @__PURE__ */ React.createElement(
+        "a",
+        {
+          href: "https://www.gpt-load.com/",
+          target: "_blank",
+          rel: "noopener noreferrer",
+          className: "body text-white/80 hover:text-white"
+        },
+        "GPT-Load"
+      ))))),
+      /* @__PURE__ */ React.createElement("div", { className: "flex flex-col md:flex-row items-center justify-between w-full max-w-[1110px] gap-6" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap items-center gap-2" }, /* @__PURE__ */ React.createElement(Typography.Text, { className: "text-sm text-white/80 caption" }, "\xA9 ", currentYear, " ", systemName, ". ", t("\u7248\u6743\u6240\u6709")), /* @__PURE__ */ React.createElement(Typography.Text, { className: "text-sm text-white/80 caption" }, /* @__PURE__ */ React.createElement("a", { href: "https://beian.miit.gov.cn", target: "_blank" }, " ", icpVersion))))
+    ),
+    [logo, systemName, t, currentYear, isDemoSiteMode]
+  );
+  useEffect(() => {
+    loadFooter();
+  }, []);
+  return /* @__PURE__ */ React.createElement("div", { className: "w-full" }, footer ? /* @__PURE__ */ React.createElement("footer", { className: "relative h-auto py-4 px-6 md:px-24 w-full flex items-center justify-center overflow-hidden bg-dark-blue text-white border-t border-semi-color-border" }, /* @__PURE__ */ React.createElement("div", { className: "flex flex-col md:flex-row items-center justify-between w-full max-w-[1110px] gap-4" }, /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      className: "custom-footer na-cb6feafeb3990c78 text-sm text-white/80 caption",
+      dangerouslySetInnerHTML: { __html: footer }
+    }
+  ))) : customFooter);
+};
+export default FooterBar;

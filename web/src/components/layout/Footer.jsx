@@ -43,7 +43,9 @@ const FooterBar = () => {
 
   const customFooter = useMemo(
     () => (
-      <footer className='relative h-auto py-16 px-6 md:px-24 w-full flex flex-col items-center justify-between overflow-hidden bg-dark-blue text-white'>
+      <footer
+        className={`relative h-auto ${isDemoSiteMode ? 'py-16' : 'py-4'} px-6 md:px-24 w-full flex flex-col items-center justify-between overflow-hidden bg-dark-blue text-white border-t border-semi-color-border`}
+      >
         {isDemoSiteMode && (
           <div className='flex flex-col md:flex-row justify-between w-full max-w-[1110px] mb-10 gap-8'>
             <div className='flex-shrink-0'>
@@ -202,7 +204,7 @@ const FooterBar = () => {
   return (
     <div className='w-full'>
       {footer ? (
-        <footer className='relative h-auto py-4 px-6 md:px-24 w-full flex items-center justify-center overflow-hidden bg-dark-blue text-white'>
+        <footer className='relative h-auto py-4 px-6 md:px-24 w-full flex items-center justify-center overflow-hidden bg-dark-blue text-white border-t border-semi-color-border'>
           <div className='flex flex-col md:flex-row items-center justify-between w-full max-w-[1110px] gap-4'>
             <div
               className='custom-footer na-cb6feafeb3990c78 text-sm text-white/80 caption'
