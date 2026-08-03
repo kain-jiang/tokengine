@@ -38,5 +38,6 @@ const (
 	APITypeCodex
 	APITypeAgnesAI
 	APITypeHaoee
+	APITypeToAPIs
 	APITypeDummy // this one is only for count, do not add any channel after this
 )

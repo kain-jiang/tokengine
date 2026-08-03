@@ -104,6 +104,15 @@ func NotifyUser(userId int, userEmail string, userSetting dto.UserSetting, data 
 	case dto.NotifyTypeSms:
 		phoneNumber := userSetting.NotificationPhone
 		if phoneNumber == "" {
+			// 用户未单独设置通知手机号时，自动从用户表中获取
+			user, err := model.GetUserById(userId, false)
+			if err != nil {
+				common.SysLog(fmt.Sprintf("failed to get user %d for sms notification: %s", userId, err.Error()))
+			} else if user.TelePhone != nil && *user.TelePhone != "" {
+				phoneNumber = *user.TelePhone
+			}
+		}
+		if phoneNumber == "" {
 			common.SysLog(fmt.Sprintf("user %d has no phone number, skip sending sms", userId))
 			return nil
 		}

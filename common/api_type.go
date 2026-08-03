@@ -81,6 +81,8 @@ func ChannelType2APIType(channelType int) (int, bool) {
 		apiType = constant.APITypeAgnesAI // Agnes AI 使用专用适配器处理模型名称大小写转换
 	case constant.ChannelTypeHaoee:
 		apiType = constant.APITypeHaoee // 好易智算 使用OpenAI兼容API
+	case constant.ChannelTypeToAPIs:
+		apiType = constant.APITypeToAPIs // ToAPIs 使用OpenAI兼容API
 	}
 	if apiType == -1 {
 		return constant.APITypeOpenAI, false

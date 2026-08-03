@@ -16,6 +16,7 @@ import (
 
 type Pricing struct {
 	ModelName              string                  `json:"model_name"`
+	ModelType              int                     `json:"model_type,omitempty"`
 	Description            string                  `json:"description,omitempty"`
 	Icon                   string                  `json:"icon,omitempty"`
 	Tags                   string                  `json:"tags,omitempty"`
@@ -306,6 +307,7 @@ func updatePricing() {
 			pricing.Icon = meta.Icon
 			pricing.Tags = meta.Tags
 			pricing.VendorID = meta.VendorID
+			pricing.ModelType = meta.ModelType
 		}
 		modelPrice, findPrice := ratio_setting.GetModelPrice(model, false)
 		if findPrice {

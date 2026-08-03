@@ -7,7 +7,6 @@ import (
 	"github.com/QuantumNous/new-api/relay/channel"
 	"github.com/QuantumNous/new-api/relay/channel/agnesai"
 	"github.com/QuantumNous/new-api/relay/channel/ali"
-	"github.com/QuantumNous/new-api/relay/channel/haoee"
 	"github.com/QuantumNous/new-api/relay/channel/aws"
 	"github.com/QuantumNous/new-api/relay/channel/baidu"
 	"github.com/QuantumNous/new-api/relay/channel/baidu_v2"
@@ -19,6 +18,7 @@ import (
 	"github.com/QuantumNous/new-api/relay/channel/deepseek"
 	"github.com/QuantumNous/new-api/relay/channel/dify"
 	"github.com/QuantumNous/new-api/relay/channel/gemini"
+	"github.com/QuantumNous/new-api/relay/channel/haoee"
 	"github.com/QuantumNous/new-api/relay/channel/jimeng"
 	"github.com/QuantumNous/new-api/relay/channel/jina"
 	taskjingwei "github.com/QuantumNous/new-api/relay/channel/jingwei"
@@ -127,6 +127,8 @@ func GetAdaptor(apiType int) channel.Adaptor {
 		return &agnesai.Adaptor{}
 	case constant.APITypeHaoee:
 		return &haoee.Adaptor{}
+	case constant.APITypeToAPIs:
+		return &openai.Adaptor{}
 	}
 	return nil
 }
@@ -162,7 +164,7 @@ func GetTaskAdaptor(platform constant.TaskPlatform) channel.TaskAdaptor {
 			return &taskdoubao.TaskAdaptor{}
 		case constant.ChannelTypeJingWei:
 			return &taskjingwei.TaskAdaptor{}
-		case constant.ChannelTypeSora, constant.ChannelTypeOpenAI, constant.ChannelTypeAgnesAI:
+		case constant.ChannelTypeSora, constant.ChannelTypeOpenAI, constant.ChannelTypeAgnesAI, constant.ChannelTypeToAPIs:
 			return &tasksora.TaskAdaptor{}
 		case constant.ChannelTypeGemini:
 			return &taskGemini.TaskAdaptor{}
