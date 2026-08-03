@@ -59,9 +59,9 @@ type User struct {
 	Setting          string         `json:"setting" gorm:"type:text;column:setting"`
 	Remark           string         `json:"remark,omitempty" gorm:"type:varchar(255)" validate:"max=255"`
 	StripeCustomer   string         `json:"stripe_customer" gorm:"type:varchar(64);column:stripe_customer;index"`
-	TelePhone        *string        `json:"telephone" gorm:"type:varchar(11);column:telephone;unique"`           // 手机号
-	UserType         int            `json:"user_type" gorm:"type:smallint;default:0;column:user_type"`           //   0 未认证    1 个人    2 企业
-	SpecifiedModels  string         `json:"specified_models,omitempty" gorm:"type:text;column:specified_models"` // 该用户被单独授权可调用/可见的黑名单模型，逗号分隔
+	TelePhone        string         `json:"telephone" gorm:"type:varchar(11);column:telephone;unique" validate:"len=11"` // 手机号
+	UserType         int            `json:"user_type" gorm:"type:smallint;default:0;column:user_type"`                   //   0 未认证    1 个人    2 企业
+	SpecifiedModels  string         `json:"specified_models,omitempty" gorm:"type:text;column:specified_models"`         // 该用户被单独授权可调用/可见的黑名单模型，逗号分隔
 }
 
 func (user *User) ToBaseUser() *UserBase {
@@ -170,28 +170,35 @@ func generateDefaultSidebarConfigForRole(userRole int) string {
 	return string(configBytes)
 }
 
-// CheckUserExistOrDeleted check if user exist or deleted, if not exist, return false, nil, if deleted or exist, return true, nil
-func CheckUserExistOrDeleted(username string, email string, telephone string) (bool, error) {
+// CheckUserExistOrDeleted check if user exist or deleted.
+// Returns: (conflictingField, isExist, error)
+// conflictingField is "username", "email", "telephone", or "" if not exist
+func CheckUserExistOrDeleted(username string, email string, telephone string) (conflictingField string, isExist bool, err error) {
 	var user User
+	var dbErr error
 
-	// err := DB.Unscoped().First(&user, "username = ? or email = ?", username, email).Error
-	// check email if empty
-	var err error
-	if email == "" {
-		err = DB.Unscoped().First(&user, "username = ?", username).Error
-	} else {
-		err = DB.Unscoped().First(&user, "username = ? or email = ? or telephone = ?", username, email, telephone).Error
+	// Check username
+	dbErr = DB.Unscoped().First(&user, "username = ?", username).Error
+	if dbErr == nil {
+		return "username", true, nil
 	}
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// not exist, return false, nil
-			return false, nil
+
+	// Check email (only if provided)
+	if email != "" {
+		dbErr = DB.Unscoped().First(&user, "email = ?", email).Error
+		if dbErr == nil {
+			return "email", true, nil
 		}
-		// other error, return false, err
-		return false, err
 	}
-	// exist, return true, nil
-	return true, nil
+
+	// Check telephone
+	dbErr = DB.Unscoped().First(&user, "telephone = ?", telephone).Error
+	if dbErr == nil {
+		return "telephone", true, nil
+	}
+
+	// No conflict found
+	return "", false, nil
 }
 
 // 手机号查询用户
