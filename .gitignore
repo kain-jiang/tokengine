@@ -39,6 +39,8 @@ token_estimator_test.go
 *.exe~
 
 .devin
+!.devin/skills/
+!.devin/skills/**
 .cursor
 AGENTS.md
 CLAUDE.md
@@ -90,6 +92,8 @@ docker-compose.backup.yml
 
 # Private repository
 .devin/
+!.devin/skills/
+!.devin/skills/**
 
 .env
 *.cer
@@ -98,6 +102,8 @@ docker-compose.backup.yml
 *.exe~
 
 .devin
+!.devin/skills/
+!.devin/skills/**
 .cursor
 AGENTS.md
 CLAUDE.md
