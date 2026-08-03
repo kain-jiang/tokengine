@@ -94,7 +94,7 @@ func SubscriptionRequestWalletPay(c *gin.Context) {
 		return
 	}
 
-	sub, err := model.CreateUserSubscriptionFromPlanTx(model.DB, userId, plan, "wallet")
+	sub, err := model.CreateUserSubscriptionFromPlanTx(model.DB, userId, tradeNo, plan, "wallet")
 	if err != nil {
 		model.IncreaseUserQuota(userId, requiredQuota, false)
 		order.Status = common.TopUpStatusFailed

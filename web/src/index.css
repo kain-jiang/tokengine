@@ -103,6 +103,12 @@ h4 {
 .caption {
   font-size: 0.88rem; /* 14px */
   line-height: 1.40;
+  color: var(--semi-color-text-2);
+}
+
+/* 深色模式说明文字 */
+html.dark .caption {
+  color: rgba(255, 255, 255, 0.6);
 }
 
 /* 等宽标签 */
@@ -147,10 +153,6 @@ h4 {
   height: 100dvh;
 }
 
-.app-sider {
-  height: calc(100vh - 64px);
-  height: calc(100dvh - 64px);
-}
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
@@ -232,13 +234,13 @@ code {
   min-height: 0;
   transition: width 0.3s ease;
   background: var(--semi-color-bg-0);
+  overflow: hidden;
 }
 
 .sidebar-nav {
-  flex: 1;
+  flex: 1 1 auto;
   width: 100%;
   background: var(--semi-color-bg-0);
-  height: 100%;
   overflow-x: hidden;
   border-right: none;
   overflow-y: auto;
@@ -318,9 +320,7 @@ code {
   margin-top: auto;
   cursor: pointer;
   background-color: var(--semi-color-bg-0);
-  position: sticky;
-  bottom: 0;
-  z-index: 10;
+  flex-shrink: 0;
   box-shadow: 0 -10px 10px -5px var(--semi-color-bg-0);
   backdrop-filter: blur(4px);
   border-top: 1px solid rgba(var(--semi-grey-0), 0.08);
@@ -523,6 +523,18 @@ code {
 }
 
 .card-new:hover {
+  box-shadow: var(--color-shadow) 0px 6px 14px;
+  transform: translateY(-2px);
+}
+
+/* 深色模式卡片样式 */
+html.dark .card-new {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--color-border-dark);
+  color: #ffffff;
+}
+
+html.dark .card-new:hover {
   box-shadow: var(--color-shadow) 0px 6px 14px;
   transform: translateY(-2px);
 }
@@ -1232,6 +1244,27 @@ html.dark .with-pastel-balls::before {
   padding: 10px !important;
 }
 
+/* 深色模式下 Semi Design Card 组件样式修复 */
+html.dark .semi-card {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: var(--color-border-dark) !important;
+}
+
+html.dark .semi-card-body {
+  background: transparent !important;
+  color: #ffffff !important;
+}
+
+html.dark .semi-card-header {
+  background: transparent !important;
+  border-bottom-color: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+html.dark .semi-card-header-title {
+  color: #ffffff !important;
+}
+
 /* ==================== 使用日志: channel affinity tag ==================== */
 .semi-tag.channel-affinity-tag {
   border: 1px solid rgba(var(--semi-cyan-5), 0.35);
@@ -1320,3 +1353,18 @@ html.dark .with-pastel-balls::before {
 }
 
 .ec-dbcd0a3c01b55203 { forced-color-adjust: auto; }
+
+/* ==================== 我的订阅 - 套餐名称列宽 ==================== */
+.my-plan-section {
+  --my-plan-min-col-width: 200px;
+}
+
+.my-plan-section .semi-table,
+.my-plan-section .semi-table * {
+  box-sizing: border-box;
+}
+
+.my-plan-section .semi-table-header > div > div:first-child,
+.my-plan-section .semi-table-body > div > div:first-child {
+  min-width: var(--my-plan-min-col-width) !important;
+}

@@ -16,9 +16,6 @@ import (
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
-	"github.com/QuantumNous/new-api/setting"
-
-	"github.com/QuantumNous/new-api/constant"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -205,6 +202,27 @@ func Register(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgUserInputInvalid, map[string]any{"Error": err.Error()})
 		return
 	}
+
+	conflictField, exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email, user.TelePhone)
+	if err != nil {
+		common.ApiErrorI18n(c, i18n.MsgDatabaseError)
+		common.SysLog(fmt.Sprintf("CheckUserExistOrDeleted error: %v", err))
+		return
+	}
+	if exist {
+		switch conflictField {
+		case "username":
+			common.ApiErrorMsg(c, "用户名已被注册")
+		case "email":
+			common.ApiErrorMsg(c, "邮箱已被注册")
+		case "telephone":
+			common.ApiErrorMsg(c, "手机号已被注册")
+		default:
+			common.ApiErrorI18n(c, i18n.MsgUserExists)
+		}
+		return
+	}
+
 	if common.EmailVerificationEnabled {
 		if user.Email == "" || user.VerificationCode == "" {
 			common.ApiErrorI18n(c, i18n.MsgUserEmailVerificationRequired)
@@ -215,32 +233,14 @@ func Register(c *gin.Context) {
 			return
 		}
 	}
-	// 先检查 TelePhone 是否为 nil，避免 nil 指针解引用 panic
-	if user.TelePhone == nil {
-		common.ApiErrorMsg(c, "请填写手机号")
-		return
-	}
-	if *user.TelePhone == "" || len(*user.TelePhone) != 11 {
-		common.ApiErrorMsg(c, "请填写11位的手机号")
-		return
-	}
 
 	// 验证短信验证码
-	if !common.VerifySMSCodeWithKey(*user.TelePhone, user.VerificationCode) {
+	if !common.VerifySMSCodeWithKey(user.TelePhone, user.VerificationCode) {
 		common.ApiErrorMsg(c, i18n.MsgUserVerificationCodeError)
 		return
 	}
-	common.DeleteSMSCode(*user.TelePhone)
-	exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email, *user.TelePhone)
-	if err != nil {
-		common.ApiErrorI18n(c, i18n.MsgDatabaseError)
-		common.SysLog(fmt.Sprintf("CheckUserExistOrDeleted error: %v", err))
-		return
-	}
-	if exist {
-		common.ApiErrorI18n(c, i18n.MsgUserExists)
-		return
-	}
+	common.DeleteSMSCode(user.TelePhone)
+
 	affCode := user.AffCode // this code is the inviter's code, not the user's own code
 	inviterId, _ := model.GetUserIdByAffCode(affCode)
 	cleanUser := model.User{
@@ -265,34 +265,9 @@ func Register(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgUserRegisterFailed)
 		return
 	}
-	// 生成默认令牌
-	if constant.GenerateDefaultToken {
-		key, err := common.GenerateKey()
-		if err != nil {
-			common.ApiErrorI18n(c, i18n.MsgUserDefaultTokenFailed)
-			common.SysLog("failed to generate token key: " + err.Error())
-			return
-		}
-		// 生成默认令牌
-		token := model.Token{
-			UserId:             insertedUser.Id, // 使用插入后的用户ID
-			Name:               cleanUser.Username + "的初始令牌",
-			Key:                key,
-			CreatedTime:        common.GetTimestamp(),
-			AccessedTime:       common.GetTimestamp(),
-			ExpiredTime:        -1,     // 永不过期
-			RemainQuota:        500000, // 示例额度
-			UnlimitedQuota:     true,
-			ModelLimitsEnabled: false,
-		}
-		if setting.DefaultUseAutoGroup {
-			token.Group = "auto"
-		}
-		if err := token.Insert(); err != nil {
-			common.ApiErrorI18n(c, i18n.MsgCreateDefaultTokenErr)
-			return
-		}
-	}
+	// 生成默认令牌（名称为 default，默认分组，永不过期，无限额度）
+	// 创建失败仅记录日志，不中断注册流程
+	_ = service.CreateDefaultTokenForUser(insertedUser.Id, insertedUser.Username)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -319,8 +294,9 @@ func GetAllUsers(c *gin.Context) {
 func SearchUsers(c *gin.Context) {
 	keyword := c.Query("keyword")
 	group := c.Query("group")
+	userType := c.Query("user_type")
 	pageInfo := common.GetPageQuery(c)
-	users, total, err := model.SearchUsers(keyword, group, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
+	users, total, err := model.SearchUsers(keyword, group, userType, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -937,15 +913,21 @@ func CreateUser(c *gin.Context) {
 	}
 	// Even for admin users, we cannot fully trust them!
 	cleanUser := model.User{
-		Username:    user.Username,
-		Password:    user.Password,
-		DisplayName: user.DisplayName,
-		Role:        user.Role, // 保持管理员设置的角色
+		Username:        user.Username,
+		Password:        user.Password,
+		DisplayName:     user.DisplayName,
+		Role:            user.Role,     // 保持管理员设置的角色
+		UserType:        user.UserType, // 用户类型：未认证，个人，企业
+		SpecifiedModels: user.SpecifiedModels,
 	}
 	if err := cleanUser.Insert(0); err != nil {
 		common.ApiError(c, err)
 		return
 	}
+
+	// 为管理员创建的用户也生成默认令牌（名称为 default，默认分组，永不过期，无限额度）
+	// 创建失败仅记录日志，不中断创建流程
+	_ = service.CreateDefaultTokenForUser(cleanUser.Id, cleanUser.Username)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -1156,7 +1138,7 @@ func PhoneBind(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	user.TelePhone = &req.Telephone
+	user.TelePhone = req.Telephone
 	// 绑定手机号
 	err = user.Update(false)
 	if err != nil {

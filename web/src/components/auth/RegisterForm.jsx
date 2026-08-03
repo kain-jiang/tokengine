@@ -456,7 +456,7 @@ const RegisterForm = () => {
                 {t('注 册')}
               </Title>
             </div>
-            <div className='px-2 py-8'>
+            <div className='px-2 py-8 max-h-[70vh] overflow-y-auto'>
               <div className='space-y-3'>
                 {status.wechat_login && (
                   <Button
@@ -619,7 +619,7 @@ const RegisterForm = () => {
                 {t('注 册')}
               </Title>
             </div>
-            <div className='px-2 py-8'>
+            <div className='px-2 py-8 max-h-[75vh] overflow-y-auto'>
               <Form className='space-y-3'>
                 <Form.Input
                   field='username'
@@ -659,36 +659,35 @@ const RegisterForm = () => {
                   prefix={<IconPhone />}
                 />
 
-                <div>
-                  <div className='mb-1 text-sm text-gray-700'>{t('短信验证码')}</div>
-                  <div className='flex gap-3 items-center'>
-                    <div className='flex-1'>
-                      <Input
-                        placeholder={t('输入6位验证码')}
-                        value={inputs.verification_code}
-                        onChange={(value) => handleChange('verification_code', value)}
-                        prefix={<IconKey />}
-                        maxLength={6}
-                        size='large'
-                      />
-                    </div>
+                <Form.Input
+                  field='verification_code'
+                  label={t('短信验证码')}
+                  placeholder={t('输入6位验证码')}
+                  name='verification_code'
+                  value={inputs.verification_code}
+                  onChange={(value) => handleChange('verification_code', value)}
+                  prefix={<IconKey />}
+                  maxLength={6}
+                  suffix={
                     <Button
                       theme='light'
-                      className='!rounded-full font-semibold whitespace-nowrap'
+                      size='small'
+                      className='!rounded-full font-semibold'
                       type='tertiary'
                       onClick={sendSMSVerificationCode}
                       loading={verificationCodeLoading}
                       disabled={
                         disableButton ||
-                        verificationCodeLoading
+                        verificationCodeLoading ||
+                        !inputs.telephone
                       }
                     >
                       {disableButton
                         ? `${t('重新发送')} (${countdown})`
                         : t('获取验证码')}
                     </Button>
-                  </div>
-                </div>
+                  }
+                />
 
                 {showEmailVerification && (
                   <>
@@ -858,17 +857,18 @@ const RegisterForm = () => {
   };
 
   return (
-    <div className='relative overflow-hidden bg-gray-100 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8'>
+    <div className='relative flex flex-col items-center justify-center min-h-screen bg-gray-100 overflow-hidden'>
       {/* 背景模糊晕染球 */}
       <div
-        className='blur-ball blur-ball-indigo'
+        className='blur-ball blur-ball-indigo fixed'
         style={{ top: '-80px', right: '-80px', transform: 'none' }}
       />
       <div
-        className='blur-ball blur-ball-teal'
+        className='blur-ball blur-ball-teal fixed'
         style={{ top: '50%', left: '-120px' }}
       />
-      <div className='w-full max-w-sm mt-[60px]'>
+      {/* 主内容区 - 可滚动 */}
+      <div className='relative z-10 flex-1 flex flex-col items-center justify-center w-full max-w-sm px-4 py-6 overflow-y-auto'>
         {showEmailRegister ||
         !hasOAuthRegisterOptions
           ? renderEmailRegisterForm()

@@ -38,9 +38,14 @@ func (RealNameAuth) TableName() string {
 }
 
 // GetRealNameAuthByUserId 根据用户ID获取实名认证信息
-func GetRealNameAuthByUserId(userId int) (*RealNameAuth, error) {
+func GetRealNameAuthByUserId(userId int, authType string) (*RealNameAuth, error) {
 	var auth RealNameAuth
-	err := DB.Where("user_id = ?", userId).First(&auth).Error
+	query := DB.Model(&RealNameAuth{}).Where("user_id = ?", userId)
+	// 主要查询个人是否认证
+	if authType != "" {
+		query = query.Where("auth_type = ?", authType)
+	}
+	err := query.Order("id desc").First(&auth).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -100,7 +105,22 @@ func (auth *RealNameAuth) ToAuth(operation string) {
 		auth.Update()
 		common.SysLog(fmt.Sprintf("username[%s]实名认证成功", auth.Username))
 
+		// 更新用户类型
+		userType := PersonalType
+		if auth.AuthType == CompanyAuth {
+			userType = CompanyType
+		}
+		err = UpdateUserType(auth.UserId, userType)
+		if err == nil {
+			common.SysLog(fmt.Sprintf("用户【%d】更新用户类型成功", auth.UserId))
+		}
+
 		if operation != "create" {
+			return
+		}
+
+		// 认证只送一次token, 个人认证-->企业认证
+		if auth.AuthType == CompanyAuth {
 			return
 		}
 		// 实名认证成功，赠送100万tokens, 100万tokens=2美元

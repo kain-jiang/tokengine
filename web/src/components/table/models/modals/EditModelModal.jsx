@@ -125,6 +125,7 @@ const EditModelModal = (props) => {
     name_rule: props.editingModel?.model_name ? 0 : undefined, // 通过未配置模型过来的固定为精确匹配
     status: true,
     sync_official: true,
+    is_blacklisted: false,
   });
 
   const handleCancel = () => {
@@ -149,9 +150,10 @@ const EditModelModal = (props) => {
         if (!data.endpoints) {
           data.endpoints = '';
         }
-        // 处理status/sync_official，将数字转为布尔值
+        // 处理status/sync_official/is_blacklisted，将数字转为布尔值
         data.status = data.status === 1;
         data.sync_official = (data.sync_official ?? 1) === 1;
+        data.is_blacklisted = data.is_blacklisted === 1;
         data.model_type = data.model_type || 1;
         if (formApiRef.current) {
           formApiRef.current.setValues({ ...getInitValues(), ...data });
@@ -201,6 +203,7 @@ const EditModelModal = (props) => {
         model_type: values.model_type || 1,
         status: values.status ? 1 : 0,
         sync_official: values.sync_official ? 1 : 0,
+        is_blacklisted: values.is_blacklisted ? 1 : 0,
       };
 
       if (isEdit) {
@@ -558,6 +561,16 @@ const EditModelModal = (props) => {
                     <Form.Switch
                       field='status'
                       label={t('状态')}
+                      size='large'
+                    />
+                  </Col>
+                  <Col span={24}>
+                    <Form.Switch
+                      field='is_blacklisted'
+                      label={t('加入黑名单')}
+                      extraText={t(
+                        '开启后，该模型将被全局禁用，普通用户无法在模型广场查看和调用。被单独授权的用户仍可正常使用。',
+                      )}
                       size='large'
                     />
                   </Col>

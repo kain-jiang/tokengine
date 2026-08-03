@@ -58,6 +58,8 @@ const routerMap = {
   financeDashboard: '/console/finance',
   orders: '/console/finance/orders',
   revenue: '/console/finance/revenue',
+  'revenue-management': '/console/finance/revenue-management',
+  revenueManagement: '/console/finance/revenue-management',
   invoices: '/console/finance/invoices',
   supplier: '/console/finance/supplier-settlement',
 };
@@ -157,6 +159,11 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         to: '/console/finance/revenue',
       },
       {
+        text: t('营收管理'),
+        itemKey: 'revenue-management',
+        to: '/console/finance/revenue-management',
+      },
+      {
         text: t('发票管理'),
         itemKey: 'invoices',
         to: '/console/finance/invoices',
@@ -171,6 +178,11 @@ const SiderBar = ({ onNavigate = () => {} }) => {
     // 根据配置过滤项目
     const filteredItems = items.filter((item) => {
       const configVisible = isModuleVisible('finance', item.itemKey);
+      // 只有后端配置显式为 true 的项才显示（已存在的菜单项）
+      // 新加的 revenue-management 不在配置中，直接放行
+      if (item.itemKey === 'revenue-management') {
+        return true;
+      }
       return configVisible;
     });
 
@@ -259,7 +271,6 @@ const SiderBar = ({ onNavigate = () => {} }) => {
 
     return filteredItems;
   }, [isAdmin(), isRoot(), t, isModuleVisible]);
-
 
   const chatMenuItems = useMemo(() => {
     const items = [
@@ -470,6 +481,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
       className='sidebar-container'
       style={{
         width: 'var(--sidebar-current-width)',
+        height: '100%',
       }}
     >
       <SkeletonWrapper
@@ -479,15 +491,16 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         collapsed={collapsed}
         showAdmin={isAdmin()}
       >
-        <Nav
-          className='sidebar-nav'
-          defaultIsCollapsed={collapsed}
-          isCollapsed={collapsed}
-          onCollapseChange={toggleCollapsed}
-          selectedKeys={selectedKeys}
-          itemStyle='sidebar-nav-item'
-          hoverStyle='sidebar-nav-item:hover'
-          selectedStyle='sidebar-nav-item-selected'
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <Nav
+            className='sidebar-nav'
+            defaultIsCollapsed={collapsed}
+            isCollapsed={collapsed}
+            onCollapseChange={toggleCollapsed}
+            selectedKeys={selectedKeys}
+            itemStyle='sidebar-nav-item'
+            hoverStyle='sidebar-nav-item:hover'
+            selectedStyle='sidebar-nav-item-selected'
           renderWrapper={({ itemElement, props }) => {
             const to =
               routerMapState[props.itemKey] || routerMap[props.itemKey];
@@ -529,7 +542,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
               setSelectedKeys([itemKey]);
               // 确保财务运营菜单保持展开（不要触发收起逻辑）
               if (!openedKeys.includes('finance')) {
-                setOpenedKeys(prev => [...prev, 'finance']);
+                setOpenedKeys((prev) => [...prev, 'finance']);
               }
               return; // 重要：不要继续执行到后面的收起逻辑
             }
@@ -541,7 +554,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
               setSelectedKeys([itemKey]);
               // 确保财务运营菜单保持展开
               if (!openedKeys.includes('finance')) {
-                setOpenedKeys(prev => [...prev, 'finance']);
+                setOpenedKeys((prev) => [...prev, 'finance']);
               }
               return;
             }
@@ -552,7 +565,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
               setSelectedKeys([itemKey]);
               // 确保财务运营菜单保持展开
               if (!openedKeys.includes('finance')) {
-                setOpenedKeys(prev => [...prev, 'finance']);
+                setOpenedKeys((prev) => [...prev, 'finance']);
               }
               return;
             }
@@ -563,7 +576,18 @@ const SiderBar = ({ onNavigate = () => {} }) => {
               setSelectedKeys([itemKey]);
               // 确保财务运营菜单保持展开
               if (!openedKeys.includes('finance')) {
-                setOpenedKeys(prev => [...prev, 'finance']);
+                setOpenedKeys((prev) => [...prev, 'finance']);
+              }
+              return;
+            }
+
+            if (itemKey === 'revenue-management') {
+              navigate('/console/finance/revenue-management');
+              onNavigate();
+              setSelectedKeys([itemKey]);
+              // 确保财务运营菜单保持展开
+              if (!openedKeys.includes('finance')) {
+                setOpenedKeys((prev) => [...prev, 'finance']);
               }
               return;
             }
@@ -574,7 +598,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
               setSelectedKeys([itemKey]);
               // 确保财务运营菜单保持展开
               if (!openedKeys.includes('finance')) {
-                setOpenedKeys(prev => [...prev, 'finance']);
+                setOpenedKeys((prev) => [...prev, 'finance']);
               }
               return;
             }
@@ -590,8 +614,9 @@ const SiderBar = ({ onNavigate = () => {} }) => {
           onOpenChange={(data) => {
             // 底部菜单手风琴效果：只允许 finance 和 admin 同时只有一个展开
             const bottomMenuKeys = ['finance', 'admin'];
-            const currentOpenKeys = data.openKeys?.filter((k) => bottomMenuKeys.includes(k)) || [];
-            
+            const currentOpenKeys =
+              data.openKeys?.filter((k) => bottomMenuKeys.includes(k)) || [];
+
             if (currentOpenKeys.length > 1) {
               // 只保留最后一个展开的
               setOpenedKeys([currentOpenKeys[currentOpenKeys.length - 1]]);
@@ -637,7 +662,8 @@ const SiderBar = ({ onNavigate = () => {} }) => {
           )}
 
           {/* 底部折叠菜单 - 财务 + 管理员 */}
-          {((isAdmin() && hasSectionVisibleModules('finance')) || (isAdmin() && hasSectionVisibleModules('admin'))) && (
+          {((isAdmin() && hasSectionVisibleModules('finance')) ||
+            (isAdmin() && hasSectionVisibleModules('admin'))) && (
             <>
               <Divider className='sidebar-divider' />
               {/* 财务模块折叠菜单 */}
@@ -652,8 +678,8 @@ const SiderBar = ({ onNavigate = () => {} }) => {
                     </span>
                   }
                   icon={
-                    <div className='sidebar-icon-container flex-shrink-0' style={{ visibility: 'hidden' }}>
-                      <div style={{ width: 16, height: 16 }} />
+                    <div className='sidebar-icon-container flex-shrink-0'>
+                      {getLucideIcon('caiwuyunyin')}
                     </div>
                   }
                 >
@@ -671,9 +697,9 @@ const SiderBar = ({ onNavigate = () => {} }) => {
                       {t('管理员')}
                     </span>
                   }
-                  icon={
-                    <div className='sidebar-icon-container flex-shrink-0' style={{ visibility: 'hidden' }}>
-                      <div style={{ width: 16, height: 16 }} />
+                  icon={ 
+                    <div className='sidebar-icon-container flex-shrink-0'>
+                      {getLucideIcon('super-admin')}
                     </div>
                   }
                 >
@@ -683,41 +709,42 @@ const SiderBar = ({ onNavigate = () => {} }) => {
             </>
           )}
         </Nav>
+        </div>
       </SkeletonWrapper>
 
       {/* 底部折叠按钮 */}
       <div className='sidebar-collapse-button'>
         <SkeletonWrapper
-        loading={showSkeleton}
-        type='button'
-        width={collapsed ? 36 : 156}
-        height={24}
-        className='w-full'
-      >
-        <Button
-          theme='outline'
-          type='tertiary'
-          size='small'
-          icon={
-            <ChevronLeft
-              size={16}
-              strokeWidth={2.5}
-              color='var(--semi-color-text-2)'
-              style={{
-                transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)',
-              }}
-            />
-          }
-          onClick={toggleCollapsed}
-          icononly={collapsed ? '' : undefined}
-          style={
-            collapsed
-              ? { width: 36, height: 24, padding: 0 }
-              : { padding: '4px 12px', width: '100%' }
-          }
+          loading={showSkeleton}
+          type='button'
+          width={collapsed ? 36 : 156}
+          height={24}
+          className='w-full'
         >
-          {!collapsed ? t('收起侧边栏') : null}
-        </Button>
+          <Button
+            theme='outline'
+            type='tertiary'
+            size='small'
+            icon={
+              <ChevronLeft
+                size={16}
+                strokeWidth={2.5}
+                color='var(--semi-color-text-2)'
+                style={{
+                  transform: collapsed ? 'rotate(180deg)' : 'rotate(0deg)',
+                }}
+              />
+            }
+            onClick={toggleCollapsed}
+            icononly={collapsed ? '' : undefined}
+            style={
+              collapsed
+                ? { width: 36, height: 24, padding: 0 }
+                : { padding: '4px 12px', width: '100%' }
+            }
+          >
+            {!collapsed ? t('收起侧边栏') : null}
+          </Button>
         </SkeletonWrapper>
       </div>
     </div>

@@ -896,6 +896,25 @@ export const getLogsColumns = ({
       },
     },
     {
+      key: COLUMN_KEYS.USER_AGENT,
+      title: t('客户端'),
+      dataIndex: 'user_agent',
+      render: (text, record, index) => {
+        if (!text) {
+          return <></>;
+        }
+        return (
+          <Tooltip content={text}>
+            <span>
+              <Tag color='blue' shape='circle'>
+                {text.length > 30 ? text.slice(0, 30) + '...' : text}
+              </Tag>
+            </span>
+          </Tooltip>
+        );
+      },
+    },
+    {
       key: COLUMN_KEYS.RETRY,
       title: t('重试'),
       dataIndex: 'retry',

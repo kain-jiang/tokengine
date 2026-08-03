@@ -637,17 +637,17 @@ func GetAllTopUpsExport(startTime, endTime int64, keyword, status string) ([]*To
 	var topups []*TopUpWithUsername
 	query := DB.Model(&TopUp{})
 	if startTime > 0 {
-		query = query.Where("create_time >= ?", startTime)
+		query = query.Where("top_ups.create_time >= ?", startTime)
 	}
 	if endTime > 0 {
-		query = query.Where("create_time <= ?", endTime)
+		query = query.Where("top_ups.create_time <= ?", endTime)
 	}
 	if keyword != "" {
 		like := "%" + keyword + "%"
-		query = query.Where("trade_no LIKE ?", like)
+		query = query.Where("top_ups.trade_no LIKE ? OR users.username LIKE ?", like, like)
 	}
 	if status != "" {
-		query = query.Where("status = ?", status)
+		query = query.Where("top_ups.status = ?", status)
 	}
 	err := query.Select("top_ups.*, users.username").
 		Joins("LEFT JOIN users ON top_ups.user_id = users.id").

@@ -6,15 +6,15 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/model"
-	"github.com/QuantumNous/new-api/setting"
 	"io"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/setting"
 
 	"github.com/gin-gonic/gin"
 	"github.com/thanhpk/randstr"
@@ -296,18 +296,6 @@ func handleCheckoutCompleted(c *gin.Context, event *CreemWebhookEvent) {
 	if referenceId == "" {
 		log.Println("Creem Webhook缺少request_id字段")
 		c.AbortWithStatus(http.StatusBadRequest)
-		return
-	}
-
-	// Try complete subscription order first
-	LockOrder(referenceId)
-	defer UnlockOrder(referenceId)
-	if err := model.CompleteSubscriptionOrder(referenceId, common.GetJsonString(event)); err == nil {
-		c.Status(http.StatusOK)
-		return
-	} else if err != nil && !errors.Is(err, model.ErrSubscriptionOrderNotFound) {
-		log.Printf("Creem订阅订单处理失败: %s, 订单号: %s", err.Error(), referenceId)
-		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
