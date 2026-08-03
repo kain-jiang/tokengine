@@ -74,6 +74,9 @@ const PageLayout = () => {
     location.pathname !== '/console/text-to-video';
 
   const isConsoleRoute = location.pathname.startsWith('/console');
+  // 非控制台页面（首页/关于等）：页脚跟随文档流，排在瀑布流内容之后，
+  // 而不是钉在视口底部；控制台页面保持原有布局（内容区自身滚动的应用型布局）。
+  const footerInFlow = !isConsoleRoute;
   const showSider = isConsoleRoute && (!isMobile || drawerOpen);
 
   useEffect(() => {
@@ -231,13 +234,34 @@ const PageLayout = () => {
               marginTop: bannerVisible ? `${bannerHeight}px` : '0px',
               padding: shouldInnerPadding ? (isMobile ? '5px' : '24px') : '0',
               position: 'relative',
+              ...(footerInFlow
+                ? { display: 'flex', flexDirection: 'column' }
+                : {}),
             }}
           >
-            <ErrorBoundary>
-              <App />
-            </ErrorBoundary>
+            {footerInFlow ? (
+              <div style={{ flex: '1 0 auto', width: '100%' }}>
+                <ErrorBoundary>
+                  <App />
+                </ErrorBoundary>
+              </div>
+            ) : (
+              <ErrorBoundary>
+                <App />
+              </ErrorBoundary>
+            )}
+            {!shouldHideFooter && footerInFlow && (
+              <Layout.Footer
+                style={{
+                  flex: '0 0 auto',
+                  width: '100%',
+                }}
+              >
+                <FooterBar />
+              </Layout.Footer>
+            )}
           </Content>
-          {!shouldHideFooter && (
+          {!shouldHideFooter && !footerInFlow && (
             <Layout.Footer
               style={{
                 flex: '0 0 auto',

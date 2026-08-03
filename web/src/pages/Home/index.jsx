@@ -24,6 +24,7 @@ import {
   Input,
   ScrollList,
   ScrollItem,
+  BackTop,
 } from '@douyinfe/semi-ui';
 
 // DEBUG: Check ScrollList and ScrollItem
@@ -171,8 +172,15 @@ const Home = () => {
     return () => clearInterval(timer);
   }, [endpointItems.length]);
 
+  // 回到顶部：桌面端首页在 Layout.Content 容器内滚动，移动端为 window 滚动
+  const backTopTarget = () => {
+    if (isMobile) return window;
+    return document.querySelector('.semi-layout-content') || window;
+  };
+
   return (
     <div className='w-full overflow-x-hidden'>
+      <BackTop target={backTopTarget} visibilityHeight={400} />
       <NoticeModal
         visible={noticeVisible}
         onClose={() => setNoticeVisible(false)}

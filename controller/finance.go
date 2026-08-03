@@ -1281,3 +1281,39 @@ func GetUserAgentDistribution(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": distribution})
 }
+
+// GetRevenueManagementDashboard 获取营收管理 Dashboard 数据（折线图 + 饼图）
+func GetRevenueManagementDashboard(c *gin.Context) {
+	userId := c.GetInt("id")
+	if userId == 0 {
+		common.ApiErrorMsg(c, "未登录")
+		return
+	}
+	if !model.IsFinanceAdmin(userId) {
+		common.ApiErrorMsg(c, "无权限访问财务模块")
+		return
+	}
+
+	startTime, _ := strconv.ParseInt(c.Query("start_time"), 10, 64)
+	endTime, _ := strconv.ParseInt(c.Query("end_time"), 10, 64)
+	revenueType := c.Query("revenue_type")
+	username := c.Query("keyword")
+
+	if startTime == 0 || endTime == 0 {
+		common.ApiErrorMsg(c, "缺少时间参数")
+		return
+	}
+	if revenueType != "payg" && revenueType != "subscription" {
+		common.ApiErrorMsg(c, "无效的营收类型")
+		return
+	}
+
+	serviceInstance := service.GetFinanceService()
+	data, err := serviceInstance.GetRevenueManagementDashboard(startTime, endTime, revenueType, username)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": data})
+}

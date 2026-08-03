@@ -480,3 +480,25 @@ type DashboardUserAgentDistributionItem struct {
 	UserAgent string `json:"user_agent"` // 客户端 User-Agent
 	Count     int    `json:"count"`      // 请求次数
 }
+
+// ============================================
+// 营收管理 Dashboard 相关 DTO
+// ============================================
+
+// RevenueManagementTrendItem 营收管理趋势数据点
+type RevenueManagementTrendItem struct {
+	Date   string  `json:"date"`   // 日期 YYYY-MM-DD
+	Amount float64 `json:"amount"` // 金额（CNY）
+}
+
+// RevenueManagementTopItem TopN 分布项
+type RevenueManagementTopItem struct {
+	Name  string  `json:"name"`  // 模型名称 / 套餐名称
+	Value float64 `json:"value"` // 金额（CNY）
+}
+
+// RevenueManagementDashboardResponse 营收管理 Dashboard 响应
+type RevenueManagementDashboardResponse struct {
+	Trend []RevenueManagementTrendItem `json:"trend"` // 趋势数据
+	TopN  []RevenueManagementTopItem   `json:"top_n"` // TopN 分布
+}
