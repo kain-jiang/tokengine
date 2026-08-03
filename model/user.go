@@ -59,9 +59,9 @@ type User struct {
 	Setting          string         `json:"setting" gorm:"type:text;column:setting"`
 	Remark           string         `json:"remark,omitempty" gorm:"type:varchar(255)" validate:"max=255"`
 	StripeCustomer   string         `json:"stripe_customer" gorm:"type:varchar(64);column:stripe_customer;index"`
-	TelePhone        string         `json:"telephone" gorm:"type:varchar(11);column:telephone;unique" validate:"len=11"` // 手机号
-	UserType         int            `json:"user_type" gorm:"type:smallint;default:0;column:user_type"`                   //   0 未认证    1 个人    2 企业
-	SpecifiedModels  string         `json:"specified_models,omitempty" gorm:"type:text;column:specified_models"`         // 该用户被单独授权可调用/可见的黑名单模型，逗号分隔
+	TelePhone        string         `json:"telephone" gorm:"type:varchar(11);column:telephone;unique" validate:"omitempty,len=11"` // 手机号
+	UserType         int            `json:"user_type" gorm:"type:smallint;default:0;column:user_type"`                             //   0 未认证    1 个人    2 企业
+	SpecifiedModels  string         `json:"specified_models,omitempty" gorm:"type:text;column:specified_models"`                   // 该用户被单独授权可调用/可见的黑名单模型，逗号分隔
 }
 
 func (user *User) ToBaseUser() *UserBase {

@@ -108,8 +108,8 @@ func NotifyUser(userId int, userEmail string, userSetting dto.UserSetting, data 
 			user, err := model.GetUserById(userId, false)
 			if err != nil {
 				common.SysLog(fmt.Sprintf("failed to get user %d for sms notification: %s", userId, err.Error()))
-			} else if user.TelePhone != nil && *user.TelePhone != "" {
-				phoneNumber = *user.TelePhone
+			} else if user.TelePhone != "" {
+				phoneNumber = user.TelePhone
 			}
 		}
 		if phoneNumber == "" {
