@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useState, useEffect, useContext } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 // import Turnstile from 'react-turnstile';
 import { Button, Card, Checkbox, Form, Toast } from '@douyinfe/semi-ui';
 import Title from '@douyinfe/semi-ui/lib/es/typography/title';
@@ -34,6 +34,11 @@ function PhoneLoginForm() {
   const [statusState] = useContext(StatusContext);
   const [userState, userDispatch] = useContext(UserContext);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const getRedirectPath = () => {
+    return location.state?.from || '/console';
+  };
 
   const [inputs, setInputs] = useState({
     telephone: '',
@@ -171,7 +176,7 @@ function PhoneLoginForm() {
         setUserData(data);
         updateAPI();
         showSuccess('登录成功！');
-        navigate('/console');
+        navigate(getRedirectPath());
       } else {
         showError(message);
       }

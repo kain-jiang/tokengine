@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { UserContext } from '../../context/User';
 import { StatusContext } from '../../context/Status';
 import {
@@ -70,7 +70,13 @@ import { SiDiscord } from 'react-icons/si';
 
 const LoginForm = () => {
   let navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
+
+  // 登录成功后获取重定向路径，优先使用 location.state.from
+  const getRedirectPath = () => {
+    return location.state?.from || '/console';
+  };
   const githubButtonTextKeyByState = {
     idle: '使用 GitHub 继续',
     redirecting: '正在跳转 GitHub...',
@@ -171,6 +177,9 @@ const LoginForm = () => {
     if (searchParams.get('expired')) {
       showError(t('未登录或登录已过期，请重新登录'));
     }
+    if (searchParams.get('reason') === 'canvas_tool') {
+      showInfo(t('使用画布工具需要登录'));
+    }
   }, []);
 
   const onWeChatLoginClicked = () => {
@@ -199,7 +208,7 @@ const LoginForm = () => {
         localStorage.setItem('user', JSON.stringify(data));
         setUserData(data);
         updateAPI();
-        navigate('/');
+        navigate(getRedirectPath());
         showSuccess('登录成功！');
         setShowWeChatLoginModal(false);
       } else {
@@ -256,7 +265,7 @@ const LoginForm = () => {
               centered: true,
             });
           }
-          navigate('/console');
+          navigate(getRedirectPath());
         } else {
           showError(message || '登录失败，请重试');
         }
@@ -301,7 +310,7 @@ const LoginForm = () => {
         showSuccess('登录成功！');
         setUserData(data);
         updateAPI();
-        navigate('/');
+        navigate(getRedirectPath());
       } else {
         showError(message || '登录失败，请重试');
       }
@@ -457,7 +466,7 @@ const LoginForm = () => {
         setUserData(finish.data);
         updateAPI();
         showSuccess('登录成功！');
-        navigate('/console');
+        navigate(getRedirectPath());
       } else {
         showError(finish.message || 'Passkey 登录失败，请重试');
       }
@@ -492,7 +501,7 @@ const LoginForm = () => {
     setUserData(data);
     updateAPI();
     showSuccess('登录成功！');
-    navigate('/console');
+    navigate(getRedirectPath());
   };
 
   // 返回登录页面

@@ -54,15 +54,20 @@ const Navigation = ({
       }
 
       let targetPath = link.to;
+      let linkState = undefined;
       if (link.itemKey === 'console' && !userState.user) {
         targetPath = '/login';
+      }
+      if (link.itemKey === 'canvasTool' && !userState.user) {
+        targetPath = '/login?reason=canvas_tool';
+        linkState = { from: '/canvas-tool' };
       }
       if (link.itemKey === 'pricing' && pricingRequireAuth && !userState.user) {
         targetPath = '/login';
       }
 
       return (
-        <Link key={link.itemKey} to={targetPath} className={commonLinkClasses}>
+        <Link key={link.itemKey} to={targetPath} state={linkState} className={commonLinkClasses}>
           {linkContent}
         </Link>
       );
