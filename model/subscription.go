@@ -32,14 +32,6 @@ const (
 	SubscriptionResetCustom  = "custom"
 )
 
-// Gift trigger scenarios
-const (
-	GiftTriggerRealNameAuth = "real_name_auth"
-	GiftTriggerCheckin      = "checkin"
-	GiftTriggerInvite       = "invite"
-	GiftTriggerRegister     = "register"
-)
-
 var (
 	ErrSubscriptionOrderNotFound      = errors.New("subscription order not found")
 	ErrSubscriptionOrderStatusInvalid = errors.New("subscription order status invalid")
@@ -195,11 +187,6 @@ type SubscriptionPlan struct {
 
 	// VisibleToUser indicates whether this plan is visible to end users (default false)
 	VisibleToUser bool `json:"visible_to_user" gorm:"default:false"`
-
-	// GiftTrigger 标识赠送套餐的触发场景（空字符串=非赠送套餐）
-	// 例如 "real_name_auth" 表示实名认证成功后自动发放
-	// 管理员创建/启用此套餐即激活活动，删除/禁用即取消活动
-	GiftTrigger string `json:"gift_trigger" gorm:"type:varchar(64);default:''"`
 
 	CreatedAt int64 `json:"created_at" gorm:"bigint"`
 	UpdatedAt int64 `json:"updated_at" gorm:"bigint"`
@@ -676,36 +663,6 @@ func ExpireSubscriptionOrder(tradeNo string) error {
 		order.CompleteTime = common.GetTimestamp()
 		return tx.Save(&order).Error
 	})
-}
-
-// GetGiftPlanByTrigger 查询指定触发场景的启用中赠送套餐。
-// 返回第一个匹配的套餐，如果没有返回 nil, nil。
-func GetGiftPlanByTrigger(trigger string) (*SubscriptionPlan, error) {
-	if trigger == "" {
-		return nil, nil
-	}
-	var plan SubscriptionPlan
-	err := DB.Where("gift_trigger = ? AND enabled = ?", trigger, true).First(&plan).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &plan, nil
-}
-
-// BindGiftSubscriptionByTrigger 按触发场景查找赠送套餐并绑定给用户。
-// 如果没有对应活动套餐，返回 nil, nil（不报错，调用方应视为"无活动"而非失败）。
-func BindGiftSubscriptionByTrigger(userId int, trigger string) (*UserSubscription, error) {
-	plan, err := GetGiftPlanByTrigger(trigger)
-	if err != nil {
-		return nil, err
-	}
-	if plan == nil {
-		return nil, nil
-	}
-	return BindGiftSubscription(userId, plan.Id)
 }
 
 // BindGiftSubscription 为用户绑定赠送订阅（无需支付）。

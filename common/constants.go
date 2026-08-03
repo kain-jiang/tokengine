@@ -105,6 +105,9 @@ var TelegramBotName = ""
 var QuotaForNewUser = 0
 var QuotaForInviter = 0
 var QuotaForInvitee = 0
+
+// RealNameAuthGiftPlanId 实名认证成功后绑定的赠送订阅套餐 ID（0 = 不赠送）
+var RealNameAuthGiftPlanId = 0
 var ChannelDisableThreshold = 5.0
 var AutomaticDisableChannelEnabled = false
 var AutomaticEnableChannelEnabled = false

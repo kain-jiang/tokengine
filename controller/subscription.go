@@ -295,7 +295,6 @@ func AdminUpdateSubscriptionPlan(c *gin.Context) {
 			"plan_type":                  req.Plan.PlanType,
 			"applicable_models":          req.Plan.ApplicableModels,
 			"tokens_limit":               req.Plan.TokensLimit,
-			"gift_trigger":               req.Plan.GiftTrigger,
 			"updated_at":                 common.GetTimestamp(),
 		}
 		if err := tx.Model(&model.SubscriptionPlan{}).Where("id = ?", id).Updates(updateMap).Error; err != nil {
