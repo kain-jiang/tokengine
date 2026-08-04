@@ -6,8 +6,6 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
-	"github.com/QuantumNous/new-api/setting/operation_setting"
-	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -38,9 +36,14 @@ func (RealNameAuth) TableName() string {
 }
 
 // GetRealNameAuthByUserId 根据用户ID获取实名认证信息
-func GetRealNameAuthByUserId(userId int) (*RealNameAuth, error) {
+func GetRealNameAuthByUserId(userId int, authType string) (*RealNameAuth, error) {
 	var auth RealNameAuth
-	err := DB.Where("user_id = ?", userId).First(&auth).Error
+	query := DB.Model(&RealNameAuth{}).Where("user_id = ?", userId)
+	// 主要查询个人是否认证
+	if authType != "" {
+		query = query.Where("auth_type = ?", authType)
+	}
+	err := query.Order("id desc").First(&auth).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -100,26 +103,37 @@ func (auth *RealNameAuth) ToAuth(operation string) {
 		auth.Update()
 		common.SysLog(fmt.Sprintf("username[%s]实名认证成功", auth.Username))
 
+		// 更新用户类型
+		userType := PersonalType
+		if auth.AuthType == CompanyAuth {
+			userType = CompanyType
+		}
+		err = UpdateUserType(auth.UserId, userType)
+		if err == nil {
+			common.SysLog(fmt.Sprintf("用户【%d】更新用户类型成功", auth.UserId))
+		}
+
 		if operation != "create" {
 			return
 		}
-		// 实名认证成功，赠送100万tokens, 100万tokens=2美元
-		// todo 要改，赠送的额度要与充值的额度分级使用，赠送额度只能使用某些模型
-		//common.QuotaPerUnit
 
-		usdExchangeRate := operation_setting.USDExchangeRate
-		if usdExchangeRate <= 0 {
-			usdExchangeRate = 7.3 // 默认汇率
-		}
-		cnyMoney := 2 * usdExchangeRate
-		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-		quotaToAdd := int(decimal.NewFromFloat(cnyMoney).Div(decimal.NewFromFloat(usdExchangeRate)).Mul(dQuotaPerUnit).IntPart())
-		if err = IncreaseUserQuota(auth.UserId, quotaToAdd, true); err != nil {
-			common.SysLog("实名认证成功，但赠送用户额度失败: " + err.Error())
+		// 认证只送一次token, 个人认证-->企业认证
+		if auth.AuthType == CompanyAuth {
 			return
 		}
-		common.SysLog(fmt.Sprintf("实名认证成功，赠送用户【%d】额度 %s", auth.UserId, logger.LogQuota(quotaToAdd)))
-		RecordLog(auth.UserId, LogTypeManage,
-			fmt.Sprintf("实名认证成功，系统赠送用户【%d】额度 %s", auth.UserId, logger.LogQuota(quotaToAdd)))
+
+		// 实名认证成功后，根据系统设置绑定的赠送订阅套餐发放额度
+		// 配置入口：系统设置 → 运营设置 → 额度设置 → 下发方式 → 选择订阅套餐
+		// 套餐 source 标记为 "gift"，额度与充值隔离，可限制模型、可过期
+		if common.RealNameAuthGiftPlanId > 0 {
+			sub, bindErr := BindGiftSubscription(auth.UserId, common.RealNameAuthGiftPlanId)
+			if bindErr != nil {
+				common.SysLog("实名认证赠送订阅失败: " + bindErr.Error())
+			} else if sub != nil {
+				common.SysLog(fmt.Sprintf("实名认证成功，赠送用户【%d】订阅套餐", auth.UserId))
+				RecordLog(auth.UserId, LogTypeManage,
+					fmt.Sprintf("实名认证成功，系统赠送订阅套餐（额度 %s）", logger.LogQuota(int(sub.AmountTotal))))
+			}
+		}
 	}
 }

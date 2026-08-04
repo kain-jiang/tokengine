@@ -101,8 +101,46 @@ func NotifyUser(userId int, userEmail string, userSetting dto.UserSetting, data 
 			return nil
 		}
 		return sendGotifyNotify(gotifyUrl, gotifyToken, userSetting.GotifyPriority, data)
+	case dto.NotifyTypeSms:
+		phoneNumber := userSetting.NotificationPhone
+		if phoneNumber == "" {
+			// 用户未单独设置通知手机号时，自动从用户表中获取
+			user, err := model.GetUserById(userId, false)
+			if err != nil {
+				common.SysLog(fmt.Sprintf("failed to get user %d for sms notification: %s", userId, err.Error()))
+			} else if user.TelePhone != "" {
+				phoneNumber = user.TelePhone
+			}
+		}
+		if phoneNumber == "" {
+			common.SysLog(fmt.Sprintf("user %d has no phone number, skip sending sms", userId))
+			return nil
+		}
+		return sendSMSNotify(phoneNumber, data)
 	}
 	return nil
+}
+
+func sendSMSNotify(phoneNumber string, data dto.Notify) error {
+	// 检查短信服务是否启用
+	if !common.IsSMSEnabled() {
+		return fmt.Errorf("短信服务未配置")
+	}
+
+	// 短信模板变量：${用户昵称：systemName} 和 ${金额/数量：quota}
+	// systemName 从 common.SystemName 获取
+	// quota 从 data.Values 中提取
+
+	var quota string
+	if len(data.Values) >= 1 {
+		quota = fmt.Sprintf("%v", data.Values[0])
+	}
+
+	// 构建短信模板参数（JSON格式）
+	// 模板变量：systemName 和 quota
+	templateParam := fmt.Sprintf(`{"systemName":"%s","quota":"%s"}`, common.SystemName, quota)
+
+	return common.SendSMSAlarmNotify(phoneNumber, templateParam)
 }
 
 func sendEmailNotify(userEmail string, data dto.Notify) error {

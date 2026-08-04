@@ -19,6 +19,13 @@ import (
 
 const UserNameMaxLength = 20
 
+// 用户类型
+const (
+	UnAuthType   = 0 // 未认证
+	PersonalType = 1 // 个人
+	CompanyType  = 2 // 企业
+)
+
 // User if you add sensitive fields, don't forget to clean them in setupLogin function.
 // Otherwise, the sensitive information will be saved on local storage in plain text!
 type User struct {
@@ -46,13 +53,15 @@ type User struct {
 	AffQuota         int            `json:"aff_quota" gorm:"type:int;default:0;column:aff_quota"`           // 邀请剩余额度
 	AffHistoryQuota  int            `json:"aff_history_quota" gorm:"type:int;default:0;column:aff_history"` // 邀请历史额度
 	InviterId        int            `json:"inviter_id" gorm:"type:int;column:inviter_id;index"`
-	CreatedAt        int64          `json:"created_at" gorm:"type:bigint;default:0;index"` // 创建时间（Unix时间戳）
+	CreatedAt        int64          `json:"created_at" gorm:"autoCreateTime;default:0;index;column:created_at"`
 	DeletedAt        gorm.DeletedAt `gorm:"index"`
 	LinuxDOId        string         `json:"linux_do_id" gorm:"column:linux_do_id;index"`
 	Setting          string         `json:"setting" gorm:"type:text;column:setting"`
 	Remark           string         `json:"remark,omitempty" gorm:"type:varchar(255)" validate:"max=255"`
 	StripeCustomer   string         `json:"stripe_customer" gorm:"type:varchar(64);column:stripe_customer;index"`
-	TelePhone        *string        `json:"telephone" gorm:"type:varchar(11);column:telephone;unique"` // 手机号
+	TelePhone        string         `json:"telephone" gorm:"type:varchar(11);column:telephone;unique" validate:"omitempty,len=11"` // 手机号
+	UserType         int            `json:"user_type" gorm:"type:smallint;default:0;column:user_type"`                             //   0 未认证    1 个人    2 企业
+	SpecifiedModels  string         `json:"specified_models,omitempty" gorm:"type:text;column:specified_models"`                   // 该用户被单独授权可调用/可见的黑名单模型，逗号分隔
 }
 
 func (user *User) ToBaseUser() *UserBase {
@@ -161,28 +170,35 @@ func generateDefaultSidebarConfigForRole(userRole int) string {
 	return string(configBytes)
 }
 
-// CheckUserExistOrDeleted check if user exist or deleted, if not exist, return false, nil, if deleted or exist, return true, nil
-func CheckUserExistOrDeleted(username string, email string, telephone string) (bool, error) {
+// CheckUserExistOrDeleted check if user exist or deleted.
+// Returns: (conflictingField, isExist, error)
+// conflictingField is "username", "email", "telephone", or "" if not exist
+func CheckUserExistOrDeleted(username string, email string, telephone string) (conflictingField string, isExist bool, err error) {
 	var user User
+	var dbErr error
 
-	// err := DB.Unscoped().First(&user, "username = ? or email = ?", username, email).Error
-	// check email if empty
-	var err error
-	if email == "" {
-		err = DB.Unscoped().First(&user, "username = ?", username).Error
-	} else {
-		err = DB.Unscoped().First(&user, "username = ? or email = ? or telephone = ?", username, email, telephone).Error
+	// Check username
+	dbErr = DB.Unscoped().First(&user, "username = ?", username).Error
+	if dbErr == nil {
+		return "username", true, nil
 	}
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// not exist, return false, nil
-			return false, nil
+
+	// Check email (only if provided)
+	if email != "" {
+		dbErr = DB.Unscoped().First(&user, "email = ?", email).Error
+		if dbErr == nil {
+			return "email", true, nil
 		}
-		// other error, return false, err
-		return false, err
 	}
-	// exist, return true, nil
-	return true, nil
+
+	// Check telephone
+	dbErr = DB.Unscoped().First(&user, "telephone = ?", telephone).Error
+	if dbErr == nil {
+		return "telephone", true, nil
+	}
+
+	// No conflict found
+	return "", false, nil
 }
 
 // 手机号查询用户
@@ -257,7 +273,7 @@ func GetAllUsers(pageInfo *common.PageInfo) (users []*User, total int64, err err
 	return users, total, nil
 }
 
-func SearchUsers(keyword string, group string, startIdx int, num int) ([]*User, int64, error) {
+func SearchUsers(keyword string, group string, user_type string, startIdx int, num int) ([]*User, int64, error) {
 	var users []*User
 	var total int64
 	var err error
@@ -302,6 +318,9 @@ func SearchUsers(keyword string, group string, startIdx int, num int) ([]*User, 
 		}
 	}
 
+	if user_type != "" {
+		query = query.Where("user_type = ?", user_type)
+	}
 	// 获取总数
 	err = query.Count(&total).Error
 	if err != nil {
@@ -427,6 +446,9 @@ func (user *User) Insert(inviterId int) error {
 	// 初始化用户设置，包括默认的边栏配置
 	if user.Setting == "" {
 		defaultSetting := dto.UserSetting{}
+		// 默认开启 IP 记录
+		recordIpLog := true
+		defaultSetting.RecordIpLog = &recordIpLog
 		// 这里暂时不设置SidebarModules，因为需要在用户创建后根据角色设置
 		user.SetSetting(defaultSetting)
 	}
@@ -486,6 +508,9 @@ func (user *User) InsertWithTx(tx *gorm.DB, inviterId int) error {
 	// 初始化用户设置
 	if user.Setting == "" {
 		defaultSetting := dto.UserSetting{}
+		// 默认开启 IP 记录
+		recordIpLog := true
+		defaultSetting.RecordIpLog = &recordIpLog
 		user.SetSetting(defaultSetting)
 	}
 
@@ -557,10 +582,12 @@ func (user *User) Edit(updatePassword bool) error {
 
 	newUser := *user
 	updates := map[string]interface{}{
-		"username":     newUser.Username,
-		"display_name": newUser.DisplayName,
-		"group":        newUser.Group,
-		"remark":       newUser.Remark,
+		"username":         newUser.Username,
+		"display_name":     newUser.DisplayName,
+		"group":            newUser.Group,
+		"remark":           newUser.Remark,
+		"user_type":        newUser.UserType,
+		"specified_models": newUser.SpecifiedModels,
 	}
 	if updatePassword {
 		updates["password"] = newUser.Password
@@ -768,10 +795,7 @@ func IsAdmin(userId int) bool {
 	return user.Role >= common.RoleAdminUser
 }
 
-// IsFinanceAdmin checks if the user is a finance administrator.
-// A user is considered a finance administrator if their role is at least RoleAdminUser.
-// This ensures that role-based access control is enforced server-side, independent of
-// any client-side data (e.g., localStorage) that could be tampered with.
+// 判断用户是否是财务管理员
 func IsFinanceAdmin(userId int) bool {
 	if userId == 0 {
 		return false
@@ -897,6 +921,41 @@ func GetUserGroup(id int, fromDB bool) (group string, err error) {
 	}
 
 	return group, nil
+}
+
+// GetUserSpecifiedModelsList 查询该用户被单独授权可调用/可见的黑名单模型列表（逗号分隔字段拆分为数组）
+func GetUserSpecifiedModelsList(userId int) ([]string, error) {
+	var specifiedModels string
+	err := DB.Model(&User{}).Where("id = ?", userId).Select("specified_models").Find(&specifiedModels).Error
+	if err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(specifiedModels) == "" {
+		return []string{}, nil
+	}
+	parts := strings.Split(specifiedModels, ",")
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			result = append(result, p)
+		}
+	}
+	return result, nil
+}
+
+// IsModelSpecifiedForUser 判断该用户是否被单独授权调用/查看指定模型（黑名单豁免）
+func IsModelSpecifiedForUser(userId int, modelName string) (bool, error) {
+	specifiedModels, err := GetUserSpecifiedModelsList(userId)
+	if err != nil {
+		return false, err
+	}
+	for _, m := range specifiedModels {
+		if m == modelName {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // GetUserSetting gets setting from Redis first, falls back to DB if needed
@@ -1112,4 +1171,12 @@ func RootUserExists() bool {
 		return false
 	}
 	return true
+}
+
+func UpdateUserType(id int, userType int) error {
+	err := DB.Model(&User{}).Where("id = ?", id).Update("user_type", userType).Error
+	if err != nil {
+		return err
+	}
+	return nil
 }

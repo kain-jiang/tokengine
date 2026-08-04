@@ -46,19 +46,13 @@ import FinanceLayout from './pages/Finance/FinanceLayout';
 import FinanceDashboard from './pages/Finance/Dashboard';
 import FinanceOrders from './pages/Finance/Orders';
 import FinanceRevenue from './pages/Finance/Revenue';
+import FinanceRevenueDetail from './pages/Finance/revenue/Detail';
 import FinanceInvoices from './pages/Finance/Invoices';
 import FinanceReconciliation from './pages/Finance/Reconciliation';
 import FinanceSupplier from './pages/Finance/Supplier';
 import FinanceSupplierSettlement from './pages/Finance/SupplierSettlement';
+import RevenueManagement from './pages/Finance/RevenueManagement';
 
-// Debug: Test if all finance imports are valid
-console.log('[App.jsx] FinanceReconciliation:', typeof FinanceReconciliation, FinanceReconciliation?.name);
-console.log('[App.jsx] FinanceDashboard:', typeof FinanceDashboard, FinanceDashboard?.name);
-console.log('[App.jsx] FinanceOrders:', typeof FinanceOrders, FinanceOrders?.name);
-console.log('[App.jsx] FinanceRevenue:', typeof FinanceRevenue, FinanceRevenue?.name);
-console.log('[App.jsx] FinanceInvoices:', typeof FinanceInvoices, FinanceInvoices?.name);
-console.log('[App.jsx] PrivateRoute:', typeof PrivateRoute);
-console.log('[App.jsx] Loading:', typeof Loading);
 import Log from './pages/Log';
 import Chat from './pages/Chat';
 import Chat2Link from './pages/Chat2Link';
@@ -70,6 +64,7 @@ import Playground from './pages/Playground';
 import TextToImage from './pages/TextToImage';
 import TextToVideo from './pages/TextToVideo';
 import Subscription from './pages/Subscription';
+import CanvasTool from './pages/CanvasTool';
 import OAuth2Callback from './components/auth/OAuth2Callback';
 import PersonalSetting from './components/settings/PersonalSetting';
 import RealNameAuthForm from './components/settings/personal/RealNameAuthForm';
@@ -78,6 +73,7 @@ import SetupCheck from './components/layout/SetupCheck';
 
 const Home = lazy(() => import('./pages/Home'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const DashboardBoard = lazy(() => import('./pages/DashboardBoard'));
 const About = lazy(() => import('./pages/About'));
 const UserAgreement = lazy(() => import('./pages/UserAgreement'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
@@ -320,6 +316,16 @@ function App() {
           }
         />
         <Route
+          path='/console/dashboard'
+          element={
+            <AdminRoute>
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <DashboardBoard />
+              </Suspense>
+            </AdminRoute>
+          }
+        />
+        <Route
           path='/console/personal'
           element={
             <PrivateRoute>
@@ -396,6 +402,12 @@ function App() {
               }
             />
             <Route
+              path='revenue/detail/:userId'
+              element={
+                <ErrorBoundary key='finance-revenue-detail'><FinanceRevenueDetail /></ErrorBoundary>
+              }
+            />
+            <Route
               path='invoices'
               element={
                 <ErrorBoundary key='finance-invoices'><FinanceInvoices /></ErrorBoundary>
@@ -405,6 +417,12 @@ function App() {
               path='supplier-settlement'
               element={
                 <ErrorBoundary key='finance-supplier-settlement'><FinanceSupplierSettlement /></ErrorBoundary>
+              }
+            />
+            <Route
+              path='revenue-management'
+              element={
+                <ErrorBoundary key='finance-revenue-management'><RevenueManagement /></ErrorBoundary>
               }
             />
           </Route>
@@ -506,6 +524,14 @@ function App() {
               <Suspense fallback={<Loading></Loading>} key={location.pathname}>
                 <Chat2Link />
               </Suspense>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='/canvas-tool'
+          element={
+            <PrivateRoute>
+              <CanvasTool />
             </PrivateRoute>
           }
         />

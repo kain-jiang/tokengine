@@ -110,6 +110,10 @@ import {
   SiX,
 } from 'react-icons/si';
 import { FaLinkedin } from 'react-icons/fa';
+import {
+  IconCoinMoneyStroked,
+  IconGridStroked,
+} from '@douyinfe/semi-icons';
 
 // 获取侧边栏Lucide图标组件
 export function getLucideIcon(key, selected = false) {
@@ -177,6 +181,12 @@ export function getLucideIcon(key, selected = false) {
       return <DollarSign {...commonProps} color={iconColor} />;
     case 'supplier-account':
       return <Users {...commonProps} color={iconColor} />;
+      // 财务运营
+    case "caiwuyunyin":
+      return <IconCoinMoneyStroked {...commonProps} color={iconColor} />;
+      // 管理员
+    case "super-admin":
+      return <IconGridStroked {...commonProps} color={iconColor} />;
     default:
       return <CircleUser {...commonProps} color={iconColor} />;
   }
@@ -437,6 +447,12 @@ export function getChannelIcon(channelType) {
     case 58: // 众联 ZLHub（使用通用图标）
       return <OpenAI size={iconSize} />;
     case 59: // Agnes AI（使用通用图标）
+      return <OpenAI size={iconSize} />;
+    case 60: // 鲸纬 Jingwei（使用通用图标）
+      return <OpenAI size={iconSize} />;
+    case 61: // 好易智算 Haoee（使用通用图标）
+      return <OpenAI size={iconSize} />;
+    case 62: // ToAPIs（使用通用图标）
       return <OpenAI size={iconSize} />;
     case 53: // SubModel
       return <OpenAI size={iconSize} />;

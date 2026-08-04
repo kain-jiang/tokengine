@@ -333,29 +333,6 @@ func AdminUpdateSubscriptionPlanStatus(c *gin.Context) {
 	common.ApiSuccess(c, nil)
 }
 
-type AdminBindSubscriptionRequest struct {
-	UserId int `json:"user_id"`
-	PlanId int `json:"plan_id"`
-}
-
-func AdminBindSubscription(c *gin.Context) {
-	var req AdminBindSubscriptionRequest
-	if err := c.ShouldBindJSON(&req); err != nil || req.UserId <= 0 || req.PlanId <= 0 {
-		common.ApiErrorMsg(c, "参数错误")
-		return
-	}
-	msg, err := model.AdminBindSubscription(req.UserId, req.PlanId, "")
-	if err != nil {
-		common.ApiError(c, err)
-		return
-	}
-	if msg != "" {
-		common.ApiSuccess(c, gin.H{"message": msg})
-		return
-	}
-	common.ApiSuccess(c, nil)
-}
-
 // ---- Admin: user subscription management ----
 
 func AdminListUserSubscriptions(c *gin.Context) {

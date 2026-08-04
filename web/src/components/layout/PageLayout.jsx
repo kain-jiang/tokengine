@@ -48,6 +48,7 @@ const PageLayout = () => {
   const [collapsed, , setCollapsed] = useSidebarCollapsed();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [bannerVisible, setBannerVisible] = useState(true);
+  const [bannerHeight, setBannerHeight] = useState(44); // 动态 Banner 高度（默认 48px）
   const { i18n } = useTranslation();
   const location = useLocation();
 
@@ -61,6 +62,7 @@ const PageLayout = () => {
     '/console/task',
     '/console/models',
     '/pricing',
+    '/canvas-tool',
   ];
 
   const shouldHideFooter = cardProPages.includes(location.pathname);
@@ -73,6 +75,9 @@ const PageLayout = () => {
     location.pathname !== '/console/text-to-video';
 
   const isConsoleRoute = location.pathname.startsWith('/console');
+  // 非控制台页面（首页/关于等）：页脚跟随文档流，排在瀑布流内容之后，
+  // 而不是钉在视口底部；控制台页面保持原有布局（内容区自身滚动的应用型布局）。
+  const footerInFlow = !isConsoleRoute;
   const showSider = isConsoleRoute && (!isMobile || drawerOpen);
 
   useEffect(() => {
@@ -169,13 +174,15 @@ const PageLayout = () => {
           onMobileMenuToggle={() => setDrawerOpen((prev) => !prev)}
           drawerOpen={drawerOpen}
           onBannerVisibilityChange={setBannerVisible}
+          onBannerHeightChange={setBannerHeight}
         />
       </div>
       <Layout
         style={{
-          overflow: isMobile ? 'visible' : 'auto',
+          overflow: isMobile ? 'visible' : 'hidden',
           display: 'flex',
           flexDirection: 'column',
+          height: '100%',
         }}
       >
         {showSider && (
@@ -185,10 +192,15 @@ const PageLayout = () => {
               position: 'fixed',
               left: 0,
               top: `${bannerVisible ? 108 : 64}px`,
+              height: `calc(100vh - ${bannerVisible ? 108 : 64}px)`,
+
               zIndex: 99,
               border: 'none',
               paddingRight: '0',
               width: 'var(--sidebar-current-width)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
             }}
           >
             <SiderBar
@@ -208,23 +220,54 @@ const PageLayout = () => {
             flex: '1 1 auto',
             display: 'flex',
             flexDirection: 'column',
+            height: '100%',
           }}
         >
           <Content
             style={{
-              flex: '1 0 auto',
-              overflowY: isMobile ? 'visible' : 'hidden',
+              flex: isConsoleRoute ? '1 0 auto' : '1 1 0',
+              overflowY: isMobile
+                ? 'visible'
+                : isConsoleRoute
+                  ? 'hidden'
+                  : 'auto',
               WebkitOverflowScrolling: 'touch',
-              marginTop: bannerVisible ? '44px' : '0px',
+              marginTop:
+                location.pathname === '/canvas-tool'
+                  ? '65px'
+                  : bannerVisible
+                    ? `${bannerHeight}px`
+                    : '0px',
               padding: shouldInnerPadding ? (isMobile ? '5px' : '24px') : '0',
               position: 'relative',
+              ...(footerInFlow
+                ? { display: 'flex', flexDirection: 'column' }
+                : {}),
             }}
           >
-            <ErrorBoundary>
-              <App />
-            </ErrorBoundary>
+            {footerInFlow ? (
+              <div style={{ flex: '1 0 auto', width: '100%' }}>
+                <ErrorBoundary>
+                  <App />
+                </ErrorBoundary>
+              </div>
+            ) : (
+              <ErrorBoundary>
+                <App />
+              </ErrorBoundary>
+            )}
+            {!shouldHideFooter && footerInFlow && (
+              <Layout.Footer
+                style={{
+                  flex: '0 0 auto',
+                  width: '100%',
+                }}
+              >
+                <FooterBar />
+              </Layout.Footer>
+            )}
           </Content>
-          {!shouldHideFooter && (
+          {!shouldHideFooter && !footerInFlow && (
             <Layout.Footer
               style={{
                 flex: '0 0 auto',

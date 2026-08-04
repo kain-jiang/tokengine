@@ -221,6 +221,7 @@ func ModelPriceHelperPerCall(c *gin.Context, info *relaycommon.RelayInfo) (types
 		}
 	} else {
 		// 按量计费：以模型倍率的一半作为预扣额度
+		// 页面配置模型价格时是以倍率存数据库，例如doubao-seedance-2-0-fast-260128， 输入价格是$5.075，则模型倍率是5.07/2=2.535，则预扣额度 = 2.535 / 2 * 500000
 		quota = int(modelRatio / 2 * common.QuotaPerUnit * groupRatioInfo.GroupRatio)
 		modelPrice = -1
 		if !operation_setting.GetQuotaSetting().EnableFreeModelPreConsume {

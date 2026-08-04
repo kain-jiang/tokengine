@@ -47,6 +47,7 @@ export default function SettingsHeaderNavModules(props) {
       requireAuth: false, // 默认不需要登录鉴权
     },
     docs: true,
+    canvasTool: true,
     about: true,
   });
 
@@ -87,6 +88,7 @@ export default function SettingsHeaderNavModules(props) {
         requireAuth: false,
       },
       docs: true,
+      canvasTool: true,
       about: true,
     };
     setHeaderNavModules(defaultModules);
@@ -153,6 +155,7 @@ export default function SettingsHeaderNavModules(props) {
             requireAuth: false,
           },
           docs: true,
+          canvasTool: true,
           about: true,
         };
         setHeaderNavModules(defaultModules);
@@ -182,6 +185,11 @@ export default function SettingsHeaderNavModules(props) {
       key: 'docs',
       title: t('文档'),
       description: t('系统文档和帮助信息'),
+    },
+    {
+      key: 'canvasTool',
+      title: t('画布工具'),
+      description: t('CarbotAI 画布工具，需要登录访问'),
     },
     {
       key: 'about',

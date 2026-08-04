@@ -2,10 +2,12 @@ package model
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/QuantumNous/new-api/common"
 	"gorm.io/gorm"
 )
 
@@ -81,8 +83,8 @@ type InvoiceRecord struct {
 	InvoiceTitleInfo string    `json:"invoice_title_info" gorm:"type:varchar(1000)"` // 发票抬头信息, 存储json数据, 防止用户发票抬头信息修改,而没有对上开票记录
 	OrderIds         string    `json:"order_ids" gorm:"type:varchar(500)"`           // 订单id列表, 逗号分割 1,2,3
 	Amount           float64   `json:"amount" gorm:"index;not null"`                 // 开票金额
-	CreatedAt        time.Time `gorm:"autoCreateTime"`
-	UpdatedAt        time.Time `gorm:"autoUpdateTime"`
+	CreatedAt        time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt        time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 	Status           string    `json:"status" gorm:"type:varchar(20)"`       // 开票状态 pending/completed/failed
 	InvoiceType      string    `json:"invoice_type" gorm:"type:varchar(20)"` // 开票类型，普票general_invoice、专票special_invoice
 	InvoiceUrl       string    `json:"invoice_url" gorm:"type:varchar(255)"` // 发票下载链接
@@ -92,6 +94,50 @@ type InvoiceRecord struct {
 
 func (InvoiceRecord) TableName() string {
 	return "invoice_record"
+}
+
+// InvoiceRecordWithDetails 发票记录（包含用户名和抬头）
+type InvoiceRecordWithDetails struct {
+	InvoiceRecord
+	Username string `json:"username" gorm:"column:username"`
+	Title    string `json:"title" gorm:"column:title"`
+}
+
+// GetAllInvoiceRecords 获取全部发票记录（管理员）
+func GetAllInvoiceRecords(status string, startTime, endTime int64, keyword string, pageInfo *common.PageInfo) ([]*InvoiceRecordWithDetails, int64, error) {
+	var invoices []*InvoiceRecordWithDetails
+	var total int64
+
+	query := DB.Model(&InvoiceRecord{}).
+		Joins("LEFT JOIN users ON invoice_record.user_id = users.id").
+		Joins("LEFT JOIN invoice_title ON invoice_record.invoice_title_id = invoice_title.id")
+
+	if status != "" {
+		query = query.Where("invoice_record.status = ?", status)
+	}
+	if startTime > 0 {
+		query = query.Where("invoice_record.created_at >= ?", time.Unix(startTime, 0))
+	}
+	if endTime > 0 {
+		query = query.Where("invoice_record.created_at <= ?", time.Unix(endTime, 0))
+	}
+	if keyword != "" {
+		query = query.Where("users.username LIKE ? OR invoice_title.title LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
+	}
+
+	err := query.Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	invoices = make([]*InvoiceRecordWithDetails, 0)
+	err = query.
+		Select("invoice_record.*, users.username").
+		Order("invoice_record.created_at desc").
+		Limit(pageInfo.GetPageSize()).
+		Offset(pageInfo.GetStartIdx()).
+		Find(&invoices).Error
+	return invoices, total, err
 }
 
 func (o *InvoiceRecord) ToMap() (map[string]interface{}, error) {
@@ -113,6 +159,29 @@ func (o *InvoiceRecord) ToMap() (map[string]interface{}, error) {
 		"created_at":         o.CreatedAt.Format("2006-01-02 15:04:05"),
 	}
 	return dic, nil
+}
+
+// GetInvoiceRecordById 根据ID获取发票记录
+func GetInvoiceRecordById(id int) (*InvoiceRecord, error) {
+	var invoice InvoiceRecord
+	err := DB.Where("id = ?", id).First(&invoice).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &invoice, nil
+}
+
+// GetTopUpListByIds 根据ID列表获取充值订单
+func GetTopUpListByIds(ids []int) ([]*TopUp, error) {
+	var topUps []*TopUp
+	if len(ids) == 0 {
+		return topUps, nil
+	}
+	err := DB.Where("id IN ?", ids).Find(&topUps).Error
+	return topUps, err
 }
 
 // 获取已经开票、正在开票的订单

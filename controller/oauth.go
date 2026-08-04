@@ -9,6 +9,7 @@ import (
 	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/oauth"
+	"github.com/QuantumNous/new-api/service"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -241,7 +242,7 @@ func findOrCreateOAuthUser(c *gin.Context, provider oauth.Provider, oauthUser *o
 	user.Username = provider.GetProviderPrefix() + strconv.Itoa(model.GetMaxUserId()+1)
 
 	if oauthUser.Username != "" {
-		if exists, err := model.CheckUserExistOrDeleted(oauthUser.Username, "", ""); err == nil && !exists {
+		if conflict, _, err := model.CheckUserExistOrDeleted(oauthUser.Username, "", ""); err == nil && conflict == "" {
 			// 防止索引退化
 			if len(oauthUser.Username) <= model.UserNameMaxLength {
 				user.Username = oauthUser.Username
@@ -326,6 +327,10 @@ func findOrCreateOAuthUser(c *gin.Context, provider oauth.Provider, oauthUser *o
 		// Perform post-transaction tasks
 		user.FinalizeOAuthUserCreation(inviterId)
 	}
+
+	// 为通过 OAuth 注册的新用户生成默认令牌（名称为 default，默认分组，永不过期，无限额度）
+	// 创建失败仅记录日志，不中断登录流程
+	_ = service.CreateDefaultTokenForUser(user.Id, user.Username)
 
 	return user, nil
 }

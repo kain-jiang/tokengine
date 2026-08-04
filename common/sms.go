@@ -140,6 +140,85 @@ func SendSMS(phoneNumber string, code string) error {
 	}
 }
 
+// sendAliyunSMSAlarmNotify 发送阿里云短信通知（用于告警等通知场景）
+func sendAliyunSMSAlarmNotify(phoneNumber string, templateParam string) error {
+	client, err := createAliyunSMSClient()
+	if err != nil {
+		return err
+	}
+
+	if SMSSignName == "" {
+		return fmt.Errorf("短信签名未配置")
+	}
+	smsTemplateCode := GetEnvOrDefaultString("SMS_TEMPLATE_QUOTA_ALARM", "")
+	if smsTemplateCode == "" {
+		return fmt.Errorf("短信模板未配置")
+	}
+
+	sendSmsRequest := &dysmsapi20170525.SendSmsRequest{
+		PhoneNumbers:  tea.String(phoneNumber),
+		SignName:      tea.String(SMSSignName),
+		TemplateCode:  tea.String(smsTemplateCode),
+		TemplateParam: tea.String(templateParam),
+	}
+
+	resp, err := client.SendSmsWithOptions(sendSmsRequest, &util.RuntimeOptions{})
+	if err != nil {
+		SysLog(fmt.Sprintf("发送短信通知失败: %v, resp == nil: %v", err, resp == nil))
+		return fmt.Errorf("发送短信通知失败: %w", err)
+	}
+
+	if resp == nil {
+		SysLog("发送短信通知失败: 响应对象为空")
+		return fmt.Errorf("发送短信通知失败: 响应对象为空")
+	}
+
+	bytes, marshalErr := Marshal(resp.Body)
+	SysLog(phoneNumber + ":" + string(bytes))
+	if marshalErr != nil {
+		SysLog(fmt.Sprintf("序列化响应体失败: %v", marshalErr))
+	}
+
+	if resp.Body == nil {
+		SysLog("发送短信通知失败: 响应体为空")
+		return fmt.Errorf("发送短信通知失败: 响应体为空")
+	}
+
+	if resp.Body.Code == nil || *resp.Body.Code != "OK" {
+		errorMsg := "未知错误"
+		if resp.Body.Message != nil {
+			errorMsg = *resp.Body.Message
+		}
+		codeStr := "nil"
+		if resp.Body.Code != nil {
+			codeStr = *resp.Body.Code
+		}
+		SysLog(fmt.Sprintf("短信通知发送失败: Code=%s, Message=%s", codeStr, errorMsg))
+		return fmt.Errorf("短信通知发送失败 [%s]: %s", codeStr, errorMsg)
+	}
+
+	SysLog(fmt.Sprintf("短信通知发送成功: 手机号=%s, BizId=%s", phoneNumber, *resp.Body.BizId))
+	return nil
+}
+
+// SendSMSNotify 发送短信通知（用于告警等通知场景）
+func SendSMSAlarmNotify(phoneNumber string, templateParam string) error {
+	if phoneNumber == "" {
+		return fmt.Errorf("手机号不能为空")
+	}
+
+	if templateParam == "" {
+		return fmt.Errorf("模板参数不能为空")
+	}
+
+	switch SMSProvider {
+	case "aliyun":
+		return sendAliyunSMSAlarmNotify(phoneNumber, templateParam)
+	default:
+		return fmt.Errorf("不支持的短信服务商: %s", SMSProvider)
+	}
+}
+
 func IsSMSEnabled() bool {
 	initSMSConfig()
 	return SMSAccessKeyId != "" && SMSAccessKeySecret != "" && SMSSignName != "" && SMSTemplateCode != ""

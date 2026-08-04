@@ -36,6 +36,7 @@ type Log struct {
 	Group            string `json:"group" gorm:"index"`
 	Ip               string `json:"ip" gorm:"index;default:''"`
 	RequestId        string `json:"request_id,omitempty" gorm:"type:varchar(64);index:idx_logs_request_id;default:''"`
+	UserAgent        string `json:"user_agent" gorm:"type:varchar(512);default:''"`
 	Other            string `json:"other"`
 }
 
@@ -96,11 +97,11 @@ func RecordErrorLog(c *gin.Context, userId int, channelId int, modelName string,
 	username := c.GetString("username")
 	requestId := c.GetString(common.RequestIdKey)
 	otherStr := common.MapToJsonStr(other)
-	// 判断是否需要记录 IP
-	needRecordIp := false
+	// 判断是否需要记录 IP（默认开启，用户显式关闭时才不记录）
+	needRecordIp := true
 	if settingMap, err := GetUserSetting(userId, false); err == nil {
-		if settingMap.RecordIpLog {
-			needRecordIp = true
+		if settingMap.RecordIpLog != nil && !*settingMap.RecordIpLog {
+			needRecordIp = false
 		}
 	}
 	log := &Log{
@@ -126,7 +127,13 @@ func RecordErrorLog(c *gin.Context, userId int, channelId int, modelName string,
 			return ""
 		}(),
 		RequestId: requestId,
-		Other:     otherStr,
+		UserAgent: func() string {
+			if c.Request != nil {
+				return c.Request.UserAgent()
+			}
+			return ""
+		}(),
+		Other: otherStr,
 	}
 	err := LOG_DB.Create(log).Error
 	if err != nil {
@@ -157,11 +164,11 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 	username := c.GetString("username")
 	requestId := c.GetString(common.RequestIdKey)
 	otherStr := common.MapToJsonStr(params.Other)
-	// 判断是否需要记录 IP
-	needRecordIp := false
+	// 判断是否需要记录 IP（默认开启，用户显式关闭时才不记录）
+	needRecordIp := true
 	if settingMap, err := GetUserSetting(userId, false); err == nil {
-		if settingMap.RecordIpLog {
-			needRecordIp = true
+		if settingMap.RecordIpLog != nil && !*settingMap.RecordIpLog {
+			needRecordIp = false
 		}
 	}
 	log := &Log{
@@ -187,7 +194,13 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 			return ""
 		}(),
 		RequestId: requestId,
-		Other:     otherStr,
+		UserAgent: func() string {
+			if c.Request != nil {
+				return c.Request.UserAgent()
+			}
+			return ""
+		}(),
+		Other: otherStr,
 	}
 	err := LOG_DB.Create(log).Error
 	if err != nil {

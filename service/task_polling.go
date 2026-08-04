@@ -466,6 +466,15 @@ func updateVideoSingleTask(ctx context.Context, adaptor TaskPollingAdaptor, ch *
 		return fmt.Errorf("parseTaskResult failed for task %s: %w", taskId, err)
 	}
 
+	// 鲸纬平台的请求，强制走这里进行数据解析， 因为鲸纬平台返回的 JSON 数据结构与 New API 一致,满足第一个条件，无法走自定义的adaptor解析，所以这里强制走adaptor解析
+	if ch.Type == constant.ChannelTypeJingWei {
+		if taskResult, err = adaptor.ParseTaskResult(responseBody); err != nil {
+			if taskResult, err = adaptor.ParseTaskResult(responseBody); err != nil {
+				return fmt.Errorf("parseTaskResult failed for task %s: %w", taskId, err)
+			}
+		}
+	}
+
 	task.Data = redactVideoResponseBody(responseBody)
 
 	logger.LogDebug(ctx, fmt.Sprintf("updateVideoSingleTask taskResult: %+v", taskResult))

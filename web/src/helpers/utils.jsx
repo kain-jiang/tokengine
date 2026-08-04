@@ -778,12 +778,37 @@ export const calculateModelPrice = ({
   if (record.quota_type === 1) {
     // 按次计费
     const priceUSD = parseFloat(record.model_price) * usedGroupRatio;
-    const displayVal = displayPrice(priceUSD);
+    // 视频模型(model_type=3)按秒计费，使用积分汇率(500*0.035=17.5)展示
+    // 使前端展示价格与供应商积分价格一致
+    let displayVal;
+    if (record.model_type === 3) {
+      const videoRate = 500 * 0.035; // 17.5 积分汇率
+      let symbol = '$';
+      if (currency === 'CNY') {
+        symbol = '¥';
+      } else if (currency === 'CUSTOM') {
+        try {
+          const statusStr = localStorage.getItem('status');
+          if (statusStr) {
+            const s = JSON.parse(statusStr);
+            symbol = s?.custom_currency_symbol || '¤';
+          } else {
+            symbol = '¤';
+          }
+        } catch (e) {
+          symbol = '¤';
+        }
+      }
+      displayVal = `${symbol}${(priceUSD * videoRate).toFixed(3)}`;
+    } else {
+      displayVal = displayPrice(priceUSD);
+    }
 
     return {
       price: displayVal,
       isPerToken: false,
       isTokensDisplay: false,
+      modelType: record.model_type,
       usedGroup,
       usedGroupRatio,
     };
@@ -794,6 +819,7 @@ export const calculateModelPrice = ({
     price: '-',
     isPerToken: false,
     isTokensDisplay: false,
+    modelType: record.model_type,
     usedGroup,
     usedGroupRatio,
   };
@@ -902,12 +928,13 @@ export const getModelPriceItems = (
     ].filter((item) => item.value !== null && item.value !== undefined && item.value !== '');
   }
 
+  const isVideoModel = priceData.modelType === 3;
   return [
     {
       key: 'fixed',
       label: t('模型价格'),
       value: priceData.price,
-      suffix: ` / ${t('次')}`,
+      suffix: ` / ${t(isVideoModel ? '秒' : '次')}`,
     },
   ].filter((item) => item.value !== null && item.value !== undefined && item.value !== '');
 };

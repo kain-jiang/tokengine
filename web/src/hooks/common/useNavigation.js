@@ -27,6 +27,7 @@ export const useNavigation = (t, docsLink, headerNavModules) => {
       console: true,
       pricing: true,
       docs: true,
+      canvasTool: true,
       about: true,
     };
 
@@ -60,6 +61,11 @@ export const useNavigation = (t, docsLink, headerNavModules) => {
           ]
         : []),
       {
+        text: t('画布工具'),
+        itemKey: 'canvasTool',
+        to: '/canvas-tool',
+      },
+      {
         text: t('关于'),
         itemKey: 'about',
         to: '/about',
@@ -77,7 +83,11 @@ export const useNavigation = (t, docsLink, headerNavModules) => {
           ? modules.pricing.enabled
           : modules.pricing;
       }
-      return modules[link.itemKey] === true;
+      // 向后兼容：如果配置中没有该 key，默认显示
+      if (link.itemKey in modules) {
+        return modules[link.itemKey] === true;
+      }
+      return true;
     });
   }, [t, docsLink, headerNavModules]);
 

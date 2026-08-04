@@ -17,20 +17,19 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useState, useEffect } from 'react';
-import { Button } from '@douyinfe/semi-ui';
+import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { useHeaderBar } from '../../../hooks/common/useHeaderBar';
 import { useNotifications } from '../../../hooks/common/useNotifications';
 import { useNavigation } from '../../../hooks/common/useNavigation';
 import NoticeModal from '../NoticeModal';
+import DynamicBanner from '../DynamicBanner';
 import MobileMenuButton from './MobileMenuButton';
 import HeaderLogo from './HeaderLogo';
 import Navigation from './Navigation';
 import ActionButtons from './ActionButtons';
 
-const HeaderBar = ({ onMobileMenuToggle, drawerOpen, onBannerVisibilityChange }) => {
+const HeaderBar = ({ onMobileMenuToggle, drawerOpen, onBannerVisibilityChange, onBannerHeightChange }) => {
   const {
     userState,
     statusState,
@@ -66,25 +65,18 @@ const HeaderBar = ({ onMobileMenuToggle, drawerOpen, onBannerVisibilityChange })
   } = useNotifications(statusState);
 
   const { mainNavLinks } = useNavigation(t, docsLink, headerNavModules);
-  
-  const { i18n } = useTranslation();
-  const navigateInternal = useNavigate();
-  const [bannerVisible, setBannerVisible] = useState(true);
 
-  useEffect(() => {
-    setBannerVisible(true);
-  }, []);
+  // 从 statusState 获取公告数据
+  const announcements = statusState?.status?.announcements || [];
+  const announcementsEnabled = statusState?.status?.announcements_enabled !== false;
 
-  const isChinese = ['zh', 'zh-CN', 'zh-TW'].includes(i18n.language);
+  const handleBannerVisibilityChange = useCallback((isVisible) => {
+    onBannerVisibilityChange?.(isVisible);
+  }, [onBannerVisibilityChange]);
 
-  const handleRegister = () => {
-    navigateInternal('/register');
-  };
-
-  const handleCloseBanner = () => {
-    setBannerVisible(false);
-    onBannerVisibilityChange?.(false);
-  };
+  const handleBannerHeightChange = useCallback((height) => {
+    onBannerHeightChange?.(height);
+  }, [onBannerHeightChange]);
 
   return (
     <header className='sticky top-0 z-50 transition-colors duration-300 bg-gradient-to-r from-white via-blue-50/80 to-purple-50/80 backdrop-blur-xl border-b border-gray-100/50 shadow-[0_1px_4px_0_rgba(0,0,0,0.03)]'>
@@ -96,81 +88,14 @@ const HeaderBar = ({ onMobileMenuToggle, drawerOpen, onBannerVisibilityChange })
         unreadKeys={getUnreadKeys()}
       />
 
-      {bannerVisible && (
-        <div
-          className="w-full"
-          style={{
-            background: '#12121e',
-            padding: '8px 24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-            height: '44px',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '12px',
-              flex: '1',
-              maxWidth: '1200px',
-            }}
-          >
-            <span
-              style={{
-                color: '#ffffff',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                whiteSpace: 'nowrap',
-                letterSpacing: '0.5px',
-              }}
-            >
-              🔥 {isChinese ? '新注册用户完成实名认证即送百万 Token，开启你的 AI 调用之旅' : 'New users get 1 million Tokens after real-name verification, start your AI journey!'} 🔥
-            </span>
-            <Button
-              theme="solid"
-              type="primary"
-              size="small"
-              onClick={handleRegister}
-              style={{
-                backgroundColor: '#ffffff',
-                color: '#4645e8',
-                fontWeight: 'bold',
-                fontSize: '14px',
-                padding: '0 16px',
-                height: '30px',
-                border: 'none',
-                whiteSpace: 'nowrap',
-                borderRadius: '15px',
-              }}
-            >
-              {isChinese ? '立即注册' : 'Sign Up Now'}
-            </Button>
-          </div>
-          <button
-            onClick={handleCloseBanner}
-            style={{
-              position: 'absolute',
-              right: '12px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              background: 'none',
-              border: 'none',
-              color: '#888888',
-              fontSize: '18px',
-              cursor: 'pointer',
-              padding: '4px 8px',
-              lineHeight: 1,
-            }}
-            title="关闭"
-          >
-            ×
-          </button>
-        </div>
-      )}
+      {/* 动态公告 Banner */}
+      <DynamicBanner
+        announcements={announcements}
+        announcementsEnabled={announcementsEnabled}
+        onVisibilityChange={handleBannerVisibilityChange}
+        onHeightChange={handleBannerHeightChange}
+        bannerKey="header_banner"
+      />
 
       <div className='w-full px-4'>
         <div className='flex items-center justify-between h-16'>
@@ -216,6 +141,8 @@ const HeaderBar = ({ onMobileMenuToggle, drawerOpen, onBannerVisibilityChange })
             logout={logout}
             navigate={navigate}
             t={t}
+            theme={theme}
+            onThemeToggle={handleThemeToggle}
           />
         </div>
       </div>

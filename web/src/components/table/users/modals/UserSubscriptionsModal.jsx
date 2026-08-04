@@ -262,11 +262,19 @@ const UserSubscriptionsModal = ({ visible, onCancel, user, t, onSuccess }) => {
           const planId = sub?.plan_id;
           const title =
             planTitleMap.get(planId) || (planId ? `#${planId}` : '-');
+          const sourceLabel = sub?.source === 'gift' ? t('赠送') : (sub?.source || '-');
           return (
             <div className='min-w-0'>
-              <div className='font-medium truncate'>{title}</div>
+              <div className='font-medium truncate'>
+                {title}
+                {sub?.source === 'gift' && (
+                  <Tag color='orange' shape='circle' size='small' className='ml-2'>
+                    {t('赠送')}
+                  </Tag>
+                )}
+              </div>
               <div className='text-xs text-gray-500'>
-                {t('来源')}: {sub?.source || '-'}
+                {t('来源')}: {sourceLabel}
               </div>
             </div>
           );
