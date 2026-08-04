@@ -446,6 +446,9 @@ func (user *User) Insert(inviterId int) error {
 	// 初始化用户设置，包括默认的边栏配置
 	if user.Setting == "" {
 		defaultSetting := dto.UserSetting{}
+		// 默认开启 IP 记录
+		recordIpLog := true
+		defaultSetting.RecordIpLog = &recordIpLog
 		// 这里暂时不设置SidebarModules，因为需要在用户创建后根据角色设置
 		user.SetSetting(defaultSetting)
 	}
@@ -505,6 +508,9 @@ func (user *User) InsertWithTx(tx *gorm.DB, inviterId int) error {
 	// 初始化用户设置
 	if user.Setting == "" {
 		defaultSetting := dto.UserSetting{}
+		// 默认开启 IP 记录
+		recordIpLog := true
+		defaultSetting.RecordIpLog = &recordIpLog
 		user.SetSetting(defaultSetting)
 	}
 
