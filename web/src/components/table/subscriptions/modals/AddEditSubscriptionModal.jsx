@@ -108,7 +108,6 @@ const AddEditSubscriptionModal = ({
     tokens_limit: 0,
     applicable_models: '',
     upgrade_group: '',
-    gift_trigger: '',
     stripe_price_id: '',
     creem_product_id: '',
   });
@@ -140,7 +139,6 @@ const AddEditSubscriptionModal = ({
       tokens_limit: Number(p.tokens_limit || 0),
       applicable_models: p.applicable_models || '',
       upgrade_group: p.upgrade_group || '',
-      gift_trigger: p.gift_trigger || '',
       stripe_price_id: p.stripe_price_id || '',
       creem_product_id: p.creem_product_id || '',
     };
@@ -196,7 +194,6 @@ const AddEditSubscriptionModal = ({
           tokens_limit: values.plan_type === 'tokens' ? Number(values.tokens_limit || 0) : 0,
           applicable_models: values.applicable_models || '',
           upgrade_group: values.upgrade_group || '',
-          gift_trigger: values.gift_trigger || '',
         },
       };
       if (editingPlan?.plan?.id) {
@@ -445,19 +442,6 @@ const AddEditSubscriptionModal = ({
                         extraText={t('由全站货币展示设置统一控制')}
                       />
                     </Col> */}
-
-                    <Col span={12}>
-                      <Form.Select
-                        field='gift_trigger'
-                        label={t('赠送活动')}
-                        showClear
-                        placeholder={t('非赠送套餐')}
-                        extraText={t('选择触发场景后，该套餐成为赠送套餐，用户触发对应事件时自动发放。留空则为普通付费套餐')}
-                      >
-                        <Select.Option value=''>{t('非赠送套餐')}</Select.Option>
-                        <Select.Option value='real_name_auth'>{t('实名认证')}</Select.Option>
-                      </Form.Select>
-                    </Col>
 
                     <Col span={12}>
                       <Form.InputNumber
