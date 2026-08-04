@@ -182,6 +182,30 @@ func (a *Adaptor) ConvertImageRequest(c *gin.Context, info *relaycommon.RelayInf
 		return geminiRequest, nil
 	}
 
+	// 非Gemini图像模型（如gpt-image系列）：好易智算上游 /v1/images/generations
+	// 不支持 watermark 参数（参考好易智算API文档 maas-api.haoee.com），
+	// 透传会导致上游400错误 "got an unexpected keyword argument 'watermark'"。
+	// 此处剥离 watermark 字段，避免影响上游调用。
+	// 注意：仅影响 haoee 渠道，不影响其他 adaptor；Gemini 路径已在上方分支提前返回。
+	request.Watermark = nil
+
+	// 好易智算 gpt-image 系列 quality 仅支持 low/medium/high/auto（默认 auto），
+	// 不支持 OpenAI DALL-E 标准的 standard/hd，需做映射避免上游400 invalid_value。
+	// 参考好易智算API文档：编辑 gpt-image-1.5 接口 quality 字段说明。
+	switch request.Quality {
+	case "standard":
+		request.Quality = "medium"
+	case "hd":
+		request.Quality = "high"
+	case "low", "medium", "high", "auto":
+		// 上游原生支持的值，保持不变
+	case "":
+		request.Quality = "auto"
+	default:
+		// 未知值兜底为 auto，避免上游报错
+		request.Quality = "auto"
+	}
+
 	return request, nil
 }
 
