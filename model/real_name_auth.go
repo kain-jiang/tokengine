@@ -123,10 +123,20 @@ func (auth *RealNameAuth) ToAuth(operation string) {
 		if auth.AuthType == CompanyAuth {
 			return
 		}
-		// 实名认证成功，赠送100万tokens, 100万tokens=2美元
-		// todo 要改，赠送的额度要与充值的额度分级使用，赠送额度只能使用某些模型
-		//common.QuotaPerUnit
 
+		// 通过赠送活动套餐发放额度（额度与充值隔离，可限制模型、可过期）
+		// 管理员创建 GiftTrigger=GiftTriggerRealNameAuth 的套餐即激活活动，删除/禁用即取消
+		sub, bindErr := BindGiftSubscriptionByTrigger(auth.UserId, GiftTriggerRealNameAuth)
+		if bindErr != nil {
+			common.SysLog("实名认证赠送订阅失败: " + bindErr.Error())
+		} else if sub != nil {
+			common.SysLog(fmt.Sprintf("实名认证成功，赠送用户【%d】订阅套餐", auth.UserId))
+			RecordLog(auth.UserId, LogTypeManage,
+				fmt.Sprintf("实名认证成功，系统赠送订阅套餐（额度 %s）", logger.LogQuota(int(sub.AmountTotal))))
+			return
+		}
+
+		// 无赠送活动或赠送失败时，使用旧的 IncreaseUserQuota 逻辑
 		usdExchangeRate := operation_setting.USDExchangeRate
 		if usdExchangeRate <= 0 {
 			usdExchangeRate = 7.3 // 默认汇率

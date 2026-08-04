@@ -144,12 +144,68 @@ func (a *TaskAdaptor) EstimateBilling(c *gin.Context, info *relaycommon.RelayInf
 	if size == "1792x1024" || size == "1024x1792" {
 		ratios["size"] = 1.666667
 	}
+
+	// ToAPIs seedance-2: resolution-based pricing and input video discount
+	if a.ChannelType == constant.ChannelTypeToAPIs {
+		// Read original request body to detect resolution and input fields
+		storage, storageErr := common.GetBodyStorage(c)
+		if storageErr == nil {
+			cachedBody, bodyErr := storage.Bytes()
+			if bodyErr == nil {
+				var bodyMap map[string]interface{}
+				if common.Unmarshal(cachedBody, &bodyMap) == nil {
+					// Resolution-based size ratio for seedance-2
+					// Base price is 720p; other resolutions scale accordingly
+					if info.OriginModelName == "seedance-2" {
+						resolution, _ := bodyMap["resolution"].(string)
+						switch resolution {
+						case "480p":
+							ratios["size"] = 0.5
+						case "720p":
+							ratios["size"] = 1.0
+						case "1080p":
+							ratios["size"] = 2.5
+						case "4k":
+							ratios["size"] = 5.5556
+						}
+						// Input video discount: with-input price is 0.6x of no-input price
+						if hasToAPIsInputVideo(bodyMap) {
+							ratios["input_discount"] = 0.6
+						}
+					}
+					// seedance-2-fast and seedance-2-mini: same price across resolutions, no input discount
+				}
+			}
+		}
+	}
+
 	return ratios
+}
+
+// hasToAPIsInputVideo checks if the request body contains input video/image fields
+func hasToAPIsInputVideo(bodyMap map[string]interface{}) bool {
+	// Check image_with_roles (ToAPIs specific field)
+	if imageWithRoles, ok := bodyMap["image_with_roles"].([]interface{}); ok && len(imageWithRoles) > 0 {
+		return true
+	}
+	// Check video_with_roles (ToAPIs specific field)
+	if videoWithRoles, ok := bodyMap["video_with_roles"].([]interface{}); ok && len(videoWithRoles) > 0 {
+		return true
+	}
+	// Check image_urls (compatibility field)
+	if imageUrls, ok := bodyMap["image_urls"].([]interface{}); ok && len(imageUrls) > 0 {
+		return true
+	}
+	return false
 }
 
 func (a *TaskAdaptor) BuildRequestURL(info *relaycommon.RelayInfo) (string, error) {
 	if info.Action == constant.TaskActionRemix {
 		return fmt.Sprintf("%s/v1/videos/%s/remix", a.baseURL, info.OriginTaskID), nil
+	}
+	// ToAPIs uses /v1/videos/generations endpoint
+	if a.ChannelType == constant.ChannelTypeToAPIs {
+		return fmt.Sprintf("%s/v1/videos/generations", a.baseURL), nil
 	}
 	return fmt.Sprintf("%s/v1/videos", a.baseURL), nil
 }
@@ -293,9 +349,14 @@ func (a *TaskAdaptor) FetchTask(baseUrl, key string, body map[string]any, proxy 
 		return nil, fmt.Errorf("invalid task_id")
 	}
 
-	// Agnes AI 使用标准的 OpenAI-compatible API 端点 GET /v1/videos/{task_id}
-	// 官方文档：POST /v1/videos 返回 task_id，GET /v1/videos/{task_id} 查询状态
-	uri := fmt.Sprintf("%s/v1/videos/%s", baseUrl, taskID)
+	// ToAPIs uses /v1/videos/generations/{task_id} endpoint
+	// Sora/AgnesAI use GET /v1/videos/{task_id}
+	var uri string
+	if a.ChannelType == constant.ChannelTypeToAPIs {
+		uri = fmt.Sprintf("%s/v1/videos/generations/%s", baseUrl, taskID)
+	} else {
+		uri = fmt.Sprintf("%s/v1/videos/%s", baseUrl, taskID)
+	}
 
 	req, err := http.NewRequest(http.MethodGet, uri, nil)
 	if err != nil {

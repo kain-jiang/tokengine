@@ -39,9 +39,71 @@ token_estimator_test.go
 *.exe~
 
 .devin
+!.devin/skills/
+!.devin/skills/**
 .cursor
 AGENTS.md
 CLAUDE.md
 
-# 编译产物
-new-api-bin
+# Logs
+*.log
+logs/
+
+# Frontend build output
+web/dist/
+web/node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Ops skill sensitive files
+.devin/skills/ops/assets/db-server/scripts/sync_env.sh
+
+# Dev/ops scripts (sensitive)
+backup_postgres_logical.py
+backup_postgres_physical.py
+cleanup_old_backups.py
+crontab
+crontab.server
+start.sh
+test_email.py
+
+# Backup files
+Dockerfile.backup
+docker-compose.backup.yml
+
+# Private repository
+.devin/
+!.devin/skills/
+!.devin/skills/**
+
+.env
+*.cer
+*.pfx
+*.pem
+*.exe~
+
+.devin
+!.devin/skills/
+!.devin/skills/**
+.cursor
+AGENTS.md
+CLAUDE.md
