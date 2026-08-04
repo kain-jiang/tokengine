@@ -60,7 +60,7 @@ const { Text, Title } = Typography;
 // 下发方式选项
 const ISSUE_TYPE_OPTIONS = [
   { value: 'direct', label: '额度充值' },
-  { value: 'package', label: '套餐包' },
+  { value: 'package', label: '订阅套餐' },
 ];
 
 const EditRedemptionModal = (props) => {
