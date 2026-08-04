@@ -127,6 +127,13 @@ export default function FinanceDashboard() {
   // 营收趋势（全局折线图）
   const [revenueTrend, setRevenueTrend] = useState({ pay_as_you_go: [], subscription: [] });
 
+  // 各数据区块独立加载状态（用于显示"数据加载中"占位）
+  const [userLoading, setUserLoading] = useState(false);       // 用户分析（第一排）
+  const [topupLoading, setTopupLoading] = useState(false);     // 充值分析（第二排）
+  const [consumptionLoading, setConsumptionLoading] = useState(false); // 消费趋势（第三排）
+  const [revenueLoading, setRevenueLoading] = useState(false); // 营收趋势（第四排）
+  const [supplierLoading, setSupplierLoading] = useState(false); // 渠道消费（第五排）
+
   // 有效充值趋势指标切换
   const [trendMetric, setTrendMetric] = useState('amount'); // 'amount' | 'count' | 'cumulative'
 
@@ -256,64 +263,120 @@ export default function FinanceDashboard() {
     }
   };
 
-  // 获取所有图表数据
+  // 获取所有图表数据（按优先级串行请求，上部分优先加载）
   const fetchChartData = async () => {
     setChartLoading(true);
+    
+    // 设置所有区块为加载中状态
+    setUserLoading(true);
+    setTopupLoading(true);
+    setConsumptionLoading(true);
+    setRevenueLoading(true);
+    setSupplierLoading(true);
+    
     try {
       const params = { start_time: startTime, end_time: endTime };
 
-      // 并发请求所有数据
-      const [
-        usersTrendRes,
-        usersAuthDistRes,
-        topupTrendRes,
-        topupUserTypeDistRes,
-        consumptionTrendRes,
-        paymentModeTokensDistRes,
-        revenueByUserRes,
-        paymentModeRevenueDistRes,
-        supplierTrendRes,
-        supplierDistRes,
-        revenueTrendRes,
-        userAgentDistRes,
-      ] = await Promise.all([
-        API.get('/api/finance/users/trend', { params }),
-        API.get('/api/finance/users/auth-distribution', { params: {} }),
-        API.get('/api/finance/topup/trend', { params }),
-        API.get('/api/finance/topup/user-type-dist', { params }),
-        API.get('/api/finance/consumption/trend', { params }),
-        API.get('/api/finance/payment-mode-tokens-dist', { params }),
-        API.get('/api/finance/revenue-by-user', { params: { ...params, p: revenueByUserPage, page_size: revenueByUserPageSize } }),
-        API.get('/api/finance/payment-mode-revenue-dist', { params }),
-        API.get('/api/finance/supplier/trend', { params }),
-        API.get('/api/finance/supplier-dist', { params }),
-        API.get('/api/finance/revenue/trend', { params }),
-        API.get('/api/finance/user-agent-dist', { params }),
-      ]);
-
-      if (usersTrendRes.data?.success) setUsersTrend(usersTrendRes.data?.data || []);
-      if (usersAuthDistRes.data?.success) setUsersAuthDist(usersAuthDistRes.data?.data || {});
-      if (topupTrendRes.data?.success) setTopupTrend(topupTrendRes.data?.data || []);
-      if (topupUserTypeDistRes.data?.success) setTopupUserTypeDist(topupUserTypeDistRes.data?.data || {});
-      if (consumptionTrendRes.data?.success) setConsumptionTrend(consumptionTrendRes.data?.data || []);
-      if (paymentModeTokensDistRes.data?.success) setPaymentModeTokensDist(paymentModeTokensDistRes.data?.data || {});
-      if (revenueByUserRes.data?.success) {
-        setRevenueByUser({ items: revenueByUserRes.data?.data || [], total: revenueByUserRes.data?.total || 0 });
+      // ========== 第一排：用户分析（最高优先级） ==========
+      try {
+        const [usersTrendRes, usersAuthDistRes] = await Promise.all([
+          API.get('/api/finance/users/trend', { params }),
+          API.get('/api/finance/users/auth-distribution', { params: {} }),
+        ]);
+        if (usersTrendRes.data?.success) setUsersTrend(usersTrendRes.data?.data || []);
+        if (usersAuthDistRes.data?.success) setUsersAuthDist(usersAuthDistRes.data?.data || {});
+      } catch (error) {
+        console.error('获取用户分析数据失败:', error);
+      } finally {
+        setUserLoading(false);
       }
-      if (paymentModeRevenueDistRes.data?.success) setPaymentModeRevenueDist(paymentModeRevenueDistRes.data?.data || {});
-      if (supplierTrendRes.data?.success) setSupplierTrend(supplierTrendRes.data?.data || []);
-      if (supplierDistRes.data?.success) setSupplierDist(supplierDistRes.data?.data || { items: [] });
-      if (revenueTrendRes.data?.success) setRevenueTrend(revenueTrendRes.data?.data || { pay_as_you_go: [], subscription: [] });
-      if (userAgentDistRes.data?.success) setUserAgentDist(userAgentDistRes.data?.data || []);
 
-      // 获取模型数据分析数据（来自 dashboard board）
-      const dashboardBoardRes = await API.get('/api/dashboard/board/chart-data', {
-        params: {
-          start_timestamp: startTime,
-          end_timestamp: endTime,
-        },
-      });
-      if (dashboardBoardRes.data?.success) setChartData(dashboardBoardRes.data?.data || null);
+      // 短暂延迟，让浏览器先渲染第一排
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // ========== 第二排：充值分析（高优先级） ==========
+      try {
+        const [topupTrendRes, topupUserTypeDistRes] = await Promise.all([
+          API.get('/api/finance/topup/trend', { params }),
+          API.get('/api/finance/topup/user-type-dist', { params }),
+        ]);
+        if (topupTrendRes.data?.success) setTopupTrend(topupTrendRes.data?.data || []);
+        if (topupUserTypeDistRes.data?.success) setTopupUserTypeDist(topupUserTypeDistRes.data?.data || {});
+      } catch (error) {
+        console.error('获取充值分析数据失败:', error);
+      } finally {
+        setTopupLoading(false);
+      }
+
+      // 短暂延迟，让浏览器渲染第二排
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // ========== 第三排：消费趋势（中优先级） ==========
+      try {
+        const [consumptionTrendRes, paymentModeTokensDistRes, revenueByUserRes, userAgentDistRes] = await Promise.all([
+          API.get('/api/finance/consumption/trend', { params }),
+          API.get('/api/finance/payment-mode-tokens-dist', { params }),
+          API.get('/api/finance/revenue-by-user', { params: { ...params, p: revenueByUserPage, page_size: revenueByUserPageSize } }),
+          API.get('/api/finance/user-agent-dist', { params }),
+        ]);
+        if (consumptionTrendRes.data?.success) setConsumptionTrend(consumptionTrendRes.data?.data || []);
+        if (paymentModeTokensDistRes.data?.success) setPaymentModeTokensDist(paymentModeTokensDistRes.data?.data || {});
+        if (revenueByUserRes.data?.success) {
+          setRevenueByUser({ items: revenueByUserRes.data?.data || [], total: revenueByUserRes.data?.total || 0 });
+        }
+        if (userAgentDistRes.data?.success) setUserAgentDist(userAgentDistRes.data?.data || []);
+      } catch (error) {
+        console.error('获取消费趋势数据失败:', error);
+      } finally {
+        setConsumptionLoading(false);
+      }
+
+      // 短暂延迟，让浏览器渲染第三排
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // ========== 第四排：营收趋势（中低优先级） ==========
+      try {
+        const [revenueTrendRes, paymentModeRevenueDistRes] = await Promise.all([
+          API.get('/api/finance/revenue/trend', { params }),
+          API.get('/api/finance/payment-mode-revenue-dist', { params }),
+        ]);
+        if (revenueTrendRes.data?.success) setRevenueTrend(revenueTrendRes.data?.data || { pay_as_you_go: [], subscription: [] });
+        if (paymentModeRevenueDistRes.data?.success) setPaymentModeRevenueDist(paymentModeRevenueDistRes.data?.data || {});
+      } catch (error) {
+        console.error('获取营收趋势数据失败:', error);
+      } finally {
+        setRevenueLoading(false);
+      }
+
+      // 短暂延迟，让浏览器渲染第四排
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // ========== 第五排：渠道消费（低优先级） ==========
+      try {
+        const [supplierTrendRes, supplierDistRes] = await Promise.all([
+          API.get('/api/finance/supplier/trend', { params }),
+          API.get('/api/finance/supplier-dist', { params }),
+        ]);
+        if (supplierTrendRes.data?.success) setSupplierTrend(supplierTrendRes.data?.data || []);
+        if (supplierDistRes.data?.success) setSupplierDist(supplierDistRes.data?.data || { items: [] });
+      } catch (error) {
+        console.error('获取渠道消费数据失败:', error);
+      } finally {
+        setSupplierLoading(false);
+      }
+
+      // 获取模型数据分析数据（来自 dashboard board，最低优先级）
+      try {
+        const dashboardBoardRes = await API.get('/api/dashboard/board/chart-data', {
+          params: {
+            start_timestamp: startTime,
+            end_timestamp: endTime,
+          },
+        });
+        if (dashboardBoardRes.data?.success) setChartData(dashboardBoardRes.data?.data || null);
+      } catch (error) {
+        console.error('获取模型数据分析数据失败:', error);
+      }
     } catch (error) {
       console.error('获取图表数据失败:', error);
       showError(t('获取图表数据失败'));
@@ -2417,140 +2480,180 @@ export default function FinanceDashboard() {
     </div>
   );
 
+  // 数据加载中占位组件
+  const LoadingPlaceholder = ({ loading, title }) => {
+    if (!loading) return null;
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: 240,
+        color: 'rgba(0, 0, 0, 0.35)',
+        fontSize: 14,
+        gap: 12,
+      }}>
+        <Spin size="small" />
+        <span>{t('数据加载中')}</span>
+      </div>
+    );
+  };
+
   // 渲染图表行（3:1 双列布局）
-  const renderChartRow = (leftTitle, leftData, leftValueKey, leftUnit, rightTitle, rightData, rightIsPie = true) => (
-    <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-      <div style={{
-        flex: 3,
-        backgroundColor: '#ffffff',
-        borderRadius: 4,
-        border: '1px solid rgba(0, 0, 0, 0.08)',
-        boxShadow: 'rgba(1, 1, 32, 0.1) 0px 4px 10px',
-        padding: '16px',
-        minHeight: 280,
-      }}>
-        {leftTitle === '有效充值趋势' ? (
-          <div style={{ position: 'relative' }}>
-            <div style={{ position: 'absolute', right: 16, top: 8, zIndex: 10, display: 'flex', gap: 2 }}>
-              <Button
-                size='small'
-                theme={trendMetric === 'amount' ? 'solid' : 'light'}
-                type='primary'
-                onClick={() => setTrendMetric('amount')}
-                style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
-              >
-                {t('充值金额')}
-              </Button>
-              <Button
-                size='small'
-                theme={trendMetric === 'count' ? 'solid' : 'light'}
-                type='primary'
-                onClick={() => setTrendMetric('count')}
-                style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
-              >
-                {t('订单数')}
-              </Button>
-              <Button
-                size='small'
-                theme={trendMetric === 'cumulative' ? 'solid' : 'light'}
-                type='primary'
-                onClick={() => setTrendMetric('cumulative')}
-                style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
-              >
-                {t('累计充值')}
-              </Button>
+  const renderChartRow = (leftTitle, leftData, leftValueKey, leftUnit, rightTitle, rightData, rightIsPie = true) => {
+    // 判断左侧是否需要显示加载占位
+    const leftLoading =
+      (leftTitle === '注册用户趋势' && userLoading) ||
+      (leftTitle === '有效充值趋势' && topupLoading) ||
+      (leftTitle === '渠道消费趋势' && supplierLoading);
+    
+    // 判断右侧是否需要显示加载占位
+    const rightLoading =
+      (rightTitle === '用户认证占比' && userLoading) ||
+      (rightTitle === '用户充值分布' && topupLoading) ||
+      (rightTitle === '渠道消费占比' && supplierLoading);
+
+    return (
+      <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+        <div style={{
+          flex: 3,
+          backgroundColor: '#ffffff',
+          borderRadius: 4,
+          border: '1px solid rgba(0, 0, 0, 0.08)',
+          boxShadow: 'rgba(1, 1, 32, 0.1) 0px 4px 10px',
+          padding: '16px',
+          minHeight: 280,
+          position: 'relative',
+        }}>
+          {leftTitle === '有效充值趋势' ? (
+            <div style={{ position: 'relative' }}>
+              <LoadingPlaceholder loading={topupLoading} title={leftTitle} />
+              <div style={{ position: 'absolute', right: 16, top: 8, zIndex: 10, display: 'flex', gap: 2 }}>
+                <Button
+                  size='small'
+                  theme={trendMetric === 'amount' ? 'solid' : 'light'}
+                  type='primary'
+                  onClick={() => setTrendMetric('amount')}
+                  style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
+                >
+                  {t('充值金额')}
+                </Button>
+                <Button
+                  size='small'
+                  theme={trendMetric === 'count' ? 'solid' : 'light'}
+                  type='primary'
+                  onClick={() => setTrendMetric('count')}
+                  style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
+                >
+                  {t('订单数')}
+                </Button>
+                <Button
+                  size='small'
+                  theme={trendMetric === 'cumulative' ? 'solid' : 'light'}
+                  type='primary'
+                  onClick={() => setTrendMetric('cumulative')}
+                  style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
+                >
+                  {t('累计充值')}
+                </Button>
+              </div>
+              <div ref={topupTrendChartRef} style={{ width: '100%', height: 240 }} />
             </div>
-            <div ref={topupTrendChartRef} style={{ width: '100%', height: 240 }} />
-          </div>
-        ) : leftTitle === '注册用户趋势' ? (
-          <div style={{ position: 'relative' }}>
-            <div style={{ position: 'absolute', right: 16, top: 8, zIndex: 10, display: 'flex', gap: 2 }}>
-              <Button
-                size='small'
-                theme={usersTrendMetric === 'daily' ? 'solid' : 'light'}
-                type='primary'
-                onClick={() => setUsersTrendMetric('daily')}
-                style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
-              >
-                {t('每日注册用户数')}
-              </Button>
-              <Button
-                size='small'
-                theme={usersTrendMetric === 'cumulative' ? 'solid' : 'light'}
-                type='primary'
-                onClick={() => setUsersTrendMetric('cumulative')}
-                style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
-              >
-                {t('累计注册用户数')}
-              </Button>
+          ) : leftTitle === '注册用户趋势' ? (
+            <div style={{ position: 'relative' }}>
+              <LoadingPlaceholder loading={userLoading} title={leftTitle} />
+              <div style={{ position: 'absolute', right: 16, top: 8, zIndex: 10, display: 'flex', gap: 2 }}>
+                <Button
+                  size='small'
+                  theme={usersTrendMetric === 'daily' ? 'solid' : 'light'}
+                  type='primary'
+                  onClick={() => setUsersTrendMetric('daily')}
+                  style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
+                >
+                  {t('每日注册用户数')}
+                </Button>
+                <Button
+                  size='small'
+                  theme={usersTrendMetric === 'cumulative' ? 'solid' : 'light'}
+                  type='primary'
+                  onClick={() => setUsersTrendMetric('cumulative')}
+                  style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
+                >
+                  {t('累计注册用户数')}
+                </Button>
+              </div>
+              <div ref={usersTrendChartRef} style={{ width: '100%', height: 240 }} />
             </div>
-            <div ref={usersTrendChartRef} style={{ width: '100%', height: 240 }} />
-          </div>
-        ) : leftTitle === '渠道消费趋势' ? (
-          <div style={{ position: 'relative' }}>
-            <div style={{ position: 'absolute', right: 16, top: 8, zIndex: 10, display: 'flex', gap: 2 }}>
-              <Button
-                size='small'
-                theme={supplierTrendMetric === 'tokens' ? 'solid' : 'light'}
-                type='primary'
-                onClick={() => setSupplierTrendMetric('tokens')}
-                style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
-              >
-                {t('消耗Tokens')}
-              </Button>
-              <Button
-                size='small'
-                theme={supplierTrendMetric === 'count' ? 'solid' : 'light'}
-                type='primary'
-                onClick={() => setSupplierTrendMetric('count')}
-                style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
-              >
-                {t('请求次数')}
-              </Button>
-              <Button
-                size='small'
-                theme={supplierTrendMetric === 'cost' ? 'solid' : 'light'}
-                type='primary'
-                onClick={() => setSupplierTrendMetric('cost')}
-                style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
-              >
-                {t('消费金额')}
-              </Button>
-              <Button
-                size='small'
-                theme={supplierTrendMetric === 'cumulative' ? 'solid' : 'light'}
-                type='primary'
-                onClick={() => setSupplierTrendMetric('cumulative')}
-                style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
-              >
-                {t('累计消费')}
-              </Button>
+          ) : leftTitle === '渠道消费趋势' ? (
+            <div style={{ position: 'relative' }}>
+              <LoadingPlaceholder loading={supplierLoading} title={leftTitle} />
+              <div style={{ position: 'absolute', right: 16, top: 8, zIndex: 10, display: 'flex', gap: 2 }}>
+                <Button
+                  size='small'
+                  theme={supplierTrendMetric === 'tokens' ? 'solid' : 'light'}
+                  type='primary'
+                  onClick={() => setSupplierTrendMetric('tokens')}
+                  style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
+                >
+                  {t('消耗Tokens')}
+                </Button>
+                <Button
+                  size='small'
+                  theme={supplierTrendMetric === 'count' ? 'solid' : 'light'}
+                  type='primary'
+                  onClick={() => setSupplierTrendMetric('count')}
+                  style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
+                >
+                  {t('请求次数')}
+                </Button>
+                <Button
+                  size='small'
+                  theme={supplierTrendMetric === 'cost' ? 'solid' : 'light'}
+                  type='primary'
+                  onClick={() => setSupplierTrendMetric('cost')}
+                  style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
+                >
+                  {t('消费金额')}
+                </Button>
+                <Button
+                  size='small'
+                  theme={supplierTrendMetric === 'cumulative' ? 'solid' : 'light'}
+                  type='primary'
+                  onClick={() => setSupplierTrendMetric('cumulative')}
+                  style={{ borderRadius: 4, fontSize: 12, padding: '4px 8px' }}
+                >
+                  {t('累计消费')}
+                </Button>
+              </div>
+              <div ref={supplierTrendChartRef} style={{ width: '100%', height: 240 }} />
             </div>
-            <div ref={supplierTrendChartRef} style={{ width: '100%', height: 240 }} />
-          </div>
-        ) : (
-          <div ref={leftTitle === '消费趋势' ? consumptionTrendChartRef : null}
+          ) : (
+            <div ref={leftTitle === '消费趋势' ? consumptionTrendChartRef : null}
+                  style={{ width: '100%', height: 240 }} />
+          )}
+        </div>
+        <div style={{
+          flex: 1,
+          backgroundColor: '#ffffff',
+          borderRadius: 4,
+          border: '1px solid rgba(0, 0, 0, 0.08)',
+          boxShadow: 'rgba(1, 1, 32, 0.1) 0px 4px 10px',
+          padding: '16px',
+          minHeight: 280,
+          position: 'relative',
+        }}>
+          <LoadingPlaceholder loading={rightLoading} title={rightTitle} />
+          <div ref={rightTitle === '用户认证占比' ? authDistChartRef :
+                         rightTitle === '用户充值分布' ? topupDistChartRef :
+                         rightTitle === '付费方式tokens分布' ? paymentModeTokensChartRef :
+                         rightTitle === '付费方式收入占比' ? revenuePieChartRef :
+                         rightTitle === '渠道消费占比' ? supplierDistChartRef : null}
                 style={{ width: '100%', height: 240 }} />
-        )}
+        </div>
       </div>
-      <div style={{
-        flex: 1,
-        backgroundColor: '#ffffff',
-        borderRadius: 4,
-        border: '1px solid rgba(0, 0, 0, 0.08)',
-        boxShadow: 'rgba(1, 1, 32, 0.1) 0px 4px 10px',
-        padding: '16px',
-        minHeight: 280,
-      }}>
-        <div ref={rightTitle === '用户认证占比' ? authDistChartRef :
-                       rightTitle === '用户充值分布' ? topupDistChartRef :
-                       rightTitle === '付费方式tokens分布' ? paymentModeTokensChartRef :
-                       rightTitle === '付费方式收入占比' ? revenuePieChartRef :
-                       rightTitle === '渠道消费占比' ? supplierDistChartRef : null}
-              style={{ width: '100%', height: 240 }} />
-      </div>
-    </div>
-  );
+    );
+  };
 
   // 加载状态
   const loadingOverlay = (statsLoading || chartLoading) && (
@@ -2618,32 +2721,48 @@ export default function FinanceDashboard() {
             </Tabs>
           </div>
           <div style={{ height: 320, width: '100%', position: 'relative' }}>
+            {/* 加载占位 */}
+            {consumptionLoading && (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                height: '100%',
+                color: 'rgba(0, 0, 0, 0.35)',
+                fontSize: 14,
+                gap: 12,
+              }}>
+                <Spin size="small" />
+                <span>{t('数据加载中')}</span>
+              </div>
+            )}
             {/* 1. 消耗分布 - 堆叠柱状图 */}
-            {activeChartTab === '1' && (
+            {activeChartTab === '1' && !consumptionLoading && (
               <div ref={quotaDistChartRef} style={{ width: '100%', height: '100%' }} />
             )}
             {/* 2. 调用趋势 - 折线图 */}
-            {activeChartTab === '2' && (
+            {activeChartTab === '2' && !consumptionLoading && (
               <div ref={callTrendChartRef} style={{ width: '100%', height: '100%' }} />
             )}
             {/* 3. 调用次数分布 - 环形饼图 */}
-            {activeChartTab === '3' && (
+            {activeChartTab === '3' && !consumptionLoading && (
               <div ref={callDistChartRef} style={{ width: '100%', height: '100%' }} />
             )}
             {/* 4. 调用次数排行 - 水平柱状图 */}
-            {activeChartTab === '4' && (
+            {activeChartTab === '4' && !consumptionLoading && (
               <div ref={callRankChartRef} style={{ width: '100%', height: '100%' }} />
             )}
             {/* 5. 用户消耗排行 - 水平柱状图 */}
-            {activeChartTab === '5' && (
+            {activeChartTab === '5' && !consumptionLoading && (
               <div ref={userQuotaRankChartRef} style={{ width: '100%', height: '100%' }} />
             )}
             {/* 6. 用户消耗趋势 - 面积图 */}
-            {activeChartTab === '6' && (
+            {activeChartTab === '6' && !consumptionLoading && (
               <div ref={userQuotaTrendChartRef} style={{ width: '100%', height: '100%' }} />
             )}
             {/* 暂无数据提示 */}
-            {activeChartTab && chartData && !(() => {
+            {!consumptionLoading && activeChartTab && chartData && !(() => {
               const dataMap = {
                 '1': chartData.quota_distribution,
                 '2': chartData.call_trend,
@@ -2674,9 +2793,25 @@ export default function FinanceDashboard() {
           minHeight: 400,
           position: 'relative',
         }}>
-          <div ref={paymentModeTokensChartRef} style={{ width: '100%', height: 320 }} />
+          {/* 加载占位 */}
+          {consumptionLoading && (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: 320,
+              color: 'rgba(0, 0, 0, 0.35)',
+              fontSize: 14,
+              gap: 12,
+            }}>
+              <Spin size="small" />
+              <span>{t('数据加载中')}</span>
+            </div>
+          )}
+          {!consumptionLoading && <div ref={paymentModeTokensChartRef} style={{ width: '100%', height: 320 }} />}
           {/* 暂无数据提示 */}
-          {userAgentDist.length === 0 && !chartLoading && (
+          {!consumptionLoading && userAgentDist.length === 0 && !chartLoading && (
             <Empty
               image={<IllustrationNoResult style={{ width: 150, height: 150 }} />}
               darkModeImage={<IllustrationNoResultDark style={{ width: 150, height: 150 }} />}
@@ -2697,9 +2832,26 @@ export default function FinanceDashboard() {
           border: '1px solid rgba(0, 0, 0, 0.08)',
           boxShadow: 'rgba(1, 1, 32, 0.1) 0px 4px 10px',
           padding: '24px',
+          position: 'relative',
         }}>
+          {/* 加载占位 */}
+          {revenueLoading && (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: 300,
+              color: 'rgba(0, 0, 0, 0.35)',
+              fontSize: 14,
+              gap: 12,
+            }}>
+              <Spin size="small" />
+              <span>{t('数据加载中')}</span>
+            </div>
+          )}
           {/* 板块标签 */}
-          <div style={{
+          {!revenueLoading && <div style={{
             fontSize: 11,
             fontWeight: 500,
             color: 'rgba(0, 0, 0, 0.4)',
@@ -2707,10 +2859,10 @@ export default function FinanceDashboard() {
             textTransform: 'uppercase',
             letterSpacing: '0.055px',
             marginBottom: 20,
-          }}>{t('营收趋势')}</div>
+          }}>{t('营收趋势')}</div>}
           
           {/* 营收统计指标 */}
-          <div style={{
+          {!revenueLoading && <div style={{
             display: 'flex',
             gap: 24,
             marginBottom: 20,
@@ -2773,10 +2925,10 @@ export default function FinanceDashboard() {
                 letterSpacing: '-0.16px',
               }}>¥{revenueStats.subscription.toLocaleString()}</div>
             </div>
-          </div>
+          </div>}
           
           {/* 折线图 */}
-          <div ref={revenueTrendChartRef} style={{ width: '100%', height: 240 }} />
+          {!revenueLoading && <div ref={revenueTrendChartRef} style={{ width: '100%', height: 240 }} />}
         </div>
         {/* 付费方式收入对比柱状图 */}
         <div style={{
@@ -2787,8 +2939,25 @@ export default function FinanceDashboard() {
           boxShadow: 'rgba(1, 1, 32, 0.1) 0px 4px 10px',
           padding: '24px',
           minHeight: 400,
+          position: 'relative',
         }}>
-          <div ref={revenuePieChartRef} style={{ width: '100%', height: 320 }} />
+          {/* 加载占位 */}
+          {revenueLoading && (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: 320,
+              color: 'rgba(0, 0, 0, 0.35)',
+              fontSize: 14,
+              gap: 12,
+            }}>
+              <Spin size="small" />
+              <span>{t('数据加载中')}</span>
+            </div>
+          )}
+          {!revenueLoading && <div ref={revenuePieChartRef} style={{ width: '100%', height: 320 }} />}
         </div>
       </div>
 
