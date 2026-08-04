@@ -62,6 +62,7 @@ const PageLayout = () => {
     '/console/task',
     '/console/models',
     '/pricing',
+    '/canvas-tool',
   ];
 
   const shouldHideFooter = cardProPages.includes(location.pathname);
@@ -231,7 +232,12 @@ const PageLayout = () => {
                   ? 'hidden'
                   : 'auto',
               WebkitOverflowScrolling: 'touch',
-              marginTop: bannerVisible ? `${bannerHeight}px` : '0px',
+              marginTop:
+                location.pathname === '/canvas-tool'
+                  ? '65px'
+                  : bannerVisible
+                    ? `${bannerHeight}px`
+                    : '0px',
               padding: shouldInnerPadding ? (isMobile ? '5px' : '24px') : '0',
               position: 'relative',
               ...(footerInFlow

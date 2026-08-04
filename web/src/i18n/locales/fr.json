@@ -3466,6 +3466,16 @@
     "，当前无生效订阅，将自动使用钱包": ", aucun abonnement actif, le portefeuille sera utilisé automatiquement.",
     "，时间：": ", time:",
     "，点击更新": ", cliquez sur Mettre à jour",
-    "企业个人灵活搭配，丰俭由人": "Combinaisons flexibles pour entreprises et particuliers, choisissez selon vos besoins"
+    "企业个人灵活搭配，丰俭由人": "Combinaisons flexibles pour entreprises et particuliers, choisissez selon vos besoins",
+    "画布工具": "Outil Canvas",
+    "正在加载画布工具...": "Chargement de l'outil Canvas...",
+    "画布工具加载失败": "Échec du chargement de l'outil Canvas",
+    "获取画布工具令牌失败": "Échec de l'obtention du jeton de l'outil Canvas",
+    "返回首页": "Retour à l'accueil",
+    "退出全屏": "Quitter le plein écran",
+    "全屏": "Plein écran",
+    "拖拽移动，点击退出": "Glisser pour déplacer, cliquer pour quitter",
+    "CarbotAI 画布工具，需要登录访问": "Outil Canvas CarbotAI, connexion requise",
+    "使用画布工具需要登录": "Veuillez vous connecter pour utiliser l'outil Canvas"
   }
 }

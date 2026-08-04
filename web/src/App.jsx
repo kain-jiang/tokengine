@@ -64,6 +64,7 @@ import Playground from './pages/Playground';
 import TextToImage from './pages/TextToImage';
 import TextToVideo from './pages/TextToVideo';
 import Subscription from './pages/Subscription';
+import CanvasTool from './pages/CanvasTool';
 import OAuth2Callback from './components/auth/OAuth2Callback';
 import PersonalSetting from './components/settings/PersonalSetting';
 import RealNameAuthForm from './components/settings/personal/RealNameAuthForm';
@@ -523,6 +524,14 @@ function App() {
               <Suspense fallback={<Loading></Loading>} key={location.pathname}>
                 <Chat2Link />
               </Suspense>
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='/canvas-tool'
+          element={
+            <PrivateRoute>
+              <CanvasTool />
             </PrivateRoute>
           }
         />
