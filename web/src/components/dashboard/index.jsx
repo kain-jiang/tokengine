@@ -30,6 +30,7 @@ import AnnouncementsPanel from './AnnouncementsPanel';
 import FaqPanel from './FaqPanel';
 import UptimePanel from './UptimePanel';
 import UserStatsCarousel from './UserStatsCarousel';
+import GettingStartedGuide from './GettingStartedGuide';
 import SearchModal from './modals/SearchModal';
 
 import { useDashboardData } from '../../hooks/dashboard/useDashboardData';
@@ -176,6 +177,8 @@ const Dashboard = () => {
       />
 
       {/* 用户统计轮播 */}
+      <GettingStartedGuide userState={userState} userDispatch={userDispatch} />
+
       <UserStatsCarousel />
 
       <StatsCards
