@@ -1265,7 +1265,33 @@ html.dark .semi-card-header-title {
   color: #ffffff !important;
 }
 
-/* ==================== 使用日志: channel affinity tag ==================== */
+/* Dashboard onboarding: keep light mode surfaces distinct without a gray stack. */
+html:not(.dark) .guide-step-list,
+html:not(.dark) .guide-request-panel {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+html:not(.dark) .guide-step-action,
+html:not(.dark) .guide-quick-action,
+html:not(.dark) .guide-request-code {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+}
+
+html:not(.dark) .guide-request-signal {
+  background: #f1f5f9 !important;
+}
+
+html:not(.dark) .guide-step-action:hover,
+html:not(.dark) .guide-quick-action:hover {
+  background: #f8fafc !important;
+}
+
+html:not(.dark) .guide-step-icon,
+html:not(.dark) .guide-quick-icon {
+  background: #f4f6f8 !important;
+}/* ==================== 使用日志: channel affinity tag ==================== */
 .semi-tag.channel-affinity-tag {
   border: 1px solid rgba(var(--semi-cyan-5), 0.35);
   background-color: rgba(var(--semi-cyan-5), 0.15);

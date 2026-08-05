@@ -24,8 +24,8 @@ import {
   ChevronDown,
   ChevronUp,
   Circle,
-  Copy,
   CreditCard,
+  FileText,
   KeyRound,
   PlayCircle,
   RadioTower,
@@ -67,33 +67,81 @@ function StepRow({
   title,
   description,
   onClick,
+  isLast,
 }) {
   const StatusIcon = completed ? CheckCircle2 : Circle;
   return (
-    <button
-      type='button'
-      onClick={onClick}
-      className='flex w-full items-center gap-3 rounded-lg border border-gray-100 bg-white px-4 py-3 text-left transition hover:border-blue-200 hover:bg-blue-50/50'
-    >
-      <StatusIcon
-        size={24}
-        className={
-          completed ? 'shrink-0 text-emerald-500' : 'shrink-0 text-gray-400'
-        }
-      />
-      <span className='flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-600'>
-        <Icon size={16} />
+    <li className='relative flex gap-3 pb-3 last:pb-0'>
+      {!isLast && (
+        <span
+          className='absolute -bottom-1/2 left-4 top-1/2 w-px'
+          style={{ background: 'var(--semi-color-border)' }}
+        />
+      )}
+      <span
+        className='relative z-10 flex h-8 w-8 shrink-0 self-center items-center justify-center rounded-lg border'
+        style={{
+          borderColor: completed
+            ? 'var(--semi-color-success-light-active)'
+            : 'var(--semi-color-border)',
+          background: completed
+            ? 'var(--semi-color-success-light-default)'
+            : 'var(--semi-color-bg-0)',
+          color: completed
+            ? 'var(--semi-color-success)'
+            : 'var(--semi-color-text-2)',
+        }}
+      >
+        <StatusIcon size={16} />
       </span>
-      <span className='min-w-0 flex-1'>
-        <span className='block font-semibold text-gray-800'>
-          {index}. {title}
+      <button
+        type='button'
+        onClick={onClick}
+        className='guide-step-action flex min-w-0 flex-1 items-center justify-between gap-3 rounded-[22px] border px-3 py-2.5 text-left transition-colors'
+        style={{
+          borderColor: 'var(--semi-color-border)',
+          background: 'var(--semi-color-fill-1)',
+        }}
+      >
+        <span className='flex min-w-0 items-start gap-2.5'>
+          <span
+            className='guide-step-icon mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md'
+            style={{
+              background: 'var(--semi-color-fill-1)',
+              color: 'var(--semi-color-text-2)',
+            }}
+          >
+            <Icon size={15} />
+          </span>
+          <span className='min-w-0'>
+            <span
+              className='block truncate text-sm font-medium'
+              style={{ color: 'var(--semi-color-text-0)' }}
+            >
+              <span
+                className='mr-2 font-mono text-xs'
+                style={{ color: 'var(--semi-color-text-3)' }}
+              >
+                {index}.
+              </span>
+              {title}
+            </span>
+            <span
+              className='mt-0.5 block truncate text-xs'
+              style={{ color: 'var(--semi-color-text-2)' }}
+            >
+              {description}
+            </span>
+          </span>
         </span>
-        <span className='mt-0.5 block truncate text-sm text-gray-500'>
-          {description}
+        <span
+          className='shrink-0'
+          style={{ color: 'var(--semi-color-text-3)' }}
+        >
+          &rsaquo;
         </span>
-      </span>
-      <span className='text-xl text-gray-400'>&rsaquo;</span>
-    </button>
+      </button>
+    </li>
   );
 }
 
@@ -102,14 +150,32 @@ function QuickAction({ icon: Icon, title, description, onClick }) {
     <button
       type='button'
       onClick={onClick}
-      className='flex w-full items-center gap-3 border-t border-gray-100 py-3 text-left transition hover:text-blue-600'
+      className='guide-quick-action flex w-full items-center gap-3 rounded-[24px] border px-4 py-4 text-left transition-colors'
+      style={{
+        borderColor: 'var(--semi-color-border)',
+        background: 'var(--semi-color-fill-1)',
+      }}
     >
-      <span className='flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-700'>
+      <span
+        className='guide-quick-icon flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px]'
+        style={{
+          background: 'var(--semi-color-fill-1)',
+          color: 'var(--semi-color-text-1)',
+        }}
+      >
         <Icon size={17} />
       </span>
-      <span className='min-w-0'>
-        <span className='block font-medium text-gray-800'>{title}</span>
-        <span className='block truncate text-sm text-gray-500'>
+      <span className='min-w-0 flex-1'>
+        <span
+          className='block truncate text-sm font-medium'
+          style={{ color: 'var(--semi-color-text-0)' }}
+        >
+          {title}
+        </span>
+        <span
+          className='mt-0.5 block truncate text-xs'
+          style={{ color: 'var(--semi-color-text-2)' }}
+        >
           {description}
         </span>
       </span>
@@ -117,6 +183,18 @@ function QuickAction({ icon: Icon, title, description, onClick }) {
   );
 }
 
+function CompactAction({ icon: Icon, title, onClick }) {
+  return (
+    <Button
+      size='small'
+      theme='borderless'
+      icon={<Icon size={15} />}
+      onClick={onClick}
+    >
+      {title}
+    </Button>
+  );
+}
 export default function GettingStartedGuide({ userState, userDispatch }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -249,7 +327,10 @@ export default function GettingStartedGuide({ userState, userDispatch }) {
         showError(t('无法复制到剪贴板，请手动复制'));
         return;
       }
-      await saveOnboarding({ api_key_saved: true, guide_collapsed: false });
+      await saveOnboarding({
+        api_key_saved: true,
+        guide_collapsed: collapsed,
+      });
       setApiKeySaved(true);
       showSuccess(t('API 密钥已复制，请安全保存'));
     } catch (error) {
@@ -274,137 +355,315 @@ export default function GettingStartedGuide({ userState, userDispatch }) {
 
   if (loading) return null;
 
-  if (collapsed || complete) {
+  const summaryTitle = complete ? t('开始使用已完成') : t('开始使用');
+  const progressText = t('设置进度：{{completed}}/{{total}}', {
+    completed,
+    total: steps.length,
+  });
+  const quickActions = [
+    {
+      icon: KeyRound,
+      title: t('API 密钥'),
+      description: t('查看和管理你的密钥'),
+      to: '/console/token',
+    },
+    {
+      icon: FileText,
+      title: t('使用日志'),
+      description: t('API使用记录'),
+      to: '/console/log',
+    },
+    {
+      icon: RadioTower,
+      title: t('模型广场'),
+      description: t('了解可用模型与价格'),
+      to: '/pricing',
+    },
+  ];
+
+  if (collapsed) {
     return (
-      <Card className='mb-4 border-gray-100 shadow-sm'>
-        <div className='flex flex-wrap items-center justify-between gap-3'>
-          <div className='flex items-center gap-3'>
-            <CheckCircle2 className='text-emerald-500' size={24} />
-            <div>
-              <div className='font-semibold text-gray-800'>
-                {complete ? t('开始使用已完成') : t('开始使用')}
+      <Card
+        className='mb-8 rounded-[28px]'
+        bodyStyle={{ padding: '14px 16px' }}
+        style={{
+          marginBottom: '20px',
+          borderColor: 'var(--semi-color-border)',
+          background: 'var(--semi-color-bg-0)',
+        }}
+      >
+        <div className='flex flex-wrap items-center justify-between gap-4'>
+          <div className='flex min-w-0 items-center gap-3'>
+            <span
+              className='flex h-9 w-9 shrink-0 items-center justify-center rounded-[14px] border'
+              style={{
+                borderColor: complete
+                  ? 'var(--semi-color-success-light-active)'
+                  : 'var(--semi-color-border)',
+                background: complete
+                  ? 'var(--semi-color-success-light-default)'
+                  : 'var(--semi-color-fill-0)',
+                color: complete
+                  ? 'var(--semi-color-success)'
+                  : 'var(--semi-color-primary)',
+              }}
+            >
+              {complete ? <CheckCircle2 size={17} /> : <PlayCircle size={17} />}
+            </span>
+            <div className='min-w-0'>
+              <div className='flex flex-wrap items-center gap-2'>
+                <span
+                  className='truncate text-sm font-semibold'
+                  style={{ color: 'var(--semi-color-text-0)' }}
+                >
+                  {summaryTitle}
+                </span>
+                <Tag color={complete ? 'green' : 'blue'}>{progressText}</Tag>
               </div>
-              <div className='text-sm text-gray-500'>
-                {t('设置进度：{{completed}}/{{total}}', {
-                  completed,
-                  total: steps.length,
-                })}
+              <div
+                className='mt-0.5 truncate text-xs'
+                style={{ color: 'var(--semi-color-text-2)' }}
+              >
+                {t('集中管理密钥、额度和首个 API 请求。')}
               </div>
             </div>
           </div>
-          {!complete && (
+          <div className='flex flex-wrap items-center gap-1'>
+            {quickActions.map((action) => (
+              <CompactAction
+                key={action.title}
+                icon={action.icon}
+                title={action.title}
+                onClick={() => navigate(action.to)}
+              />
+            ))}
             <Button
+              size='small'
               theme='borderless'
               icon={<ChevronDown size={16} />}
               onClick={() => handleGuideVisibility(false)}
             >
               {t('展开引导')}
             </Button>
-          )}
+          </div>
         </div>
       </Card>
     );
   }
 
   return (
-    <div className='mb-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_300px]'>
+    <div className='mb-8 grid items-stretch gap-5 xl:grid-cols-[minmax(0,1fr)_25rem]'>
       <Card
-        className='overflow-hidden border-gray-100 shadow-sm'
+        className='h-full overflow-hidden rounded-[28px]'
         bodyStyle={{ padding: 0 }}
+        style={{
+          borderColor: 'var(--semi-color-border)',
+          background: 'var(--semi-color-bg-0)',
+        }}
       >
-        <div className='p-5'>
-          <div className='mb-5 flex flex-wrap items-start justify-between gap-3'>
-            <div>
-              <div className='mb-1 flex items-center gap-2 text-sm font-medium text-gray-500'>
-                <PlayCircle size={16} /> {t('开始使用')}
+        <div className='grid h-full gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_26rem]'>
+          <div className='min-w-0'>
+            <div className='mb-5'>
+              <div className='max-w-2xl'>
+                <div
+                  className='mb-1 flex items-center gap-2 text-xs font-medium uppercase'
+                  style={{ color: 'var(--semi-color-text-2)' }}
+                >
+                  <PlayCircle
+                    size={15}
+                    style={{ color: 'var(--semi-color-primary)' }}
+                  />
+                  {t('开始使用')}
+                </div>
+                <div
+                  className='text-xl font-semibold sm:text-2xl'
+                  style={{ color: 'var(--semi-color-text-0)' }}
+                >
+                  {t('几分钟内开始使用你的 API 网关')}
+                </div>
+                <p
+                  className='mb-0 mt-2 text-sm leading-relaxed'
+                  style={{ color: 'var(--semi-color-text-2)' }}
+                >
+                  {t('集中管理密钥、额度和首个 API 请求。')}
+                </p>
               </div>
-              <div className='text-lg font-semibold text-gray-900'>
-                {t('几分钟内开始使用你的 API 网关')}
+              <div className='mt-4 flex flex-wrap items-center gap-2'>
+                <Button
+                  size='small'
+                  theme='borderless'
+                  icon={<ChevronUp size={16} />}
+                  onClick={() => handleGuideVisibility(true)}
+                >
+                  {t('隐藏引导')}
+                </Button>
+                <Button
+                  size='small'
+                  theme='solid'
+                  type='primary'
+                  icon={<KeyRound size={15} />}
+                  loading={copying}
+                  onClick={handleCopyKey}
+                >
+                  {token ? t('复制密钥') : t('创建')}
+                </Button>
               </div>
-              <p className='mb-0 mt-2 text-gray-500'>
-                {t('集中管理密钥、额度和首个 API 请求。')}
-              </p>
             </div>
-            <div className='flex items-center gap-2'>
-              <Tag color='blue'>
-                {t('进度 {{completed}}/{{total}}', {
-                  completed,
-                  total: steps.length,
-                })}
-              </Tag>
-              <Button
-                size='small'
-                theme='borderless'
-                icon={<ChevronUp size={16} />}
-                onClick={() => handleGuideVisibility(true)}
-              >
-                {t('隐藏引导')}
-              </Button>
-            </div>
+
+            <ol
+              className='guide-step-list rounded-[24px] border p-2.5'
+              style={{
+                borderColor: 'var(--semi-color-border)',
+                background: 'var(--semi-color-fill-0)',
+              }}
+            >
+              {steps.map((step, index) => (
+                <StepRow
+                  key={step.title}
+                  index={index + 1}
+                  isLast={index === steps.length - 1}
+                  {...step}
+                  onClick={() =>
+                    step.to ? navigate(step.to) : handleCopyKey()
+                  }
+                />
+              ))}
+            </ol>
           </div>
 
-          <Progress
-            percent={(completed / steps.length) * 100}
-            showInfo={false}
-            className='mb-4'
-          />
-          <div className='space-y-3'>
-            {steps.map((step, index) => (
-              <StepRow
-                key={step.title}
-                index={index + 1}
-                {...step}
-                onClick={() => (step.to ? navigate(step.to) : handleCopyKey())}
-              />
-            ))}
+          <div
+            className='guide-request-panel h-full overflow-hidden rounded-[24px] border p-4'
+            style={{
+              borderColor: 'var(--semi-color-border)',
+              background: 'var(--semi-color-fill-0)',
+            }}
+          >
+            <div
+              className='flex items-center gap-2 border-b pb-3'
+              style={{ borderColor: 'var(--semi-color-border)' }}
+            >
+              <span
+                className='flex h-8 w-8 shrink-0 items-center justify-center rounded-md'
+                style={{
+                  background: 'var(--semi-color-fill-0)',
+                  color: 'var(--semi-color-primary)',
+                }}
+              >
+                <TerminalSquare size={16} />
+              </span>
+              <div className='min-w-0'>
+                <div
+                  className='truncate text-sm font-medium'
+                  style={{ color: 'var(--semi-color-text-0)' }}
+                >
+                  {t('首个 API 请求')}
+                </div>
+                <div
+                  className='truncate text-xs'
+                  style={{ color: 'var(--semi-color-text-2)' }}
+                >
+                  {token?.name || t('尚未创建密钥')}
+                </div>
+              </div>
+            </div>
+            <pre
+              className='guide-request-code my-4 min-h-40 whitespace-pre-wrap break-words rounded-[20px] p-4 font-mono text-xs leading-5'
+              style={{
+                background: 'var(--semi-color-fill-0)',
+                color: 'var(--semi-color-text-1)',
+              }}
+            >
+              <span className='mb-2 flex gap-1.5'>
+                <i className='h-1.5 w-1.5 rounded-full bg-red-400' />
+                <i className='h-1.5 w-1.5 rounded-full bg-amber-400' />
+                <i className='h-1.5 w-1.5 rounded-full bg-emerald-400' />
+              </span>
+              {requestPreview}
+            </pre>
+            <div className='space-y-2'>
+              <div
+                className='guide-request-signal flex items-center justify-between gap-3 rounded-[18px] px-3 py-2'
+                style={{ background: 'var(--semi-color-fill-0)' }}
+              >
+                <span className='flex min-w-0 items-center gap-2'>
+                  <RadioTower
+                    size={15}
+                    style={{ color: 'var(--semi-color-primary)' }}
+                  />
+                  <span
+                    className='truncate text-xs font-medium'
+                    style={{ color: 'var(--semi-color-text-0)' }}
+                  >
+                    {t('模型广场')}
+                  </span>
+                </span>
+                <span
+                  className='truncate text-xs'
+                  style={{ color: 'var(--semi-color-text-2)' }}
+                >
+                  {selectedModel}
+                </span>
+              </div>
+              <div
+                className='guide-request-signal flex items-center justify-between gap-3 rounded-[18px] px-3 py-2'
+                style={{ background: 'var(--semi-color-fill-0)' }}
+              >
+                <span className='flex min-w-0 items-center gap-2'>
+                  <KeyRound
+                    size={15}
+                    style={{ color: 'var(--semi-color-success)' }}
+                  />
+                  <span
+                    className='truncate text-xs font-medium'
+                    style={{ color: 'var(--semi-color-text-0)' }}
+                  >
+                    {t('API 密钥')}
+                  </span>
+                </span>
+                <span
+                  className='truncate text-xs'
+                  style={{ color: 'var(--semi-color-text-2)' }}
+                >
+                  {token?.name || t('尚未创建密钥')}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </Card>
 
       <Card
-        className='border-gray-100 shadow-sm'
-        bodyStyle={{ padding: '16px' }}
+        className='h-full rounded-[28px]'
+        bodyStyle={{ padding: 0 }}
+        style={{
+          borderColor: 'var(--semi-color-border)',
+          background: 'var(--semi-color-bg-0)',
+        }}
       >
-        <div className='mb-3 flex items-center justify-between gap-3'>
-          <div className='min-w-0'>
-            <div className='font-semibold text-gray-800'>
-              {t('首个 API 请求')}
+        <div className='py-4 pr-4 pl-3 sm:py-5 sm:pr-5 sm:pl-4'>
+          <div className='mb-7'>
+            <div
+              className='text-xs font-medium uppercase'
+              style={{ color: 'var(--semi-color-text-2)' }}
+            >
+              {t('推荐操作')}
             </div>
-            <div className='truncate text-sm text-gray-500'>
-              {token?.name || t('尚未创建密钥')}
+            <div
+              className='mt-1 text-lg font-semibold'
+              style={{ color: 'var(--semi-color-text-0)' }}
+            >
+              {t('保持平台就绪')}
             </div>
           </div>
-          <Button
-            size='small'
-            icon={<Copy size={15} />}
-            loading={copying}
-            onClick={handleCopyKey}
-          >
-            {token ? t('复制密钥') : t('创建')}
-          </Button>
-        </div>
-        <pre className='mb-4 overflow-x-auto rounded-lg bg-gray-50 p-3 text-xs leading-5 text-gray-600'>
-          {requestPreview}
-        </pre>
-        <div className='space-y-2'>
-          <QuickAction
-            icon={KeyRound}
-            title={t('API 密钥')}
-            description={t('查看和管理你的密钥')}
-            onClick={() => navigate('/console/token')}
-          />
-          <QuickAction
-            icon={RadioTower}
-            title={t('模型广场')}
-            description={t('了解可用模型与价格')}
-            onClick={() => navigate('/pricing')}
-          />
-          <QuickAction
-            icon={TerminalSquare}
-            title={t('Playground')}
-            description={t('快速验证模型和路由')}
-            onClick={() => navigate('/console/playground')}
-          />
+          <div className='space-y-4'>
+            {quickActions.map((action) => (
+              <QuickAction
+                key={action.title}
+                {...action}
+                onClick={() => navigate(action.to)}
+              />
+            ))}
+          </div>
         </div>
       </Card>
     </div>
