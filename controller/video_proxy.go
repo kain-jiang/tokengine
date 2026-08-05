@@ -121,17 +121,21 @@ func VideoProxy(c *gin.Context) {
 		videoURL = fmt.Sprintf("%s/v1/videos/%s/content", baseURL, task.GetUpstreamTaskID())
 		req.Header.Set("Authorization", "Bearer "+channel.Key)
 	case constant.ChannelTypeAgnesAI:
-		// AgnesAI uses video_id from task.Data instead of task ID
-		var taskData map[string]interface{}
-		if err := common.Unmarshal(task.Data, &taskData); err == nil {
-			if videoID, ok := taskData["video_id"].(string); ok && videoID != "" {
-				videoURL = fmt.Sprintf("%s/v1/videos/%s/content", baseURL, videoID)
+		// Prefer Agnes's returned CDN URL; keep the content endpoint as a fallback for old tasks.
+		resultURL := strings.TrimSpace(task.GetResultURL())
+		if strings.HasPrefix(resultURL, "http://") || strings.HasPrefix(resultURL, "https://") {
+			videoURL = resultURL
+		} else {
+			var taskData map[string]interface{}
+			if err := common.Unmarshal(task.Data, &taskData); err == nil {
+				if videoID, ok := taskData["video_id"].(string); ok && videoID != "" {
+					videoURL = fmt.Sprintf("%s/v1/videos/%s/content", baseURL, videoID)
+				} else {
+					videoURL = fmt.Sprintf("%s/v1/videos/%s/content", baseURL, task.GetUpstreamTaskID())
+				}
 			} else {
-				// Fallback to upstream task ID or public task ID
 				videoURL = fmt.Sprintf("%s/v1/videos/%s/content", baseURL, task.GetUpstreamTaskID())
 			}
-		} else {
-			videoURL = fmt.Sprintf("%s/v1/videos/%s/content", baseURL, task.GetUpstreamTaskID())
 		}
 		req.Header.Set("Authorization", "Bearer "+channel.Key)
 	default:
