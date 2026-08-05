@@ -52,6 +52,7 @@ import FinanceReconciliation from './pages/Finance/Reconciliation';
 import FinanceSupplier from './pages/Finance/Supplier';
 import FinanceSupplierSettlement from './pages/Finance/SupplierSettlement';
 import RevenueManagement from './pages/Finance/RevenueManagement';
+import TokenFactoryDashboard from './pages/Finance/TokenFactoryDashboard';
 
 import Log from './pages/Log';
 import Chat from './pages/Chat';
@@ -426,6 +427,17 @@ function App() {
               }
             />
           </Route>
+        )}
+        {/* Token 工厂生产运营大屏 - 独立全屏路由（管理员可访问） */}
+        {isAdmin() && (
+          <Route
+            path='/console/token-factory'
+            element={
+              <PrivateRoute>
+                <ErrorBoundary key='token-factory'><TokenFactoryDashboard /></ErrorBoundary>
+              </PrivateRoute>
+            }
+          />
         )}
         <Route
           path='/console/log'
