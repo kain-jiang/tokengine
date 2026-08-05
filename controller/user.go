@@ -712,6 +712,29 @@ func AdminClearUserBinding(c *gin.Context) {
 	})
 }
 
+type onboardingSettingsRequest struct {
+	APIKeySaved    *bool `json:"api_key_saved"`
+	GuideCollapsed *bool `json:"guide_collapsed"`
+}
+
+func updateSelfSetting(c *gin.Context, update func(*dto.UserSetting)) {
+	user, err := model.GetUserById(c.GetInt("id"), false)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	setting := user.GetSetting()
+	update(&setting)
+	user.SetSetting(setting)
+	if err := user.Update(false); err != nil {
+		common.ApiErrorI18n(c, i18n.MsgUpdateFailed)
+		return
+	}
+
+	common.ApiSuccessI18n(c, i18n.MsgUpdateSuccess, nil)
+}
+
 func UpdateSelf(c *gin.Context) {
 	var requestData map[string]interface{}
 	err := json.NewDecoder(c.Request.Body).Decode(&requestData)
@@ -720,63 +743,59 @@ func UpdateSelf(c *gin.Context) {
 		return
 	}
 
-	// 检查是否是用户设置更新请求 (sidebar_modules 或 language)
 	if sidebarModules, sidebarExists := requestData["sidebar_modules"]; sidebarExists {
-		userId := c.GetInt("id")
-		user, err := model.GetUserById(userId, false)
-		if err != nil {
-			common.ApiError(c, err)
+		value, ok := sidebarModules.(string)
+		if !ok {
+			common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 			return
 		}
-
-		// 获取当前用户设置
-		currentSetting := user.GetSetting()
-
-		// 更新sidebar_modules字段
-		if sidebarModulesStr, ok := sidebarModules.(string); ok {
-			currentSetting.SidebarModules = sidebarModulesStr
-		}
-
-		// 保存更新后的设置
-		user.SetSetting(currentSetting)
-		if err := user.Update(false); err != nil {
-			common.ApiErrorI18n(c, i18n.MsgUpdateFailed)
-			return
-		}
-
-		common.ApiSuccessI18n(c, i18n.MsgUpdateSuccess, nil)
+		updateSelfSetting(c, func(setting *dto.UserSetting) {
+			setting.SidebarModules = value
+		})
 		return
 	}
 
-	// 检查是否是语言偏好更新请求
-	if language, langExists := requestData["language"]; langExists {
-		userId := c.GetInt("id")
-		user, err := model.GetUserById(userId, false)
-		if err != nil {
-			common.ApiError(c, err)
+	if language, languageExists := requestData["language"]; languageExists {
+		value, ok := language.(string)
+		if !ok {
+			common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 			return
 		}
-
-		// 获取当前用户设置
-		currentSetting := user.GetSetting()
-
-		// 更新language字段
-		if langStr, ok := language.(string); ok {
-			currentSetting.Language = langStr
-		}
-
-		// 保存更新后的设置
-		user.SetSetting(currentSetting)
-		if err := user.Update(false); err != nil {
-			common.ApiErrorI18n(c, i18n.MsgUpdateFailed)
-			return
-		}
-
-		common.ApiSuccessI18n(c, i18n.MsgUpdateSuccess, nil)
+		updateSelfSetting(c, func(setting *dto.UserSetting) {
+			setting.Language = value
+		})
 		return
 	}
 
-	// 原有的用户信息更新逻辑
+	if onboarding, onboardingExists := requestData["onboarding"]; onboardingExists {
+		payload, ok := onboarding.(map[string]interface{})
+		if !ok {
+			common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+			return
+		}
+
+		data, err := common.Marshal(payload)
+		if err != nil {
+			common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+			return
+		}
+		var request onboardingSettingsRequest
+		if err := common.Unmarshal(data, &request); err != nil ||
+			(request.APIKeySaved == nil && request.GuideCollapsed == nil) {
+			common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+			return
+		}
+
+		updateSelfSetting(c, func(setting *dto.UserSetting) {
+			if request.APIKeySaved != nil {
+				setting.OnboardingAPIKeySaved = *request.APIKeySaved
+			}
+			if request.GuideCollapsed != nil {
+				setting.OnboardingGuideCollapsed = *request.GuideCollapsed
+			}
+		})
+		return
+	}
 	var user model.User
 	requestDataBytes, err := json.Marshal(requestData)
 	if err != nil {

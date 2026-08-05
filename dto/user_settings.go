@@ -17,6 +17,8 @@ type UserSetting struct {
 	SidebarModules                   string  `json:"sidebar_modules,omitempty"`                      // SidebarModules 左侧边栏模块配置
 	BillingPreference                string  `json:"billing_preference,omitempty"`                   // BillingPreference 扣费策略（订阅/钱包）
 	Language                         string  `json:"language,omitempty"`                             // Language 用户语言偏好 (zh, en)
+	OnboardingAPIKeySaved            bool    `json:"onboarding_api_key_saved,omitempty"`             // User confirmed their initial API key
+	OnboardingGuideCollapsed         bool    `json:"onboarding_guide_collapsed,omitempty"`           // User collapsed the getting-started guide
 }
 
 var (
