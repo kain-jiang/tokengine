@@ -3513,6 +3513,8 @@
     "隐藏引导": "Hide guide",
     "Playground": "Playground",
     "快速验证模型和路由": "Quickly verify models and routing",
-    "API 密钥已复制，请安全保存": "API key copied. Store it securely"
+    "API 密钥已复制，请安全保存": "API key copied. Store it securely",
+    "推荐操作": "Рекомендуемые действия",
+    "保持平台就绪": "Поддерживайте платформу в готовности"
   }
 }
