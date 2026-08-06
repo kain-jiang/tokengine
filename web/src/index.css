@@ -527,6 +527,44 @@ code {
   transform: translateY(-2px);
 }
 
+/* 引导卡片与仪表盘统计卡片共享同一层级的表面与悬停反馈。 */
+.guide-shell {
+  background: var(--semi-color-bg-0);
+  border: 1px solid var(--color-border-light);
+  border-radius: 8px !important;
+  box-shadow: var(--color-shadow) 0px 4px 10px;
+  transition: all 0.2s ease;
+}
+
+.guide-shell:hover {
+  box-shadow: var(--color-shadow) 0px 6px 14px;
+  transform: translateY(-2px);
+}
+
+/* 引导入口卡片悬停效果，与统计卡片保持一致 */
+.guide-hover-card {
+  transition: all 0.2s ease;
+}
+
+.guide-hover-card:hover {
+  box-shadow: var(--color-shadow) 0px 5px 11px;
+  transform: translateY(-1px);
+}
+.guide-copy-request-button.semi-button {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: none !important;
+}
+
+.guide-copy-request-button.semi-button:hover {
+  background: #ffffff !important;
+  border-color: #d1d5db !important;
+}
+
+html.dark .guide-copy-request-button.semi-button {
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
 /* 深色模式卡片样式 */
 html.dark .card-new {
   background: rgba(255, 255, 255, 0.08);
@@ -1263,6 +1301,25 @@ html.dark .semi-card-header {
 
 html.dark .semi-card-header-title {
   color: #ffffff !important;
+}
+
+/* Dashboard onboarding: keep light mode surfaces distinct without a gray stack. */
+html:not(.dark) .guide-step-list,
+html:not(.dark) .guide-request-panel {
+  background: #f7f8fa !important;
+  border-color: #e2e5e9 !important;
+}
+
+html:not(.dark) .guide-step-action,
+html:not(.dark) .guide-quick-action,
+html:not(.dark) .guide-request-code {
+  background: #ffffff !important;
+  border-color: #e2e5e9 !important;
+}
+
+html:not(.dark) .guide-step-action:hover,
+html:not(.dark) .guide-quick-action:hover {
+  background: #f7f8fa !important;
 }
 
 /* ==================== 使用日志: channel affinity tag ==================== */
