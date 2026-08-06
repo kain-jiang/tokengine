@@ -467,50 +467,51 @@ func GetChannelAlerts() []AlertInfo {
 	return alerts
 }
 
+// localZoneOffset 返回 t 时刻本地时区相对 UTC 的偏移秒数（东为正）。
+// 用于把 created_at 时间戳偏移到本地日/小时边界后再分桶，
+// 使桶与本地自然日/小时对齐（与旧的内存分组语义一致），同时保持纯整数运算跨库兼容。
+func localZoneOffset(t int64) int {
+	_, offset := time.Unix(t, 0).Zone()
+	return offset
+}
+
 // GetQuotaDistribution 获取消耗分布数据（按模型和时间）
 func GetQuotaDistribution(startTime, endTime int64) []QuotaDistributionData {
-	var results []QuotaDistributionData
+	// 按小时分桶（(created_at+offset)/3600 为纯整数运算，兼容 SQLite/MySQL/PostgreSQL），
+	// 在数据库内完成聚合，避免将整个时间窗口的日志全量拉取到内存。
+	tzOffset := localZoneOffset(startTime)
+	var rows []struct {
+		HourBucket int64
+		ModelName  string
+		Quota      int64
+	}
 
-	// 查询日志数据，按时间和模型分组
-	var logs []Log
 	LOG_DB.Model(&Log{}).
+		Select(fmt.Sprintf("(created_at + %d) / 3600 AS hour_bucket, model_name, SUM(quota) AS quota", tzOffset)).
 		Where("created_at >= ? AND created_at <= ? AND type = ?", startTime, endTime, LogTypeConsume).
 		Where("quota > 0").
-		Order("created_at ASC").
-		Find(&logs)
+		Group(fmt.Sprintf("(created_at + %d) / 3600, model_name", tzOffset)).
+		Scan(&rows)
 
-	// 按日期分组聚合
-	timeModelMap := make(map[string]map[string]int64)
-	for _, log := range logs {
-		// 按小时分组
-		date := time.Unix(log.CreatedAt, 0).Format("2006-01-02 15:00")
-		model := log.ModelName
+	// 计算每个小时桶的总消耗，用于 TimeSum
+	hourSumMap := make(map[int64]int64)
+	for _, r := range rows {
+		hourSumMap[r.HourBucket] += r.Quota
+	}
+
+	results := make([]QuotaDistributionData, 0, len(rows))
+	for _, r := range rows {
+		model := r.ModelName
 		if model == "" {
 			model = "unknown"
 		}
-
-		if timeModelMap[date] == nil {
-			timeModelMap[date] = make(map[string]int64)
-		}
-		timeModelMap[date][model] += int64(log.Quota)
-	}
-
-	// 转换为结果格式
-	for timeKey, modelMap := range timeModelMap {
-		timeSum := int64(0)
-		for _, quota := range modelMap {
-			timeSum += quota
-		}
-
-		for model, quota := range modelMap {
-			results = append(results, QuotaDistributionData{
-				Time:     timeKey,
-				Model:    model,
-				Quota:    quota / 500000, // 转换为显示单位
-				RawQuota: quota,
-				TimeSum:  timeSum,
-			})
-		}
+		results = append(results, QuotaDistributionData{
+			Time:     time.Unix(r.HourBucket*3600-int64(tzOffset), 0).Format("2006-01-02 15:00"),
+			Model:    model,
+			Quota:    r.Quota / 500000, // 转换为显示单位
+			RawQuota: r.Quota,
+			TimeSum:  hourSumMap[r.HourBucket],
+		})
 	}
 
 	return results
@@ -518,39 +519,31 @@ func GetQuotaDistribution(startTime, endTime int64) []QuotaDistributionData {
 
 // GetCallTrend 获取调用趋势数据（按时间和模型）
 func GetCallTrend(startTime, endTime int64) []CallTrendData {
-	var results []CallTrendData
+	// 按天分桶（(created_at+offset)/86400 纯整数运算，跨数据库兼容），数据库内聚合
+	tzOffset := localZoneOffset(startTime)
+	var rows []struct {
+		DayBucket int64
+		ModelName string
+		Count     int64
+	}
 
-	// 查询日志数据，按时间分组
-	var logs []Log
 	LOG_DB.Model(&Log{}).
+		Select(fmt.Sprintf("(created_at + %d) / 86400 AS day_bucket, model_name, COUNT(*) AS count", tzOffset)).
 		Where("created_at >= ? AND created_at <= ? AND type = ?", startTime, endTime, LogTypeConsume).
-		Order("created_at ASC").
-		Find(&logs)
+		Group(fmt.Sprintf("(created_at + %d) / 86400, model_name", tzOffset)).
+		Scan(&rows)
 
-	// 按日期和模型分组统计
-	timeModelMap := make(map[string]map[string]int64)
-	for _, log := range logs {
-		date := time.Unix(log.CreatedAt, 0).Format("2006-01-02")
-		model := log.ModelName
+	results := make([]CallTrendData, 0, len(rows))
+	for _, r := range rows {
+		model := r.ModelName
 		if model == "" {
 			model = "unknown"
 		}
-
-		if timeModelMap[date] == nil {
-			timeModelMap[date] = make(map[string]int64)
-		}
-		timeModelMap[date][model]++
-	}
-
-	// 转换为结果格式
-	for timeKey, modelMap := range timeModelMap {
-		for model, count := range modelMap {
-			results = append(results, CallTrendData{
-				Time:  timeKey,
-				Model: model,
-				Count: count,
-			})
-		}
+		results = append(results, CallTrendData{
+			Time:  time.Unix(r.DayBucket*86400-int64(tzOffset), 0).Format("2006-01-02"),
+			Model: model,
+			Count: r.Count,
+		})
 	}
 
 	return results
@@ -655,49 +648,58 @@ func GetUserQuotaRank(startTime, endTime int64, limit int) []UserQuotaRankData {
 
 // GetUserQuotaTrend 获取用户消耗趋势（管理员视角）
 func GetUserQuotaTrend(startTime, endTime int64) []UserQuotaTrendData {
-	var results []UserQuotaTrendData
-
-	// 查询日志数据
-	var logs []Log
+	// 先在数据库内聚合用户总消耗，取前5，避免重复调用 GetUserQuotaRank
+	var topUserRows []struct {
+		Username string
+		Quota    int64
+	}
 	LOG_DB.Model(&Log{}).
+		Select("username, SUM(quota) AS quota").
 		Where("created_at >= ? AND created_at <= ? AND type = ?", startTime, endTime, LogTypeConsume).
 		Where("quota > 0").
-		Order("created_at ASC").
-		Find(&logs)
+		Group("username").
+		Order("quota DESC").
+		Limit(5).
+		Scan(&topUserRows)
 
-	// 按日期和用户分组统计
-	timeUserMap := make(map[string]map[string]int64)
-	for _, log := range logs {
-		date := time.Unix(log.CreatedAt, 0).Format("2006-01-02")
-		user := log.Username
+	topUsers := make(map[string]bool)
+	for _, u := range topUserRows {
+		user := u.Username
 		if user == "" {
 			user = "unknown"
 		}
-
-		if timeUserMap[date] == nil {
-			timeUserMap[date] = make(map[string]int64)
-		}
-		timeUserMap[date][user] += int64(log.Quota)
+		topUsers[user] = true
 	}
 
-	// 只保留消耗最多的前5个用户
-	topUsers := make(map[string]bool)
-	for _, uq := range GetUserQuotaRank(startTime, endTime, 5) {
-		topUsers[uq.User] = true
+	// 按天+用户聚合消耗，仅保留 Top 用户
+	tzOffset := localZoneOffset(startTime)
+	var rows []struct {
+		DayBucket int64
+		Username  string
+		Quota     int64
 	}
+	LOG_DB.Model(&Log{}).
+		Select(fmt.Sprintf("(created_at + %d) / 86400 AS day_bucket, username, SUM(quota) AS quota", tzOffset)).
+		Where("created_at >= ? AND created_at <= ? AND type = ?", startTime, endTime, LogTypeConsume).
+		Where("quota > 0").
+		Group(fmt.Sprintf("(created_at + %d) / 86400, username", tzOffset)).
+		Scan(&rows)
 
-	// 转换为结果格式（只包含TOP用户）
-	for timeKey, userMap := range timeUserMap {
-		for user, quota := range userMap {
-			if topUsers[user] {
-				results = append(results, UserQuotaTrendData{
-					Time:     timeKey,
-					User:     user,
-					Quota:    quota / 500000, // 转换为显示单位
-					RawQuota: quota,
-				})
-			}
+	results := make([]UserQuotaTrendData, 0, len(rows))
+	for _, r := range rows {
+		user := r.Username
+		if user == "" {
+			user = "unknown"
 		}
+		if !topUsers[user] {
+			continue
+		}
+		results = append(results, UserQuotaTrendData{
+			Time:     time.Unix(r.DayBucket*86400-int64(tzOffset), 0).Format("2006-01-02"),
+			User:     user,
+			Quota:    r.Quota / 500000, // 转换为显示单位
+			RawQuota: r.Quota,
+		})
 	}
 
 	return results
