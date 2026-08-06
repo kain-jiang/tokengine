@@ -21,10 +21,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Progress, Tag } from '@douyinfe/semi-ui';
 import {
   CheckCircle2,
+  Copy,
   ChevronDown,
   ChevronUp,
   Circle,
   CreditCard,
+  Cpu,
   FileText,
   KeyRound,
   PlayCircle,
@@ -341,6 +343,30 @@ export default function GettingStartedGuide({ userState, userDispatch }) {
     }
   }
 
+  async function handleCopyRequest() {
+    if (!token?.id) {
+      navigate('/console/token');
+      return;
+    }
+
+    setCopying(true);
+    try {
+      const key = await fetchTokenKey(token.id);
+      const fullRequest = `curl ${baseUrl}/v1/chat/completions \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer sk-${key}" \\
+  -d '{"model":"${selectedModel}","messages":[{"role":"user","content":"Say hello"}]}'`;
+      if (!(await copy(fullRequest))) {
+        showError(t('无法复制到剪贴板，请手动复制'));
+        return;
+      }
+      showSuccess(t('复制成功'));
+    } catch (error) {
+      showError(error?.message || t('获取 API 密钥失败'));
+    } finally {
+      setCopying(false);
+    }
+  }
   async function handleGuideVisibility(nextCollapsed) {
     setCollapsed(nextCollapsed);
     try {
@@ -500,14 +526,13 @@ export default function GettingStartedGuide({ userState, userDispatch }) {
                 </Button>
                 <Button
                   size='small'
-                  theme='solid'
-                  type='primary'
-                  icon={<KeyRound size={15} />}
-                  loading={copying}
-                  onClick={handleCopyKey}
+                  theme='borderless'
+                  icon={<KeyRound size={16} />}
+                  onClick={() => navigate('/console/token')}
                 >
-                  {token ? t('复制密钥') : t('创建')}
+                  {t('查看密钥')}
                 </Button>
+
               </div>
             </div>
 
@@ -566,6 +591,18 @@ export default function GettingStartedGuide({ userState, userDispatch }) {
                   {token?.name || t('尚未创建密钥')}
                 </div>
               </div>
+              <Button
+                size='small'
+                theme='light'
+                type='tertiary'
+                className='guide-copy-request-button ml-auto !rounded-full'
+                icon={<Copy size={14} />}
+                loading={copying}
+                onClick={handleCopyRequest}
+                aria-label={t('复制请求示例')}
+              >
+                {t('复制')}
+              </Button>
             </div>
             <pre
               className='guide-request-code my-4 min-h-40 whitespace-pre-wrap break-words rounded-[20px] p-4 font-mono text-xs leading-5'
@@ -595,14 +632,14 @@ export default function GettingStartedGuide({ userState, userDispatch }) {
                     className='truncate text-xs font-medium'
                     style={{ color: 'var(--semi-color-text-0)' }}
                   >
-                    {t('已选择模型')}
+                    {t('路由已启用')}
                   </span>
                 </span>
                 <span
                   className='truncate text-xs'
                   style={{ color: 'var(--semi-color-text-2)' }}
                 >
-                  {selectedModel}
+                  {t('当前域名')}
                 </span>
               </div>
               <div
@@ -626,6 +663,29 @@ export default function GettingStartedGuide({ userState, userDispatch }) {
                   style={{ color: 'var(--semi-color-text-2)' }}
                 >
                   {t('已保护')}
+                </span>
+              </div>
+              <div
+                className='guide-request-signal flex items-center justify-between gap-3 rounded-[18px] px-3 py-2'
+                style={{ background: 'var(--semi-color-fill-0)' }}
+              >
+                <span className='flex min-w-0 items-center gap-2'>
+                  <Cpu
+                    size={15}
+                    style={{ color: 'var(--semi-color-primary)' }}
+                  />
+                  <span
+                    className='truncate text-xs font-medium'
+                    style={{ color: 'var(--semi-color-text-0)' }}
+                  >
+                    {t('已选择模型')}
+                  </span>
+                </span>
+                <span
+                  className='truncate text-xs'
+                  style={{ color: 'var(--semi-color-text-2)' }}
+                >
+                  {selectedModel}
                 </span>
               </div>
             </div>

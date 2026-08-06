@@ -3740,6 +3740,9 @@
     "API 密钥已复制，请安全保存": "API key copied. Store it securely",
     "推荐操作": "Recommended actions",
     "保持平台就绪": "Keep the platform ready",
+    "路由已启用": "Routing enabled",
+    "当前域名": "Current domain",
+    "复制请求示例": "Copy request example",
     "已选择模型": "Selected model",
     "认证已配置": "Authentication configured",
     "已保护": "Protected"

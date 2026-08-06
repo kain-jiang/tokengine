@@ -536,6 +536,21 @@ code {
   box-shadow: var(--color-shadow) 0px 5px 11px;
   transform: translateY(-1px);
 }
+.guide-copy-request-button.semi-button {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: none !important;
+}
+
+.guide-copy-request-button.semi-button:hover {
+  background: #ffffff !important;
+  border-color: #d1d5db !important;
+}
+
+html.dark .guide-copy-request-button.semi-button {
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+}
 /* 深色模式卡片样式 */
 html.dark .card-new {
   background: rgba(255, 255, 255, 0.08);
