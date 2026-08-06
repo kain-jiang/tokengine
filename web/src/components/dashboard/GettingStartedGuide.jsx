@@ -29,6 +29,7 @@ import {
   KeyRound,
   PlayCircle,
   RadioTower,
+  ShieldCheck,
   TerminalSquare,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -594,7 +595,7 @@ export default function GettingStartedGuide({ userState, userDispatch }) {
                     className='truncate text-xs font-medium'
                     style={{ color: 'var(--semi-color-text-0)' }}
                   >
-                    {t('模型广场')}
+                    {t('已选择模型')}
                   </span>
                 </span>
                 <span
@@ -609,7 +610,7 @@ export default function GettingStartedGuide({ userState, userDispatch }) {
                 style={{ background: 'var(--semi-color-fill-0)' }}
               >
                 <span className='flex min-w-0 items-center gap-2'>
-                  <KeyRound
+                  <ShieldCheck
                     size={15}
                     style={{ color: 'var(--semi-color-success)' }}
                   />
@@ -617,14 +618,14 @@ export default function GettingStartedGuide({ userState, userDispatch }) {
                     className='truncate text-xs font-medium'
                     style={{ color: 'var(--semi-color-text-0)' }}
                   >
-                    {t('API 密钥')}
+                    {t('认证已配置')}
                   </span>
                 </span>
                 <span
                   className='truncate text-xs'
                   style={{ color: 'var(--semi-color-text-2)' }}
                 >
-                  {token?.name || t('尚未创建密钥')}
+                  {t('已保护')}
                 </span>
               </div>
             </div>
