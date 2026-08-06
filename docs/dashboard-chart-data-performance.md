@@ -63,16 +63,19 @@ LOG_DB.Model(&Log{}).
 
 ### 跨数据库兼容性（重要）
 
-分桶统一使用 `created_at`（int64 unix 时间戳）的**纯整数运算**：
+分桶统一使用 `created_at`（int64 unix 时间戳）的**纯整数运算**，并叠加本地时区偏移
+`tzOffset`（`localZoneOffset` 计算，东八区为 28800），使桶与本地自然日/小时对齐，
+避免天级/小时级数据相对旧版内存分组语义偏移一个时差：
 
-- 小时桶：`created_at / 3600`
-- 天桶：`created_at / 86400`
+- 小时桶：`(created_at + tzOffset) / 3600`
+- 天桶：`(created_at + tzOffset) / 86400`
 
 该写法在 SQLite / MySQL / PostgreSQL 三库行为一致，避免使用
 `strftime`、`DATE_FORMAT`、`to_char` 等各库不一致的日期函数（符合项目 Rule 2）。
+时区偏移固定取窗口起点时刻的值；若跨夏令时边界会略有偏差，属可接受的边缘场景。
 
 桶的起始时间再由 Go 侧换算回时间字符串：
-`time.Unix(dayBucket*86400, 0).Format("2006-01-02")`。
+`time.Unix(dayBucket*86400-tzOffset, 0).Format("2006-01-02")`。
 
 ### 逐函数修改
 

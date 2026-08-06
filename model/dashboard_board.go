@@ -467,10 +467,19 @@ func GetChannelAlerts() []AlertInfo {
 	return alerts
 }
 
+// localZoneOffset 返回 t 时刻本地时区相对 UTC 的偏移秒数（东为正）。
+// 用于把 created_at 时间戳偏移到本地日/小时边界后再分桶，
+// 使桶与本地自然日/小时对齐（与旧的内存分组语义一致），同时保持纯整数运算跨库兼容。
+func localZoneOffset(t int64) int {
+	_, offset := time.Unix(t, 0).Zone()
+	return offset
+}
+
 // GetQuotaDistribution 获取消耗分布数据（按模型和时间）
 func GetQuotaDistribution(startTime, endTime int64) []QuotaDistributionData {
-	// 按小时分桶（created_at/3600 为纯整数运算，兼容 SQLite/MySQL/PostgreSQL），
+	// 按小时分桶（(created_at+offset)/3600 为纯整数运算，兼容 SQLite/MySQL/PostgreSQL），
 	// 在数据库内完成聚合，避免将整个时间窗口的日志全量拉取到内存。
+	tzOffset := localZoneOffset(startTime)
 	var rows []struct {
 		HourBucket int64
 		ModelName  string
@@ -478,10 +487,10 @@ func GetQuotaDistribution(startTime, endTime int64) []QuotaDistributionData {
 	}
 
 	LOG_DB.Model(&Log{}).
-		Select("created_at / 3600 AS hour_bucket, model_name, SUM(quota) AS quota").
+		Select(fmt.Sprintf("(created_at + %d) / 3600 AS hour_bucket, model_name, SUM(quota) AS quota", tzOffset)).
 		Where("created_at >= ? AND created_at <= ? AND type = ?", startTime, endTime, LogTypeConsume).
 		Where("quota > 0").
-		Group("created_at / 3600, model_name").
+		Group(fmt.Sprintf("(created_at + %d) / 3600, model_name", tzOffset)).
 		Scan(&rows)
 
 	// 计算每个小时桶的总消耗，用于 TimeSum
@@ -497,7 +506,7 @@ func GetQuotaDistribution(startTime, endTime int64) []QuotaDistributionData {
 			model = "unknown"
 		}
 		results = append(results, QuotaDistributionData{
-			Time:     time.Unix(r.HourBucket*3600, 0).Format("2006-01-02 15:00"),
+			Time:     time.Unix(r.HourBucket*3600-int64(tzOffset), 0).Format("2006-01-02 15:00"),
 			Model:    model,
 			Quota:    r.Quota / 500000, // 转换为显示单位
 			RawQuota: r.Quota,
@@ -510,7 +519,8 @@ func GetQuotaDistribution(startTime, endTime int64) []QuotaDistributionData {
 
 // GetCallTrend 获取调用趋势数据（按时间和模型）
 func GetCallTrend(startTime, endTime int64) []CallTrendData {
-	// 按天分桶（created_at/86400 纯整数运算，跨数据库兼容），数据库内聚合
+	// 按天分桶（(created_at+offset)/86400 纯整数运算，跨数据库兼容），数据库内聚合
+	tzOffset := localZoneOffset(startTime)
 	var rows []struct {
 		DayBucket int64
 		ModelName string
@@ -518,9 +528,9 @@ func GetCallTrend(startTime, endTime int64) []CallTrendData {
 	}
 
 	LOG_DB.Model(&Log{}).
-		Select("created_at / 86400 AS day_bucket, model_name, COUNT(*) AS count").
+		Select(fmt.Sprintf("(created_at + %d) / 86400 AS day_bucket, model_name, COUNT(*) AS count", tzOffset)).
 		Where("created_at >= ? AND created_at <= ? AND type = ?", startTime, endTime, LogTypeConsume).
-		Group("created_at / 86400, model_name").
+		Group(fmt.Sprintf("(created_at + %d) / 86400, model_name", tzOffset)).
 		Scan(&rows)
 
 	results := make([]CallTrendData, 0, len(rows))
@@ -530,7 +540,7 @@ func GetCallTrend(startTime, endTime int64) []CallTrendData {
 			model = "unknown"
 		}
 		results = append(results, CallTrendData{
-			Time:  time.Unix(r.DayBucket*86400, 0).Format("2006-01-02"),
+			Time:  time.Unix(r.DayBucket*86400-int64(tzOffset), 0).Format("2006-01-02"),
 			Model: model,
 			Count: r.Count,
 		})
@@ -662,16 +672,17 @@ func GetUserQuotaTrend(startTime, endTime int64) []UserQuotaTrendData {
 	}
 
 	// 按天+用户聚合消耗，仅保留 Top 用户
+	tzOffset := localZoneOffset(startTime)
 	var rows []struct {
 		DayBucket int64
 		Username  string
 		Quota     int64
 	}
 	LOG_DB.Model(&Log{}).
-		Select("created_at / 86400 AS day_bucket, username, SUM(quota) AS quota").
+		Select(fmt.Sprintf("(created_at + %d) / 86400 AS day_bucket, username, SUM(quota) AS quota", tzOffset)).
 		Where("created_at >= ? AND created_at <= ? AND type = ?", startTime, endTime, LogTypeConsume).
 		Where("quota > 0").
-		Group("created_at / 86400, username").
+		Group(fmt.Sprintf("(created_at + %d) / 86400, username", tzOffset)).
 		Scan(&rows)
 
 	results := make([]UserQuotaTrendData, 0, len(rows))
@@ -684,7 +695,7 @@ func GetUserQuotaTrend(startTime, endTime int64) []UserQuotaTrendData {
 			continue
 		}
 		results = append(results, UserQuotaTrendData{
-			Time:     time.Unix(r.DayBucket*86400, 0).Format("2006-01-02"),
+			Time:     time.Unix(r.DayBucket*86400-int64(tzOffset), 0).Format("2006-01-02"),
 			User:     user,
 			Quota:    r.Quota / 500000, // 转换为显示单位
 			RawQuota: r.Quota,
