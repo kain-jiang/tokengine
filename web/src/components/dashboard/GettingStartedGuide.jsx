@@ -73,6 +73,7 @@ function StepRow({
   isLast,
 }) {
   const StatusIcon = completed ? CheckCircle2 : Circle;
+  const iconColor = ['#60a5fa', '#fbbf24', '#34d399'][index - 1] || '#60a5fa';
   return (
     <li className='relative flex gap-3 pb-3 last:pb-0'>
       {!isLast && (
@@ -82,17 +83,11 @@ function StepRow({
         />
       )}
       <span
-        className='relative z-10 flex h-8 w-8 shrink-0 self-center items-center justify-center rounded-lg border'
+        className='relative z-10 flex h-8 w-8 shrink-0 self-center items-center justify-center rounded-full border'
         style={{
-          borderColor: completed
-            ? 'var(--semi-color-success-light-active)'
-            : 'var(--semi-color-border)',
-          background: completed
-            ? 'var(--semi-color-success-light-default)'
-            : 'var(--semi-color-bg-0)',
-          color: completed
-            ? 'var(--semi-color-success)'
-            : 'var(--semi-color-text-2)',
+          borderColor: completed ? 'transparent' : 'var(--semi-color-border)',
+          background: completed ? '#7bcf8f' : 'var(--semi-color-bg-0)',
+          color: completed ? '#ffffff' : 'var(--semi-color-text-2)',
         }}
       >
         <StatusIcon size={16} />
@@ -100,7 +95,7 @@ function StepRow({
       <button
         type='button'
         onClick={onClick}
-        className='guide-hover-card guide-step-action flex min-w-0 flex-1 items-center justify-between gap-3 rounded-[22px] border px-3 py-2.5 text-left transition-colors'
+        className='guide-hover-card guide-step-action flex min-w-0 flex-1 items-center justify-between gap-3 rounded-[12px] border px-3 py-2.5 text-left transition-colors'
         style={{
           borderColor: 'var(--semi-color-border)',
           background: 'var(--semi-color-fill-1)',
@@ -108,10 +103,10 @@ function StepRow({
       >
         <span className='flex min-w-0 items-start gap-2.5'>
           <span
-            className='guide-step-icon mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md'
+            className='guide-step-icon mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full'
             style={{
-              background: 'var(--semi-color-fill-1)',
-              color: 'var(--semi-color-text-2)',
+              background: iconColor,
+              color: '#ffffff',
             }}
           >
             <Icon size={15} />
@@ -121,13 +116,7 @@ function StepRow({
               className='block truncate text-sm font-medium'
               style={{ color: 'var(--semi-color-text-0)' }}
             >
-              <span
-                className='mr-2 font-mono text-xs'
-                style={{ color: 'var(--semi-color-text-3)' }}
-              >
-                {index}.
-              </span>
-              {title}
+              {index}. {title}
             </span>
             <span
               className='mt-0.5 block truncate text-xs'
@@ -148,22 +137,22 @@ function StepRow({
   );
 }
 
-function QuickAction({ icon: Icon, title, description, onClick }) {
+function QuickAction({ icon: Icon, iconColor, title, description, onClick }) {
   return (
     <button
       type='button'
       onClick={onClick}
-      className='guide-hover-card guide-quick-action flex w-full items-center gap-3 rounded-[24px] border px-4 py-4 text-left transition-colors'
+      className='guide-hover-card guide-quick-action flex w-full items-center gap-3 rounded-[12px] border px-4 py-4 text-left transition-colors'
       style={{
         borderColor: 'var(--semi-color-border)',
         background: 'var(--semi-color-fill-1)',
       }}
     >
       <span
-        className='guide-quick-icon flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px]'
+        className='guide-quick-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-full'
         style={{
-          background: 'var(--semi-color-fill-1)',
-          color: 'var(--semi-color-text-1)',
+          background: iconColor,
+          color: '#ffffff',
         }}
       >
         <Icon size={17} />
@@ -390,18 +379,21 @@ export default function GettingStartedGuide({ userState, userDispatch }) {
   const quickActions = [
     {
       icon: KeyRound,
+      iconColor: '#60a5fa',
       title: t('API 密钥'),
       description: t('查看和管理你的密钥'),
       to: '/console/token',
     },
     {
       icon: FileText,
+      iconColor: '#22d3ee',
       title: t('使用日志'),
       description: t('API使用记录'),
       to: '/console/log',
     },
     {
-      icon: RadioTower,
+      icon: Cpu,
+      iconColor: '#34d399',
       title: t('模型广场'),
       description: t('了解可用模型与价格'),
       to: '/pricing',
@@ -411,10 +403,10 @@ export default function GettingStartedGuide({ userState, userDispatch }) {
   if (collapsed) {
     return (
       <Card
-        className='mb-8 rounded-[28px]'
+        className='guide-shell mb-4'
         bodyStyle={{ padding: '14px 16px' }}
         style={{
-          marginBottom: '20px',
+          marginBottom: '16px',
           borderColor: 'var(--semi-color-border)',
           background: 'var(--semi-color-bg-0)',
         }}
@@ -479,9 +471,9 @@ export default function GettingStartedGuide({ userState, userDispatch }) {
   }
 
   return (
-    <div className='mb-8 grid items-stretch gap-5 xl:grid-cols-[minmax(0,1fr)_25rem]'>
+    <div className='mb-4 grid items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_25rem]'>
       <Card
-        className='h-full overflow-hidden rounded-[28px]'
+        className='guide-shell h-full overflow-hidden'
         bodyStyle={{ padding: 0 }}
         style={{
           borderColor: 'var(--semi-color-border)',
@@ -532,12 +524,11 @@ export default function GettingStartedGuide({ userState, userDispatch }) {
                 >
                   {t('查看密钥')}
                 </Button>
-
               </div>
             </div>
 
             <ol
-              className='guide-step-list rounded-[24px] border p-2.5'
+              className='guide-step-list rounded-[12px] border p-2.5'
               style={{
                 borderColor: 'var(--semi-color-border)',
                 background: 'var(--semi-color-fill-0)',
@@ -558,7 +549,7 @@ export default function GettingStartedGuide({ userState, userDispatch }) {
           </div>
 
           <div
-            className='guide-request-panel h-full overflow-hidden rounded-[24px] border p-4'
+            className='guide-request-panel h-full overflow-hidden rounded-[12px] border p-4'
             style={{
               borderColor: 'var(--semi-color-border)',
               background: 'var(--semi-color-fill-0)',
@@ -568,15 +559,11 @@ export default function GettingStartedGuide({ userState, userDispatch }) {
               className='flex items-center gap-2 border-b pb-3'
               style={{ borderColor: 'var(--semi-color-border)' }}
             >
-              <span
-                className='flex h-8 w-8 shrink-0 items-center justify-center rounded-md'
-                style={{
-                  background: 'var(--semi-color-fill-0)',
-                  color: 'var(--semi-color-primary)',
-                }}
-              >
-                <TerminalSquare size={16} />
-              </span>
+              <TerminalSquare
+                size={24}
+                className='h-7 w-7 shrink-0'
+                style={{ color: 'var(--semi-color-text-0)' }}
+              />
               <div className='min-w-0'>
                 <div
                   className='truncate text-sm font-medium'
@@ -605,24 +592,22 @@ export default function GettingStartedGuide({ userState, userDispatch }) {
               </Button>
             </div>
             <pre
-              className='guide-request-code my-4 min-h-40 whitespace-pre-wrap break-words rounded-[20px] p-4 font-mono text-xs leading-5'
+              className='guide-request-code my-4 min-h-40 whitespace-pre-wrap break-words rounded-[8px] p-4 font-mono text-xs leading-5'
               style={{
                 background: 'var(--semi-color-fill-0)',
                 color: 'var(--semi-color-text-1)',
               }}
             >
-              <span className='mb-2 flex gap-1.5'>
-                <i className='h-1.5 w-1.5 rounded-full bg-red-400' />
-                <i className='h-1.5 w-1.5 rounded-full bg-amber-400' />
-                <i className='h-1.5 w-1.5 rounded-full bg-emerald-400' />
+              <span
+                className='mb-3 block font-mono text-[10px] font-medium uppercase tracking-[0.12em]'
+                style={{ color: 'var(--semi-color-text-3)' }}
+              >
+                curl
               </span>
               {requestPreview}
             </pre>
             <div className='space-y-2'>
-              <div
-                className='guide-request-signal flex items-center justify-between gap-3 rounded-[18px] px-3 py-2'
-                style={{ background: 'var(--semi-color-fill-0)' }}
-              >
+              <div className='guide-request-signal flex items-center justify-between gap-3 px-3 py-2'>
                 <span className='flex min-w-0 items-center gap-2'>
                   <RadioTower
                     size={15}
@@ -642,10 +627,7 @@ export default function GettingStartedGuide({ userState, userDispatch }) {
                   {t('当前域名')}
                 </span>
               </div>
-              <div
-                className='guide-request-signal flex items-center justify-between gap-3 rounded-[18px] px-3 py-2'
-                style={{ background: 'var(--semi-color-fill-0)' }}
-              >
+              <div className='guide-request-signal flex items-center justify-between gap-3 px-3 py-2'>
                 <span className='flex min-w-0 items-center gap-2'>
                   <ShieldCheck
                     size={15}
@@ -665,10 +647,7 @@ export default function GettingStartedGuide({ userState, userDispatch }) {
                   {t('已保护')}
                 </span>
               </div>
-              <div
-                className='guide-request-signal flex items-center justify-between gap-3 rounded-[18px] px-3 py-2'
-                style={{ background: 'var(--semi-color-fill-0)' }}
-              >
+              <div className='guide-request-signal flex items-center justify-between gap-3 px-3 py-2'>
                 <span className='flex min-w-0 items-center gap-2'>
                   <Cpu
                     size={15}
@@ -694,14 +673,14 @@ export default function GettingStartedGuide({ userState, userDispatch }) {
       </Card>
 
       <Card
-        className='h-full rounded-[28px]'
+        className='guide-shell h-full'
         bodyStyle={{ padding: 0 }}
         style={{
           borderColor: 'var(--semi-color-border)',
           background: 'var(--semi-color-bg-0)',
         }}
       >
-        <div className='py-4 pr-4 pl-3 sm:py-5 sm:pr-5 sm:pl-4'>
+        <div className='p-5 sm:p-6'>
           <div className='mb-7'>
             <div
               className='text-xs font-medium uppercase'
