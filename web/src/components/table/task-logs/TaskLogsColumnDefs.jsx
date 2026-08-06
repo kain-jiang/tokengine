@@ -233,6 +233,34 @@ const renderStatus = (type, t) => {
   }
 };
 
+const extractVideoUrl = (record) => {
+  const resultUrl = record?.result_url;
+  let taskData = record?.data;
+
+  if (typeof taskData === 'string') {
+    try {
+      taskData = JSON.parse(taskData);
+    } catch {
+      taskData = null;
+    }
+  }
+
+  // Agnes returns the playable CDN address under data.metadata.url.
+  const candidates = [
+    taskData?.metadata?.url,
+    taskData?.metadata?.video_url,
+    taskData?.remixed_from_video_id,
+    taskData?.url,
+    resultUrl,
+  ];
+
+  return candidates.find(
+    (url) =>
+      typeof url === 'string' &&
+      (url.startsWith('https://') || url.startsWith('http://') || url.startsWith('/')),
+  );
+};
+
 export const getTaskLogsColumns = ({
   t,
   COLUMN_KEYS,
@@ -417,19 +445,10 @@ export const getTaskLogsColumns = ({
         const isSuccess = record.status === 'SUCCESS';
         const resultUrl = record.result_url;
         
-        // For AgnesAI channel (platform=59), try to get direct CDN URL from task data
         let videoUrlToUse = resultUrl;
-        if (isSuccess && isVideoTask && (record.platform === '59') && record.data) {
-          try {
-            const taskData = typeof record.data === 'string' ? JSON.parse(record.data) : record.data;
-            if (taskData?.remixed_from_video_id && /^https?:\/\//.test(taskData.remixed_from_video_id)) {
-              videoUrlToUse = taskData.remixed_from_video_id;
-            }
-          } catch (e) {
-            // Ignore parse errors
-          }
+        if (isSuccess && isVideoTask) {
+          videoUrlToUse = extractVideoUrl(record) || videoUrlToUse;
         }
-        
         const hasResultUrl = typeof videoUrlToUse === 'string' && /^https?:\/\//.test(videoUrlToUse);
         if (isSuccess && isVideoTask && hasResultUrl) {
           return (
