@@ -527,6 +527,15 @@ code {
   transform: translateY(-2px);
 }
 
+/* 引导入口卡片悬停效果，与统计卡片保持一致 */
+.guide-hover-card {
+  transition: all 0.2s ease;
+}
+
+.guide-hover-card:hover {
+  box-shadow: var(--color-shadow) 0px 5px 11px;
+  transform: translateY(-1px);
+}
 /* 深色模式卡片样式 */
 html.dark .card-new {
   background: rgba(255, 255, 255, 0.08);
