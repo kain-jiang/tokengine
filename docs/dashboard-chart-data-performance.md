@@ -10,6 +10,43 @@
 （`controller/dashboard_board.go`）串联调用 6 个 `model` 层的聚合函数，
 其中 3 个存在严重的性能问题。
 
+## 第一轮优化：聚合下推 SQL
+
+（详见下方各小节，该轮已完成并合入。）
+
+## 第二轮优化：响应缓存 + 并行化（已完成）
+
+第一轮把聚合下推到 SQL 后，瓶颈转移到两个层面：
+
+1. **每次请求仍要顺序执行 6 条全窗口聚合 SQL**，总耗时约为 6 条查询耗时之和。
+2. **前端每 30s 轮询一次**，每次都重新扫描整个 7 天窗口，重复做相同聚合，
+   数据库压力与响应延迟居高不下。
+
+### 优化一：接口响应缓存（LRU + TTL + 单飞）
+
+- 在 `GetDashboardBoardChartData` 层使用 `samber/hot` 内存缓存
+  （`hot.LRU`，容量 256，TTL 60s），缓存 key 为序列化后的完整响应体。
+- **缓存 key 按分钟取整**：`(start/end 秒级时间戳 - 取整到 60s 桶)`。
+  前端轮询时 `now` 每秒都在变，若不取整则每次轮询都生成新 key、永远无法命中；
+  取整后同一分钟内所有轮询共享同一缓存桶。
+- 命中缓存时直接 `c.Data` 返回，DB 完全不打；未命中时才触发聚合。
+- 使用 hot cache 的 `GetWithLoaders`（内部单飞）合并同一缓存桶的并发请求，
+  避免缓存刚过期时大量轮询同时回源打爆 DB。
+
+**效果**：每 60s 桶内只执行 1 次聚合（首请求），其余请求毫秒级返回。
+
+### 优化二：聚合查询并行化
+
+- 缓存未命中回源时，用 `sync.WaitGroup` 并行执行 6 条相互独立的聚合查询，
+  总耗时从「6 条耗时之和」降为「最慢单条耗时」。
+- 6 条查询分别写入 `DashboardChartData` 的不同字段，无数据竞争。
+
+### 语义等价性
+
+- 缓存返回的数据与未缓存一致（同窗口、同聚合逻辑），仅时间戳按分钟取整，
+  对 7 天/30 天量级的趋势图无感知影响。
+- 数据最多滞后 60s（TTL），与前端 30s 轮询节奏匹配，属于可接受的近实时。
+
 ## 问题分析
 
 ### 接口调用链路
@@ -25,7 +62,7 @@
 | `GetUserQuotaRank` | 用户排行 | ❌ 无（SQL 聚合） |
 | `GetUserQuotaTrend` | 天 × 用户 | ✅ 有（全量加载 + 重复聚合） |
 
-### 根因
+### 根因（第一轮）
 
 三个慢函数使用相同的问题写法：
 
@@ -53,6 +90,11 @@ LOG_DB.Model(&Log{}).
 到 SQL（`GROUP BY` + `COUNT()/SUM()`），是高效实现。
 `GetHourlyTrend` / `GetDailyTrend` 采用「按桶逐次查询」的方式，同样偏低效。
 
+### 根因（第二轮）
+
+1. **无缓存**：前端 30s 轮询 + 每次全量聚合，DB 被重复打满。
+2. **串行执行**：6 条聚合 SQL 顺序执行，总延迟 = 各查询耗时之和。
+
 ## 优化方案
 
 ### 核心思路
@@ -60,6 +102,8 @@ LOG_DB.Model(&Log{}).
 把聚合下推到 SQL：`GROUP BY` + `COUNT()/SUM()`，让跨出数据库的行数从
 「整个窗口的日志（百万级）」降到「聚合结果（几十到几百行）」。
 同时消除 `GetUserQuotaTrend` 对 `GetUserQuotaRank` 的重复调用。
+
+第二轮在此基础上增加：接口响应缓存（按分钟桶 + TTL）+ 聚合查询并行化。
 
 ### 跨数据库兼容性（重要）
 
@@ -77,155 +121,14 @@ LOG_DB.Model(&Log{}).
 桶的起始时间再由 Go 侧换算回时间字符串：
 `time.Unix(dayBucket*86400-tzOffset, 0).Format("2006-01-02")`。
 
-### 逐函数修改
-
-#### 1. `GetQuotaDistribution`（按小时 × 模型聚合消耗）
-
-由「全量加载 + Go 分组」改为「SQL 按小时桶 + 模型分组求和」：
-
-```go
-func GetQuotaDistribution(startTime, endTime int64) []QuotaDistributionData {
-	var rows []struct {
-		HourBucket int64
-		ModelName  string
-		Quota      int64
-	}
-	LOG_DB.Model(&Log{}).
-		Select("created_at / 3600 AS hour_bucket, model_name, SUM(quota) AS quota").
-		Where("created_at >= ? AND created_at <= ? AND type = ?", startTime, endTime, LogTypeConsume).
-		Where("quota > 0").
-		Group("created_at / 3600, model_name").
-		Scan(&rows)
-
-	hourSumMap := make(map[int64]int64)
-	for _, r := range rows {
-		hourSumMap[r.HourBucket] += r.Quota
-	}
-
-	results := make([]QuotaDistributionData, 0, len(rows))
-	for _, r := range rows {
-		model := r.ModelName
-		if model == "" {
-			model = "unknown"
-		}
-		results = append(results, QuotaDistributionData{
-			Time:     time.Unix(r.HourBucket*3600, 0).Format("2006-01-02 15:00"),
-			Model:    model,
-			Quota:    r.Quota / 500000,
-			RawQuota: r.Quota,
-			TimeSum:  hourSumMap[r.HourBucket],
-		})
-	}
-	return results
-}
-```
-
-#### 2. `GetCallTrend`（按天 × 模型统计调用次数）
-
-```go
-func GetCallTrend(startTime, endTime int64) []CallTrendData {
-	var rows []struct {
-		DayBucket int64
-		ModelName string
-		Count     int64
-	}
-	LOG_DB.Model(&Log{}).
-		Select("created_at / 86400 AS day_bucket, model_name, COUNT(*) AS count").
-		Where("created_at >= ? AND created_at <= ? AND type = ?", startTime, endTime, LogTypeConsume).
-		Group("created_at / 86400, model_name").
-		Scan(&rows)
-
-	results := make([]CallTrendData, 0, len(rows))
-	for _, r := range rows {
-		model := r.ModelName
-		if model == "" {
-			model = "unknown"
-		}
-		results = append(results, CallTrendData{
-			Time:  time.Unix(r.DayBucket*86400, 0).Format("2006-01-02"),
-			Model: model,
-			Count: r.Count,
-		})
-	}
-	return results
-}
-```
-
-#### 3. `GetUserQuotaTrend`（按天 × 用户聚合消耗，仅保留 Top5）
-
-将「全量加载 + 重复调用 `GetUserQuotaRank`」改为「两次 SQL 聚合」：
-
-```go
-func GetUserQuotaTrend(startTime, endTime int64) []UserQuotaTrendData {
-	var topUserRows []struct {
-		Username string
-		Quota    int64
-	}
-	LOG_DB.Model(&Log{}).
-		Select("username, SUM(quota) AS quota").
-		Where("created_at >= ? AND created_at <= ? AND type = ?", startTime, endTime, LogTypeConsume).
-		Where("quota > 0").
-		Group("username").
-		Order("quota DESC").
-		Limit(5).
-		Scan(&topUserRows)
-
-	topUsers := make(map[string]bool)
-	for _, u := range topUserRows {
-		user := u.Username
-		if user == "" {
-			user = "unknown"
-		}
-		topUsers[user] = true
-	}
-
-	var rows []struct {
-		DayBucket int64
-		Username  string
-		Quota     int64
-	}
-	LOG_DB.Model(&Log{}).
-		Select("created_at / 86400 AS day_bucket, username, SUM(quota) AS quota").
-		Where("created_at >= ? AND created_at <= ? AND type = ?", startTime, endTime, LogTypeConsume).
-		Where("quota > 0").
-		Group("created_at / 86400, username").
-		Scan(&rows)
-
-	results := make([]UserQuotaTrendData, 0, len(rows))
-	for _, r := range rows {
-		user := r.Username
-		if user == "" {
-			user = "unknown"
-		}
-		if !topUsers[user] {
-			continue
-		}
-		results = append(results, UserQuotaTrendData{
-			Time:     time.Unix(r.DayBucket*86400, 0).Format("2006-01-02"),
-			User:     user,
-			Quota:    r.Quota / 500000,
-			RawQuota: r.Quota,
-		})
-	}
-	return results
-}
-```
-
-## 语义等价性核对
-
-| 函数 | 原逻辑 | 优化后 | 语义一致 |
-|---|---|---|---|
-| `GetQuotaDistribution` | 按小时截断字符串 `"2006-01-02 15:00"` 分组求和，`TimeSum` 为该小时总和 | 按 `created_at/3600` 分桶求和，桶起算时间换算小时字符串 | ✅ |
-| `GetCallTrend` | 按天字符串分组计数（含 quota=0 的记录） | 按 `created_at/86400` 分桶计数（无 quota 过滤） | ✅ |
-| `GetUserQuotaTrend` | 按天字符串分组求和，只保留总消耗 Top5 用户 | 先聚合总消耗取 Top5，再按天分桶求和过滤 | ✅ |
-
-注：`GetCallTrend` 原实现未过滤 `quota > 0`（对所有消费日志计数），优化后保持一致，未添加该过滤条件。
-
 ## 后续可选优化
 
 1. **索引**：`logs` 表已有 `idx_created_at_type`（`created_at, type`），
    正好覆盖上述查询的 `created_at + type` 过滤，无需新增索引。
-2. **接口缓存**：图表数据变动不频繁，可在 controller 层对大屏接口加短期缓存
-   （如 60s），进一步降低 DB 压力。
-3. **历史归档**：若日志量持续增长，可对 `logs` 表按月/按日分区或定期归档，
+   若想进一步减少回表，可评估 `(type, created_at, model_name, quota)` 等覆盖索引，
+   但 logs 表写入量大，需权衡写放大。
+2. **历史归档**：若日志量持续增长，可对 `logs` 表按月/按日分区或定期归档，
    减少单表扫描基数。
+3. **Redis 级缓存**：当前为单机内存缓存（`hot`），多实例部署时每个实例各持一份。
+   若需跨实例共享，可改用 `pkg/cachex.HybridCache`（Redis + 内存降级）。
+4. **预热**：可用后台任务在整分钟边界前预热下一个缓存桶，进一步降低回源毛刺。

@@ -1,12 +1,17 @@
 package controller
 
 import (
+	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/gin-gonic/gin"
+	"github.com/samber/hot"
 )
 
 // DashboardBoardStats 大屏统计数据响应结构
@@ -225,30 +230,115 @@ func GetDashboardBoardChartData(c *gin.Context) {
 		endTime = now.Unix()
 	}
 
-	data := DashboardChartData{}
+	// 命中缓存时直接返回序列化结果，避免每 30s 轮询重复触发 6 次全量聚合查询。
+	// 缓存 key 按分钟取整，使滚动窗口产生的秒级差落入同一缓存桶。
+	key := dashboardChartCacheKey(startTime, endTime)
+	cache := dashboardChartDataCache()
 
-	// 获取消耗分布数据（按模型和时间）
-	data.QuotaDistribution = model.GetQuotaDistribution(startTime, endTime)
-
-	// 获取调用趋势数据（按时间和模型）
-	data.CallTrend = model.GetCallTrend(startTime, endTime)
-
-	// 获取调用次数分布（饼图数据）
-	data.CallDistribution = model.GetCallDistribution(startTime, endTime)
-
-	// 获取调用次数排行
-	data.CallRank = model.GetCallRank(startTime, endTime)
-
-	// 获取用户消耗排行（管理员视角）
-	data.UserQuotaRank = model.GetUserQuotaRank(startTime, endTime, 10)
-
-	// 获取用户消耗趋势（管理员视角）
-	data.UserQuotaTrend = model.GetUserQuotaTrend(startTime, endTime)
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    data,
+	body, _, err := cache.GetWithLoaders(key, func(keys []string) (map[string][]byte, error) {
+		if len(keys) == 0 {
+			return nil, nil
+		}
+		// 同一缓存桶的并发请求由 hot cache 单飞合并，只执行一次加载；
+		// 桶内统一使用取整后的时刻窗口，保证 key 与结果一致。
+		st, et := parseDashboardChartCacheKey(keys[0])
+		data := buildDashboardChartData(st, et)
+		b, err := common.Marshal(map[string]interface{}{
+			"success": true,
+			"data":    data,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string][]byte{keys[0]: b}, nil
 	})
+
+	if len(body) == 0 || err != nil {
+		// 兜底：加载器异常返回空时按原逻辑构建
+		data := buildDashboardChartData(startTime, endTime)
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data":    data,
+		})
+		return
+	}
+
+	c.Data(http.StatusOK, "application/json; charset=utf-8", body)
+}
+
+// dashboardChartCacheBucketSec 图表数据缓存桶大小（秒）。
+// 前端大屏每 30s 轮询一次，按分钟取整即可让轮询共享同一缓存，同时数据延迟可接受。
+const dashboardChartCacheBucketSec = 60
+
+// dashboardChartCacheTTL 图表数据缓存有效期。
+const dashboardChartCacheTTL = 60 * time.Second
+
+var dashboardChartCacheOnce sync.Once
+var dashboardChartCache *hot.HotCache[string, []byte]
+
+// dashboardChartDataCache 返回大屏图表数据缓存（LRU + TTL + 单飞加载）。
+func dashboardChartDataCache() *hot.HotCache[string, []byte] {
+	dashboardChartCacheOnce.Do(func() {
+		dashboardChartCache = hot.NewHotCache[string, []byte](hot.LRU, 256).
+			WithTTL(dashboardChartCacheTTL).
+			WithJanitor().
+			Build()
+	})
+	return dashboardChartCache
+}
+
+// dashboardChartCacheKey 生成缓存 key（起始/结束时间按分钟取整）。
+func dashboardChartCacheKey(startTime, endTime int64) string {
+	startBucket := startTime - (startTime % dashboardChartCacheBucketSec)
+	endBucket := endTime - (endTime % dashboardChartCacheBucketSec)
+	return fmt.Sprintf("%d:%d", startBucket, endBucket)
+}
+
+// parseDashboardChartCacheKey 从缓存 key 还原取整后的时间窗口。
+func parseDashboardChartCacheKey(key string) (int64, int64) {
+	parts := strings.Split(key, ":")
+	start, _ := strconv.ParseInt(parts[0], 10, 64)
+	var end int64
+	if len(parts) > 1 {
+		end, _ = strconv.ParseInt(parts[1], 10, 64)
+	}
+	return start, end
+}
+
+// buildDashboardChartData 并行执行 6 个独立的聚合查询，
+// 把串行累加耗时（各查询之和）降为并行最大耗时（最慢单个查询）。
+func buildDashboardChartData(startTime, endTime int64) DashboardChartData {
+	var data DashboardChartData
+	var wg sync.WaitGroup
+	wg.Add(6)
+
+	go func() {
+		defer wg.Done()
+		data.QuotaDistribution = model.GetQuotaDistribution(startTime, endTime)
+	}()
+	go func() {
+		defer wg.Done()
+		data.CallTrend = model.GetCallTrend(startTime, endTime)
+	}()
+	go func() {
+		defer wg.Done()
+		data.CallDistribution = model.GetCallDistribution(startTime, endTime)
+	}()
+	go func() {
+		defer wg.Done()
+		data.CallRank = model.GetCallRank(startTime, endTime)
+	}()
+	go func() {
+		defer wg.Done()
+		data.UserQuotaRank = model.GetUserQuotaRank(startTime, endTime, 10)
+	}()
+	go func() {
+		defer wg.Done()
+		data.UserQuotaTrend = model.GetUserQuotaTrend(startTime, endTime)
+	}()
+
+	wg.Wait()
+	return data
 }
 
 func parseInt64(s string) int64 {
