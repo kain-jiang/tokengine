@@ -708,11 +708,11 @@ export default function FinanceDashboard() {
 
   useEffect(() => {
     const authData = [
-      { name: t('未认证'), value: usersAuthDist.unverified || 0 },
+      { name: t('未分类用户'), value: usersAuthDist.unverified || 0 },
       { name: t('个人用户'), value: usersAuthDist.individual || 0 },
       { name: t('企业用户'), value: usersAuthDist.enterprise || 0 },
     ].filter(item => item.value > 0);
-    renderPieChart('authDist', authDistChartRef.current, authData, t('用户认证占比'));
+    renderPieChart('authDist', authDistChartRef.current, authData, t('用户类型占比'));
   }, [usersAuthDist, t]);
 
   // 计算累计充值金额
@@ -777,7 +777,7 @@ export default function FinanceDashboard() {
 
   useEffect(() => {
     const distData = [
-      { name: t('未认证用户'), value: topupUserTypeDist.unverified || 0 },
+      { name: t('未分类用户'), value: topupUserTypeDist.unverified || 0 },
       { name: t('个人用户'), value: topupUserTypeDist.individual || 0 },
       { name: t('企业用户'), value: topupUserTypeDist.enterprise || 0 },
     ].filter(item => item.value > 0);
@@ -1810,16 +1810,16 @@ export default function FinanceDashboard() {
       });
     }
 
-    // 2. 用户认证占比
+    // 2. 用户类型占比
     const authData = [
-      { name: t('未认证'), value: usersAuthDist.unverified || 0 },
+      { name: t('未分类用户'), value: usersAuthDist.unverified || 0 },
       { name: t('个人用户'), value: usersAuthDist.individual || 0 },
       { name: t('企业用户'), value: usersAuthDist.enterprise || 0 },
     ].filter(i => i.value > 0);
     if (authData.length) {
       initOrUpdate('authDist', getDom('dashboard-authDist'), {
         backgroundColor: 'transparent',
-        title: { text: t('用户认证占比'), textStyle: { color: 'rgba(255,255,255,0.8)', fontSize: 14 }, left: 'center' },
+        title: { text: t('用户类型占比'), textStyle: { color: 'rgba(255,255,255,0.8)', fontSize: 14 }, left: 'center' },
         tooltip: { trigger: 'item', backgroundColor: 'rgba(8, 17, 35, 0.95)', borderColor: 'rgba(0, 212, 255, 0.25)', textStyle: { color: '#fff' } },
         legend: { orient: 'horizontal', bottom: 0, textStyle: { color: 'rgba(255,255,255,0.6)' } },
         series: [{ type: 'pie', radius: ['35%', '65%'], center: ['50%', '45%'], itemStyle: { borderRadius: 4, borderColor: '#081123', borderWidth: 2 }, label: { show: false }, labelLine: { show: false }, data: authData, color: ['#00d4ff', '#00ff9d', '#a855f7'] }]
@@ -1862,7 +1862,7 @@ export default function FinanceDashboard() {
 
     // 4. 用户充值分布
     const topupDistData = [
-      { name: t('未认证用户'), value: topupUserTypeDist.unverified || 0 },
+      { name: t('未分类用户'), value: topupUserTypeDist.unverified || 0 },
       { name: t('个人用户'), value: topupUserTypeDist.individual || 0 },
       { name: t('企业用户'), value: topupUserTypeDist.enterprise || 0 },
     ].filter(i => i.value > 0);
@@ -2513,7 +2513,7 @@ export default function FinanceDashboard() {
     
     // 判断右侧是否需要显示加载占位
     const rightLoading =
-      (rightTitle === '用户认证占比' && userLoading) ||
+      (rightTitle === '用户类型占比' && userLoading) ||
       (rightTitle === '用户充值分布' && topupLoading) ||
       (rightTitle === '渠道消费占比' && supplierLoading);
 
@@ -2647,7 +2647,7 @@ export default function FinanceDashboard() {
           position: 'relative',
         }}>
           <LoadingPlaceholder loading={rightLoading} title={rightTitle} />
-          <div ref={rightTitle === '用户认证占比' ? authDistChartRef :
+          <div ref={rightTitle === '用户类型占比' ? authDistChartRef :
                          rightTitle === '用户充值分布' ? topupDistChartRef :
                          rightTitle === '付费方式tokens分布' ? paymentModeTokensChartRef :
                          rightTitle === '付费方式收入占比' ? revenuePieChartRef :
@@ -2679,7 +2679,7 @@ export default function FinanceDashboard() {
       {/* 第一排：用户分析 */}
       {renderChartRow(
         t('注册用户趋势'), usersTrend, 'count', '',
-        t('用户认证占比'), null
+        t('用户类型占比'), null
       )}
 
       {/* 第二排：充值分析 */}
@@ -3272,7 +3272,7 @@ export default function FinanceDashboard() {
             </div>
 
             {/* 图表区域 - 使用独立 DOM id */}
-            {/* 第一排：用户趋势 + 用户认证占比 */}
+            {/* 第一排：用户趋势 + 用户类型占比 */}
             <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
               <div className="ds-panel" style={{ flex: 3, position: 'relative', padding: '20px', minHeight: '350px' }}>
                 {renderDashboardMetricSwitch(
