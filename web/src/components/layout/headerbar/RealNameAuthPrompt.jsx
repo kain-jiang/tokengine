@@ -77,27 +77,26 @@ const RealNameAuthPrompt = ({ userState, navigate, t }) => {
   return (
     <Button
       onClick={handleClick}
+      theme='borderless'
       style={{
         background: bgColor,
-        border: 'none',
-        fontWeight: '500',
-        fontSize: '14px',
+        fontWeight: 500,
+        fontSize: '13px',
         color: fgColor,
-        padding: '0 12px 0 8px',
-        height: '36px',
-        borderRadius: '18px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '6px',
+        padding: '0 12px 0 4px',
+        height: '32px',
+        borderRadius: '999px',
         boxShadow: 'none',
         cursor: 'pointer',
       }}
+      icon={<AlertCircle size={15} color={fgColor} />}
     >
-      <AlertCircle size={18} color={fgColor} />
-      <span>{isPending ? t('待认证') : t('未认证')}</span>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={fgColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 18l6-6-6-6" />
-      </svg>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+        {isPending ? t('待认证') : t('未认证')}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={fgColor} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 18l6-6-6-6" />
+        </svg>
+      </span>
     </Button>
   );
 };

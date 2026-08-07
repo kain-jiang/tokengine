@@ -24,6 +24,7 @@ import App from '../../App';
 import FooterBar from './Footer';
 import { ToastContainer } from 'react-toastify';
 import ErrorBoundary from '../common/ErrorBoundary';
+import UserTypeSelectModal from './UserTypeSelectModal';
 import React, { useContext, useEffect, useState } from 'react';
 import { useIsMobile } from '../../hooks/common/useIsMobile';
 import { useSidebarCollapsed } from '../../hooks/common/useSidebarCollapsed';
@@ -280,6 +281,7 @@ const PageLayout = () => {
         </Layout>
       </Layout>
       <ToastContainer />
+      <UserTypeSelectModal userState={userState} userDispatch={userDispatch} />
     </Layout>
   );
 };

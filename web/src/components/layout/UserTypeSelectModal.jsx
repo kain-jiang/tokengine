@@ -18,16 +18,20 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useEffect, useState } from 'react';
-import { Card, Spin, Typography } from '@douyinfe/semi-ui';
+import { Modal, Typography, Spin } from '@douyinfe/semi-ui';
 import { IconUser, IconGlobe } from '@douyinfe/semi-icons';
+import { useLocation } from 'react-router-dom';
 import { API, showError, showSuccess, setUserData } from '../../helpers';
 import { useTranslation } from 'react-i18next';
 
-const UserTypeSelectCard = ({ userState, userDispatch }) => {
+const UserTypeSelectModal = ({ userState, userDispatch }) => {
   const { t } = useTranslation();
+  const location = useLocation();
   const [loadingType, setLoadingType] = useState(null);
 
   const userType = userState?.user?.user_type;
+  const isSetup = location.pathname.startsWith('/setup');
+  const visible = !isSetup && !!userState?.user && userType === 0;
 
   // 老会话可能缺少 user_type 字段，拉取一次 self 补齐
   useEffect(() => {
@@ -42,10 +46,6 @@ const UserTypeSelectCard = ({ userState, userDispatch }) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  if (userType !== 0) {
-    return null;
-  }
 
   const handleSelect = async (type) => {
     setLoadingType(type);
@@ -86,16 +86,22 @@ const UserTypeSelectCard = ({ userState, userDispatch }) => {
   ];
 
   return (
-    <Card className='mb-4' bodyStyle={{ padding: '24px' }}>
-      <div className='flex items-center justify-between mb-4'>
-        <div>
-          <Typography.Title heading={5} className='!mb-1'>
-            {t('选择账号类型')}
-          </Typography.Title>
-          <Typography.Text type='tertiary' className='text-sm'>
-            {t('请选择您的账号类型，用于财务与发票管理，后续可在个人设置中修改')}
-          </Typography.Text>
-        </div>
+    <Modal
+      visible={visible}
+      maskClosable={false}
+      closable={false}
+      closeOnEsc={false}
+      footer={null}
+      centered
+      width={560}
+    >
+      <div className='text-center mb-6'>
+        <Typography.Title heading={4} className='!mb-2'>
+          {t('选择账号类型')}
+        </Typography.Title>
+        <Typography.Text type='tertiary'>
+          {t('请选择您的账号类型，用于财务与发票管理，后续可在个人设置中修改')}
+        </Typography.Text>
       </div>
       <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
         {options.map((option) => (
@@ -122,8 +128,8 @@ const UserTypeSelectCard = ({ userState, userDispatch }) => {
           </button>
         ))}
       </div>
-    </Card>
+    </Modal>
   );
 };
 
-export default UserTypeSelectCard;
+export default UserTypeSelectModal;
