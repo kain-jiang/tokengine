@@ -110,6 +110,7 @@ func setupLogin(user *model.User, c *gin.Context) {
 			"role":         user.Role,
 			"status":       user.Status,
 			"group":        user.Group,
+			"user_type":    user.UserType,
 		},
 	})
 }
@@ -461,6 +462,7 @@ func GetSelf(c *gin.Context) {
 		"sidebar_modules":   userSetting.SidebarModules, // 正确提取sidebar_modules字段
 		"permissions":       permissions,                // 新增权限字段
 		"telephone":         user.TelePhone,             // 新增手机号
+		"user_type":         user.UserType,              // 用户类型：未认证，个人，企业
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -887,6 +889,32 @@ func DeleteUser(c *gin.Context) {
 		})
 		return
 	}
+}
+
+// SetUserType 设置用户类型（自选：个人/企业），与实名认证相互独立
+func SetUserType(c *gin.Context) {
+	var request struct {
+		UserType int `json:"user_type"`
+	}
+	if err := json.NewDecoder(c.Request.Body).Decode(&request); err != nil {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+	if request.UserType != model.PersonalType && request.UserType != model.CompanyType {
+		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		return
+	}
+
+	userId := c.GetInt("id")
+	if err := model.UpdateUserType(userId, request.UserType); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.SysLog(fmt.Sprintf("用户【%d】自选设置用户类型为 %d", userId, request.UserType))
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+	})
 }
 
 func DeleteSelf(c *gin.Context) {

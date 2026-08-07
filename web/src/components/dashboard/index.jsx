@@ -31,6 +31,7 @@ import FaqPanel from './FaqPanel';
 import UptimePanel from './UptimePanel';
 import UserStatsCarousel from './UserStatsCarousel';
 import GettingStartedGuide from './GettingStartedGuide';
+import UserTypeSelectCard from './UserTypeSelectCard';
 import SearchModal from './modals/SearchModal';
 
 import { useDashboardData } from '../../hooks/dashboard/useDashboardData';
@@ -175,6 +176,9 @@ const Dashboard = () => {
         handleInputChange={dashboardData.handleInputChange}
         t={dashboardData.t}
       />
+
+      {/* 用户类型选择提示 */}
+      <UserTypeSelectCard userState={userState} userDispatch={userDispatch} />
 
       {/* 用户统计轮播 */}
       <GettingStartedGuide userState={userState} userDispatch={userDispatch} />
