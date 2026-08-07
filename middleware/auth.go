@@ -174,6 +174,42 @@ func UserAuth() func(c *gin.Context) {
 		authHelper(c, common.RoleCommonUser)
 	}
 }
+func RankingsAuth() func(c *gin.Context) {
+	return func(c *gin.Context) {
+		if rankingsRequireAuth() {
+			UserAuth()(c)
+			return
+		}
+		c.Next()
+	}
+}
+
+func rankingsRequireAuth() bool {
+	config := common.OptionMap["HeaderNavModules"]
+	if config == "" {
+		return true
+	}
+	var modules map[string]any
+	if err := common.UnmarshalJsonStr(config, &modules); err != nil {
+		return true
+	}
+	raw, ok := modules["rankings"]
+	if !ok {
+		return true
+	}
+	switch rankingConfig := raw.(type) {
+	case bool:
+		return true
+	case map[string]any:
+		requireAuth, ok := rankingConfig["requireAuth"].(bool)
+		if !ok {
+			return true
+		}
+		return requireAuth
+	default:
+		return true
+	}
+}
 
 func AdminAuth() func(c *gin.Context) {
 	return func(c *gin.Context) {
