@@ -440,9 +440,12 @@ const TextToImage = () => {
                               }}
                             >
                               {loading && !imageSrc ? (
-                                <div style={{ textAlign: 'center' }}>
-                                  <Spin size='large' tip={t('正在生成...')} />
-                                  <Paragraph type='tertiary' style={{ marginTop: 16 }}>
+                                <div style={{ textAlign: 'center', width: '100%' }}>
+                                  <Spin size='large' />
+                                  <Paragraph
+                                    type='tertiary'
+                                    style={{ marginTop: 16, whiteSpace: 'nowrap' }}
+                                  >
                                     {t('图片正在生成中，请稍候')}
                                   </Paragraph>
                                 </div>

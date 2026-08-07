@@ -274,6 +274,10 @@ const TextToVideo = () => {
           setShowGenerationPreview(false);
           return;
         }
+        Toast.info({
+          content: t('视频生成较慢，可前往任务日志查看视频'),
+          duration: 5,
+        });
         const completedUrl = await waitTask();
         if (completedUrl) {
           setVideoSrc(completedUrl);
@@ -457,7 +461,7 @@ const TextToVideo = () => {
                         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
                           {showGenerationPreview ? (
                             <div
-                              style={{
+                                style={{
                                 flex: 1,
                                 minHeight: 300,
                                 borderRadius: 8,
@@ -470,9 +474,12 @@ const TextToVideo = () => {
                               }}
                             >
                               {loading && !videoSrc ? (
-                                <div style={{ textAlign: 'center' }}>
-                                  <Spin size='large' tip={t('正在生成...')} />
-                                  <Paragraph type='tertiary' style={{ marginTop: 16 }}>
+                                <div style={{ textAlign: 'center', width: '100%' }}>
+                                  <Spin size='large' />
+                                  <Paragraph
+                                    type='tertiary'
+                                    style={{ marginTop: 16, whiteSpace: 'nowrap' }}
+                                  >
                                     {t('视频正在生成中，请稍候')}
                                   </Paragraph>
                                 </div>
@@ -504,7 +511,7 @@ const TextToVideo = () => {
                               </div>
 
                               <div
-                                style={{
+                              style={{
                                   display: 'grid',
                                   gridTemplateColumns: 'repeat(2, 1fr)',
                                   gap: 20,
