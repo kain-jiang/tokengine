@@ -84,6 +84,7 @@ import {
   Users,
   DollarSign,
   SquareTerminal,
+  Activity,
 } from 'lucide-react';
 import {
   SiAtlassian,
@@ -131,6 +132,8 @@ export function getLucideIcon(key, selected = false) {
   switch (key) {
     case 'detail':
       return <LayoutDashboard {...commonProps} color={iconColor} />;
+    case 'tokenFactoryBoard':
+      return <Activity {...commonProps} color={iconColor} />;
     case 'playground':
       return <TerminalSquare {...commonProps} color={iconColor} />;
     case 'textToImage':

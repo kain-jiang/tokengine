@@ -143,6 +143,9 @@ var GeminiSafetySetting string
 // https://docs.cohere.com/docs/safety-modes Type; NONE/CONTEXTUAL/STRICT
 var CohereSafetySetting string
 
+// PrometheusURL Prometheus 数据源地址，可用环境变量 PROMETHEUS_URL 配置
+var PrometheusURL string
+
 const (
 	RequestIdKey = "X-Oneapi-Request-Id"
 )

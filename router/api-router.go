@@ -88,6 +88,8 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.GET("/models", controller.GetUserModels)
 				selfRoute.PUT("/self", controller.UpdateSelf)
 				selfRoute.PUT("/self/user-type", controller.SetUserType)
+				selfRoute.GET("/prometheus/query", controller.PrometheusQuery)
+				selfRoute.GET("/prometheus/query_range", controller.PrometheusQueryRange)
 				selfRoute.DELETE("/self", controller.DeleteSelf)
 				selfRoute.GET("/token", controller.GenerateAccessToken)
 				selfRoute.GET("/token/subscription", controller.GetSubscriptionToken)

@@ -54,6 +54,7 @@ const routerMap = {
   textToImage: '/console/text-to-image',
   personal: '/console/personal',
   dashboardBoard: '/console/dashboard',
+  tokenFactoryBoard: '/console/token-factory-board',
   finance: '/console/finance',
   financeDashboard: '/console/finance',
   orders: '/console/finance/orders',
@@ -104,6 +105,12 @@ const SiderBar = ({ onNavigate = () => {} }) => {
             : 'tableHiddle',
       },
       {
+        text: t('Token工厂看板'),
+        itemKey: 'tokenFactoryBoard',
+        to: '/console/token-factory-board',
+        className: isAdmin() ? '' : 'tableHiddle',
+      },
+      {
         text: t('使用日志'),
         itemKey: 'log',
         to: '/log',
@@ -139,6 +146,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
     localStorage.getItem('enable_task'),
     t,
     isModuleVisible,
+    isAdmin(),
   ]);
 
   const financeItems = useMemo(() => {

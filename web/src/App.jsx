@@ -75,6 +75,7 @@ import SetupCheck from './components/layout/SetupCheck';
 const Home = lazy(() => import('./pages/Home'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const DashboardBoard = lazy(() => import('./pages/DashboardBoard'));
+const TokenFactory = lazy(() => import('./pages/TokenFactory'));
 const About = lazy(() => import('./pages/About'));
 const UserAgreement = lazy(() => import('./pages/UserAgreement'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
@@ -322,6 +323,16 @@ function App() {
             <AdminRoute>
               <Suspense fallback={<Loading></Loading>} key={location.pathname}>
                 <DashboardBoard />
+              </Suspense>
+            </AdminRoute>
+          }
+        />
+        <Route
+          path='/console/token-factory-board'
+          element={
+            <AdminRoute>
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <TokenFactory />
               </Suspense>
             </AdminRoute>
           }
