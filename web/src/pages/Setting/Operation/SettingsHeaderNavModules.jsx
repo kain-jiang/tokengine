@@ -38,25 +38,27 @@ export default function SettingsHeaderNavModules(props) {
   const [loading, setLoading] = useState(false);
   const [statusState, statusDispatch] = useContext(StatusContext);
 
-  // 顶栏模块管理状态
+  // Header navigation module state.
   const [headerNavModules, setHeaderNavModules] = useState({
     home: true,
     console: true,
     pricing: {
       enabled: true,
-      requireAuth: false, // 默认不需要登录鉴权
+      requireAuth: false,
+    },
+    rankings: {
+      enabled: true,
+      requireAuth: true,
     },
     docs: true,
     canvasTool: true,
     about: true,
   });
 
-  // 处理顶栏模块配置变更
   function handleHeaderNavModuleChange(moduleKey) {
     return (checked) => {
       const newModules = { ...headerNavModules };
-      if (moduleKey === 'pricing') {
-        // 对于pricing模块，只更新enabled属性
+      if (moduleKey === 'pricing' || moduleKey === 'rankings') {
         newModules[moduleKey] = {
           ...newModules[moduleKey],
           enabled: checked,
@@ -68,17 +70,17 @@ export default function SettingsHeaderNavModules(props) {
     };
   }
 
-  // 处理模型广场权限控制变更
-  function handlePricingAuthChange(checked) {
-    const newModules = { ...headerNavModules };
-    newModules.pricing = {
-      ...newModules.pricing,
-      requireAuth: checked,
+  function handleHeaderNavModuleAuthChange(moduleKey) {
+    return (checked) => {
+      const newModules = { ...headerNavModules };
+      newModules[moduleKey] = {
+        ...newModules[moduleKey],
+        requireAuth: checked,
+      };
+      setHeaderNavModules(newModules);
     };
-    setHeaderNavModules(newModules);
   }
 
-  // 重置顶栏模块为默认配置
   function resetHeaderNavModules() {
     const defaultModules = {
       home: true,
@@ -87,6 +89,10 @@ export default function SettingsHeaderNavModules(props) {
         enabled: true,
         requireAuth: false,
       },
+      rankings: {
+        enabled: true,
+        requireAuth: true,
+      },
       docs: true,
       canvasTool: true,
       about: true,
@@ -94,8 +100,6 @@ export default function SettingsHeaderNavModules(props) {
     setHeaderNavModules(defaultModules);
     showSuccess(t('已重置为默认配置'));
   }
-
-  // 保存配置
   async function onSubmit() {
     setLoading(true);
     try {
@@ -131,39 +135,52 @@ export default function SettingsHeaderNavModules(props) {
   }
 
   useEffect(() => {
-    // 从 props.options 中获取配置
-    if (props.options && props.options.HeaderNavModules) {
-      try {
-        const modules = JSON.parse(props.options.HeaderNavModules);
+    if (!props.options || !props.options.HeaderNavModules) {
+      return;
+    }
 
-        // 处理向后兼容性：如果pricing是boolean，转换为对象格式
-        if (typeof modules.pricing === 'boolean') {
-          modules.pricing = {
-            enabled: modules.pricing,
-            requireAuth: false, // 默认不需要登录鉴权
-          };
-        }
+    try {
+      const modules = JSON.parse(props.options.HeaderNavModules);
 
-        setHeaderNavModules(modules);
-      } catch (error) {
-        // 使用默认配置
-        const defaultModules = {
-          home: true,
-          console: true,
-          pricing: {
-            enabled: true,
-            requireAuth: false,
-          },
-          docs: true,
-          canvasTool: true,
-          about: true,
+      if (typeof modules.pricing === 'boolean') {
+        modules.pricing = {
+          enabled: modules.pricing,
+          requireAuth: false,
         };
-        setHeaderNavModules(defaultModules);
       }
+      if (typeof modules.rankings === 'boolean') {
+        modules.rankings = {
+          enabled: modules.rankings,
+          requireAuth: true,
+        };
+      }
+      if (!('rankings' in modules)) {
+        modules.rankings = {
+          enabled: true,
+          requireAuth: true,
+        };
+      }
+
+      setHeaderNavModules(modules);
+    } catch (error) {
+      setHeaderNavModules({
+        home: true,
+        console: true,
+        pricing: {
+          enabled: true,
+          requireAuth: false,
+        },
+        rankings: {
+          enabled: true,
+          requireAuth: true,
+        },
+        docs: true,
+        canvasTool: true,
+        about: true,
+      });
     }
   }, [props.options]);
 
-  // 模块配置数据
   const moduleConfigs = [
     {
       key: 'home',
@@ -179,7 +196,15 @@ export default function SettingsHeaderNavModules(props) {
       key: 'pricing',
       title: t('模型广场'),
       description: t('模型定价，需要登录访问'),
-      hasSubConfig: true, // 标识该模块有子配置
+      hasSubConfig: true,
+      authDescription: t('开启后未登录用户无法访问模型广场'),
+    },
+    {
+      key: 'rankings',
+      title: t('排行榜'),
+      description: t('模型排行，需要登录访问'),
+      hasSubConfig: true,
+      authDescription: t('开启后未登录用户无法访问排行榜'),
     },
     {
       key: 'docs',
@@ -253,7 +278,7 @@ export default function SettingsHeaderNavModules(props) {
                   <div style={{ marginLeft: '16px' }}>
                     <Switch
                       checked={
-                        module.key === 'pricing'
+                        typeof headerNavModules[module.key] === 'object'
                           ? headerNavModules[module.key]?.enabled
                           : headerNavModules[module.key]
                       }
@@ -263,9 +288,9 @@ export default function SettingsHeaderNavModules(props) {
                   </div>
                 </div>
 
-                {/* 为模型广场添加权限控制子开关 */}
-                {module.key === 'pricing' &&
-                  (module.key === 'pricing'
+                {/* 为对象型顶栏模块添加权限控制子开关 */}
+                {module.hasSubConfig &&
+                  (typeof headerNavModules[module.key] === 'object'
                     ? headerNavModules[module.key]?.enabled
                     : headerNavModules[module.key]) && (
                     <div
@@ -303,15 +328,16 @@ export default function SettingsHeaderNavModules(props) {
                               display: 'block',
                             }}
                           >
-                            {t('开启后未登录用户无法访问模型广场')}
+                            {module.authDescription ||
+                              t('开启后未登录用户无法访问模型广场')}
                           </Text>
                         </div>
                         <div style={{ marginLeft: '16px' }}>
                           <Switch
                             checked={
-                              headerNavModules.pricing?.requireAuth || false
+                              headerNavModules[module.key]?.requireAuth || false
                             }
-                            onChange={handlePricingAuthChange}
+                            onChange={handleHeaderNavModuleAuthChange(module.key)}
                             size='default'
                           />
                         </div>
