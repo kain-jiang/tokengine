@@ -79,7 +79,8 @@ const HeaderBar = ({ onMobileMenuToggle, drawerOpen, onBannerVisibilityChange, o
   }, [onBannerHeightChange]);
 
   return (
-    <header className='sticky top-0 z-50 transition-colors duration-300 bg-gradient-to-r from-white via-blue-50/80 to-purple-50/80 backdrop-blur-xl border-b border-gray-100/50 shadow-[0_1px_4px_0_rgba(0,0,0,0.03)]'>
+    <header className='app-header sticky top-0 z-50 shadow-[0_8px_30px_-16px_rgba(0,0,0,0.14)]'>
+      <div className='app-header-accent pointer-events-none absolute inset-x-0 top-0 h-px opacity-60' />
       <NoticeModal
         visible={noticeVisible}
         onClose={handleNoticeClose}

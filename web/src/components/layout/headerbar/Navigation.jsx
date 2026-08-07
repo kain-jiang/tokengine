@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import SkeletonWrapper from '../components/SkeletonWrapper';
 
 const Navigation = ({
@@ -28,15 +28,27 @@ const Navigation = ({
   userState,
   pricingRequireAuth,
 }) => {
+  const location = useLocation();
+
+  const isLinkActive = (link) => {
+    if (link.isExternal) return false;
+    if (link.itemKey === 'home') return location.pathname === '/';
+    if (link.to === '/') return false;
+    return location.pathname.startsWith(link.to);
+  };
+
   const renderNavLinks = () => {
-    const baseClasses =
-      'flex-shrink-0 flex items-center gap-1 transition-all duration-200 ease-in-out';
-    const hoverClasses = 'hover:text-blue-600';
-    const spacingClasses = isMobile ? 'p-1' : 'p-2';
-
-    const commonLinkClasses = `${baseClasses} ${spacingClasses} ${hoverClasses} body`;
-
     return mainNavLinks.map((link) => {
+      const active = isLinkActive(link);
+
+      const baseClasses = [
+        'relative flex-shrink-0 flex items-center gap-1 rounded-full px-3.5 py-2',
+        'text-sm font-medium transition-all duration-200 ease-in-out select-none whitespace-nowrap',
+        active
+          ? 'text-semi-color-primary bg-semi-color-primary-light-default shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]'
+          : 'text-semi-color-text-1 hover:text-semi-color-text-0 hover:bg-semi-color-fill-1 active:scale-95',
+      ].join(' ');
+
       const linkContent = <span>{link.text}</span>;
 
       if (link.isExternal) {
@@ -46,7 +58,7 @@ const Navigation = ({
             href={link.externalLink}
             target='_blank'
             rel='noopener noreferrer'
-            className={commonLinkClasses}
+            className={baseClasses}
           >
             {linkContent}
           </a>
@@ -67,7 +79,7 @@ const Navigation = ({
       }
 
       return (
-        <Link key={link.itemKey} to={targetPath} state={linkState} className={commonLinkClasses}>
+        <Link key={link.itemKey} to={targetPath} state={linkState} className={baseClasses}>
           {linkContent}
         </Link>
       );
@@ -75,7 +87,7 @@ const Navigation = ({
   };
 
   return (
-    <nav className='flex items-center gap-4 mx-4 overflow-x-auto whitespace-nowrap scrollbar-hide justify-center'>
+    <nav className='flex items-center gap-1 mx-2 px-2 py-1.5 rounded-full bg-semi-color-fill-0 overflow-x-auto scrollbar-hide md:mx-4'>
       <SkeletonWrapper
         loading={isLoading}
         type='navigation'
