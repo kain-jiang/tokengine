@@ -1,0 +1,2245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>一站式大模型 API 聚合分发平台</title>
+    <style>
+        /* ============================================================
+           深色科技风首页 · 暗色优先，浅色反色适配
+           注意：本页通过 dangerouslySetInnerHTML 注入，<script> 不会执行，
+           所有交互均为纯 CSS 实现（keyframes / :checked / :hover /
+           animation-timeline: view() 滚动驱动动画）。
+           全部类名带 sf- 前缀，避免污染宿主应用样式。
+           默认主题为深色；html 无 .dark 类时自动反色为浅色。
+           ============================================================ */
+
+        .sf-landing {
+            --sf-primary: #22d3ee;
+            --sf-violet: #8b5cf6;
+            --sf-magenta: #e879f9;
+            --sf-green: #34d399;
+            --sf-ink: #05060f;
+            --sf-text: #e6ecff;
+            --sf-text-2: #8f97bd;
+            --sf-text-3: #5d6490;
+            --sf-bg: #05060f;
+            --sf-bg-2: #0a0d1c;
+            --sf-card: rgba(255, 255, 255, 0.045);
+            --sf-card-solid: #0e1226;
+            --sf-line: rgba(139, 92, 246, 0.28);
+            --sf-glass: rgba(13, 17, 34, 0.72);
+            --sf-grad: linear-gradient(120deg, #22d3ee 0%, #8b5cf6 50%, #e879f9 100%);
+            --sf-grad-btn: linear-gradient(135deg, #0891b2 0%, #6366f1 100%);
+            --sf-glow: rgba(34, 211, 238, 0.32);
+            --sf-glow-strong: rgba(99, 102, 241, 0.42);
+            --sf-scan-opacity: 0.05;
+            --sf-hero-bg:
+                radial-gradient(900px 520px at 12% -6%, rgba(34, 211, 238, 0.14), transparent 60%),
+                radial-gradient(820px 520px at 92% 0%, rgba(139, 92, 246, 0.16), transparent 60%),
+                radial-gradient(640px 420px at 50% 118%, rgba(232, 121, 249, 0.09), transparent 60%),
+                linear-gradient(180deg, #070919 0%, #05060f 100%);
+            --sf-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            --sf-font-mono: 'JetBrains Mono', 'Cascadia Code', 'SF Mono', Consolas, 'Courier New', monospace;
+            --sf-font-num: 'Bahnschrift', 'DIN Alternate', 'Avenir Next Condensed', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+
+            font-family: var(--sf-font);
+            color: var(--sf-text);
+            background: var(--sf-bg);
+            line-height: 1.7;
+            font-size: 16px;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+            overflow: hidden;
+        }
+
+        .sf-landing *,
+        .sf-landing *::before,
+        .sf-landing *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        .sf-landing a { text-decoration: none; color: inherit; }
+        .sf-landing ul { list-style: none; }
+
+        .sf-wrap {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* ---------- 通用区块 ---------- */
+        .sf-section {
+            padding: 104px 0;
+            position: relative;
+            scroll-margin-top: 92px;
+        }
+
+        .sf-head {
+            text-align: center;
+            margin-bottom: 52px;
+        }
+
+        /* 终端风格眉标 */
+        .sf-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-family: var(--sf-font-mono);
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--sf-cyan, #22d3ee);
+            background: rgba(34, 211, 238, 0.07);
+            border: 1px solid rgba(34, 211, 238, 0.24);
+            margin-bottom: 20px;
+        }
+
+        .sf-eyebrow::before {
+            content: '▍';
+            color: var(--sf-cyan, #22d3ee);
+            animation: sf-blink 1.4s ease-in-out infinite;
+        }
+
+        .sf-title {
+            font-size: clamp(32px, 4.6vw, 50px);
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1.18;
+            color: var(--sf-text);
+            margin-bottom: 18px;
+        }
+
+        .sf-sub {
+            font-size: 17px;
+            color: var(--sf-text-2);
+            max-width: 640px;
+            margin: 0 auto;
+        }
+
+        .sf-grad-text {
+            background: var(--sf-grad);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+        }
+
+        /* ---------- 按钮 ---------- */
+        .sf-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-height: 52px;
+            padding: 0 30px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .sf-btn svg { transition: transform 0.25s ease; }
+
+        .sf-btn-primary {
+            color: #fff;
+            background: var(--sf-grad-btn);
+            background-size: 160% 160%;
+            box-shadow: 0 0 34px var(--sf-glow-strong), 0 14px 34px rgba(0, 0, 0, 0.35);
+        }
+
+        .sf-btn-primary:hover {
+            background-position: 100% 50%;
+            transform: translateY(-3px);
+            box-shadow: 0 0 46px var(--sf-glow-strong), 0 20px 44px rgba(0, 0, 0, 0.4);
+        }
+
+        .sf-btn-primary:hover svg { transform: translateX(4px); }
+
+        .sf-btn-ghost {
+            color: var(--sf-text);
+            background: var(--sf-glass);
+            border: 1px solid var(--sf-line);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+        }
+
+        .sf-btn-ghost:hover {
+            transform: translateY(-3px);
+            border-color: var(--sf-cyan, #22d3ee);
+            color: var(--sf-cyan, #22d3ee);
+            box-shadow: 0 0 26px rgba(34, 211, 238, 0.2);
+        }
+
+        /* ============================================================
+           极光 / 网格背景
+           ============================================================ */
+        .sf-aurora {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .sf-aurora::before,
+        .sf-aurora::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(110px);
+            animation: sf-drift 30s ease-in-out infinite alternate;
+        }
+
+        .sf-aurora::before {
+            width: 620px;
+            height: 620px;
+            top: -220px;
+            left: -140px;
+            background: radial-gradient(circle at 30% 30%, rgba(139, 92, 246, 0.4), transparent 70%);
+        }
+
+        .sf-aurora::after {
+            width: 520px;
+            height: 520px;
+            top: -80px;
+            right: -160px;
+            background: radial-gradient(circle at 60% 40%, rgba(34, 211, 238, 0.34), transparent 70%);
+            animation-delay: -10s;
+            animation-duration: 34s;
+        }
+
+        /* 扫描线层 */
+        .sf-scanlines {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 1;
+            opacity: var(--sf-scan-opacity);
+            background-image: repeating-linear-gradient(
+                0deg,
+                rgba(139, 92, 246, 0.6) 0,
+                rgba(139, 92, 246, 0.6) 1px,
+                transparent 1px,
+                transparent 4px
+            );
+        }
+
+        /* ============================================================
+           右下角悬浮锚点导航（纯 CSS :checked 展开/收起）
+           ============================================================ */
+        .sf-nav-dock {
+            position: fixed;
+            right: 24px;
+            bottom: 24px;
+            z-index: 40;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .sf-nav-radio {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            overflow: hidden;
+        }
+
+        .sf-nav-menu {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 4px;
+            margin-bottom: 14px;
+            padding: 10px;
+            border-radius: 16px;
+            background: var(--sf-glass);
+            border: 1px solid var(--sf-line);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+            -webkit-backdrop-filter: blur(18px) saturate(160%);
+            backdrop-filter: blur(18px) saturate(160%);
+            opacity: 0;
+            transform: translateY(14px) scale(0.94);
+            transform-origin: bottom right;
+            pointer-events: none;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+
+        .sf-nav-menu a {
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--sf-text-2);
+            white-space: nowrap;
+            text-align: right;
+            transition: all 0.2s ease;
+        }
+
+        .sf-nav-menu a:hover {
+            color: var(--sf-cyan, #22d3ee);
+            background: rgba(34, 211, 238, 0.08);
+        }
+
+        .sf-nav-menu .sf-nav-cta {
+            margin-top: 4px;
+            text-align: center;
+            color: #fff;
+            background: var(--sf-grad-btn);
+            box-shadow: 0 0 20px var(--sf-glow-strong);
+        }
+
+        .sf-nav-menu .sf-nav-cta:hover {
+            color: #fff;
+            background: var(--sf-grad-btn);
+            background-size: 160% 160%;
+            background-position: 100% 50%;
+        }
+
+        .sf-nav-fab {
+            width: 54px;
+            height: 54px;
+            border-radius: 17px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            background: var(--sf-grad-btn);
+            background-size: 160% 160%;
+            box-shadow: 0 0 32px var(--sf-glow-strong), 0 14px 34px rgba(0, 0, 0, 0.4);
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            user-select: none;
+        }
+
+        .sf-nav-fab:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0 44px var(--sf-glow-strong), 0 18px 40px rgba(0, 0, 0, 0.45);
+        }
+
+        .sf-nav-fab svg { pointer-events: none; }
+
+        .sf-nav-fab-close { display: none; }
+
+        #sf-nav-open:checked ~ .sf-nav-fab-close { display: flex; }
+        #sf-nav-open:checked ~ .sf-nav-fab-open { display: none; }
+
+        #sf-nav-open:checked ~ .sf-nav-menu {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+
+        #sf-nav-open:focus-visible ~ .sf-nav-fab-open,
+        #sf-nav-close:focus-visible ~ .sf-nav-fab-close {
+            outline: 2px solid var(--sf-cyan, #22d3ee);
+            outline-offset: 3px;
+        }
+
+        /* ============================================================
+           HERO
+           ============================================================ */
+        .sf-hero {
+            position: relative;
+            padding: 84px 0 0;
+            overflow: hidden;
+            background: var(--sf-hero-bg);
+        }
+
+        .sf-hero-grid {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(139, 92, 246, 0.06) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(139, 92, 246, 0.06) 1px, transparent 1px);
+            background-size: 52px 52px;
+            -webkit-mask-image: radial-gradient(ellipse 94% 76% at 50% 24%, #000 24%, transparent 74%);
+            mask-image: radial-gradient(ellipse 94% 76% at 50% 24%, #000 24%, transparent 74%);
+            pointer-events: none;
+        }
+
+        .sf-hero-noise {
+            position: absolute;
+            inset: 0;
+            opacity: 0.5;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='linear' slope='0.03'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+        }
+
+        .sf-hero-inner {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .sf-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 20px 9px 14px;
+            border-radius: 10px;
+            font-family: var(--sf-font-mono);
+            font-size: 13.5px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            color: var(--sf-text);
+            background: var(--sf-glass);
+            border: 1px solid rgba(34, 211, 238, 0.28);
+            box-shadow: 0 0 24px rgba(34, 211, 238, 0.12);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            margin-bottom: 28px;
+            animation: sf-fade-up 0.8s ease both;
+        }
+
+        .sf-pill-badge {
+            padding: 4px 11px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            color: #06131a;
+            background: linear-gradient(135deg, #22d3ee 0%, #67e8f9 100%);
+            box-shadow: 0 0 18px rgba(34, 211, 238, 0.5);
+        }
+
+        .sf-pill a { color: var(--sf-cyan, #22d3ee); font-weight: 700; }
+
+        .sf-hero h1 {
+            font-size: clamp(42px, 6.6vw, 78px);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            line-height: 1.08;
+            color: var(--sf-text);
+            margin-bottom: 24px;
+            animation: sf-fade-up 0.8s 0.08s ease both;
+        }
+
+        .sf-hero-sub {
+            font-size: clamp(16px, 2vw, 19px);
+            color: var(--sf-text-2);
+            max-width: 660px;
+            margin: 0 auto 38px;
+            animation: sf-fade-up 0.8s 0.16s ease both;
+        }
+
+        .sf-hero-btns {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            animation: sf-fade-up 0.8s 0.24s ease both;
+        }
+
+        .sf-hero-stats {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0 8px;
+            margin-top: 64px;
+            padding: 26px 0;
+            border-top: 1px solid var(--sf-line);
+            animation: sf-fade-up 0.8s 0.32s ease both;
+        }
+
+        .sf-hero-stat {
+            padding: 0 34px;
+            text-align: center;
+            position: relative;
+        }
+
+        .sf-hero-stat + .sf-hero-stat::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 1px;
+            height: 46px;
+            background: var(--sf-line);
+        }
+
+        .sf-hero-stat b {
+            display: block;
+            font-family: var(--sf-font-num);
+            font-size: 34px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: var(--sf-grad);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: transparent;
+        }
+
+        .sf-hero-stat span {
+            font-size: 14px;
+            color: var(--sf-text-3);
+        }
+
+        /* ---------- Hero 轨道视觉（霓虹） ---------- */
+        .sf-hero-visual {
+            --r-out: 210px;
+            --r-in: 128px;
+            position: relative;
+            z-index: 2;
+            width: 560px;
+            height: 560px;
+            margin: 26px auto -56px;
+            animation: sf-fade-up 1s 0.36s ease both;
+        }
+
+        .sf-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            border: 1px dashed rgba(34, 211, 238, 0.35);
+            box-shadow: 0 0 24px rgba(34, 211, 238, 0.15) inset, 0 0 24px rgba(34, 211, 238, 0.15);
+            pointer-events: none;
+        }
+
+        .sf-ring-out { width: calc(var(--r-out) * 2 + 26px); height: calc(var(--r-out) * 2 + 26px); }
+        .sf-ring-in {
+            width: calc(var(--r-in) * 2 + 26px);
+            height: calc(var(--r-in) * 2 + 26px);
+            border-color: rgba(139, 92, 246, 0.4);
+            box-shadow: 0 0 24px rgba(139, 92, 246, 0.18) inset, 0 0 24px rgba(139, 92, 246, 0.18);
+        }
+
+        .sf-core {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 132px;
+            height: 132px;
+            border-radius: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--sf-font-mono);
+            font-size: 40px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: #06131a;
+            background: linear-gradient(135deg, #22d3ee 0%, #a78bfa 100%);
+            box-shadow:
+                0 0 0 1px rgba(34, 211, 238, 0.4),
+                0 0 42px rgba(34, 211, 238, 0.45),
+                0 0 90px rgba(139, 92, 246, 0.3),
+                0 24px 70px rgba(0, 0, 0, 0.5);
+            animation: sf-core-pulse 3.8s ease-in-out infinite;
+        }
+
+        .sf-orbit { position: absolute; inset: 0; animation: sf-spin 48s linear infinite; }
+        .sf-orbit-in { animation: sf-spin-rev 34s linear infinite; }
+
+        .sf-sat {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            transform: rotate(var(--a)) translateX(var(--r-out)) rotate(calc(-1 * var(--a)));
+        }
+
+        .sf-orbit-in .sf-sat { transform: rotate(var(--a)) translateX(var(--r-in)) rotate(calc(-1 * var(--a))); }
+
+        .sf-chip {
+            position: absolute;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-family: var(--sf-font-mono);
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            color: var(--sf-text);
+            background: var(--sf-glass);
+            border: 1px solid rgba(139, 92, 246, 0.35);
+            box-shadow: 0 0 18px rgba(139, 92, 246, 0.15), 0 10px 26px rgba(0, 0, 0, 0.4);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            animation: sf-chip-stay 48s linear infinite;
+        }
+
+        .sf-chip i {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--c, #22d3ee);
+            box-shadow: 0 0 10px var(--c, #22d3ee);
+            flex: none;
+        }
+
+        .sf-orbit-in .sf-chip { animation: sf-chip-stay-rev 34s linear infinite; }
+
+        /* 终端代码卡 */
+        .sf-code-card {
+            position: absolute;
+            left: -84px;
+            bottom: 52px;
+            width: 320px;
+            border-radius: 14px;
+            overflow: hidden;
+            background: rgba(6, 9, 22, 0.94);
+            border: 1px solid rgba(34, 211, 238, 0.32);
+            box-shadow: 0 0 34px rgba(34, 211, 238, 0.16), 0 28px 70px rgba(0, 0, 0, 0.55);
+            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(12px);
+            text-align: left;
+            animation: sf-float 7s ease-in-out infinite;
+        }
+
+        .sf-code-head {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .sf-code-head i { width: 10px; height: 10px; border-radius: 50%; }
+        .sf-code-head i:nth-child(1) { background: #ff5f57; }
+        .sf-code-head i:nth-child(2) { background: #febc2e; }
+        .sf-code-head i:nth-child(3) { background: #28c840; }
+
+        .sf-code-head span {
+            margin-left: 8px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.45);
+            font-family: var(--sf-font-mono);
+        }
+
+        .sf-code-body {
+            padding: 16px 18px;
+            font-family: var(--sf-font-mono);
+            font-size: 12.5px;
+            line-height: 1.8;
+            color: #a5b4fc;
+        }
+
+        .sf-code-body .k { color: #22d3ee; }
+        .sf-code-body .s { color: #34d399; }
+        .sf-code-body .m { color: #e879f9; }
+
+        .sf-code-foot {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            font-family: var(--sf-font-mono);
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.55);
+        }
+
+        .sf-code-foot i {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #34d399;
+            box-shadow: 0 0 8px #34d399;
+            animation: sf-blink 1.6s ease-in-out infinite;
+        }
+
+        /* ============================================================
+           供应商跑马灯
+           ============================================================ */
+        .sf-marquee-sec {
+            position: relative;
+            padding: 84px 0 16px;
+            background: linear-gradient(180deg, var(--sf-bg) 0%, var(--sf-bg-2) 100%);
+        }
+
+        .sf-marquee-note {
+            text-align: center;
+            font-family: var(--sf-font-mono);
+            font-size: 13px;
+            letter-spacing: 0.2em;
+            color: var(--sf-text-3);
+            margin-bottom: 26px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .sf-marquee {
+            overflow: hidden;
+            -webkit-mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+            mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+        }
+
+        .sf-marquee + .sf-marquee { margin-top: 18px; }
+
+        .sf-marquee-track {
+            display: flex;
+            gap: 16px;
+            width: max-content;
+            animation: sf-marquee 38s linear infinite;
+        }
+
+        .sf-marquee-rev .sf-marquee-track { animation: sf-marquee-rev 46s linear infinite; }
+        .sf-marquee:hover .sf-marquee-track { animation-play-state: paused; }
+
+        .sf-m-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-family: var(--sf-font-mono);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--sf-text-2);
+            background: var(--sf-card-solid);
+            border: 1px solid var(--sf-line);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            white-space: nowrap;
+            transition: all 0.25s ease;
+        }
+
+        .sf-m-chip:hover {
+            color: var(--sf-cyan, #22d3ee);
+            border-color: rgba(34, 211, 238, 0.5);
+            transform: translateY(-3px);
+            box-shadow: 0 0 22px rgba(34, 211, 238, 0.2);
+        }
+
+        .sf-m-chip i {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--c, #22d3ee);
+            box-shadow: 0 0 10px var(--c, #22d3ee);
+            flex: none;
+        }
+
+        /* ============================================================
+           核心能力 · Bento 网格
+           ============================================================ */
+        .sf-products {
+            background:
+                radial-gradient(760px 420px at 92% 6%, rgba(139, 92, 246, 0.1), transparent 62%),
+                radial-gradient(680px 400px at 6% 94%, rgba(34, 211, 238, 0.08), transparent 62%),
+                var(--sf-bg-2);
+        }
+
+        .sf-bento {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            grid-auto-rows: minmax(190px, auto);
+            gap: 20px;
+        }
+
+        .sf-bento-card {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            padding: 34px 30px;
+            border-radius: 16px;
+            background: var(--sf-card);
+            border: 1px solid var(--sf-line);
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
+        }
+
+        .sf-bento-card::before {
+            content: '';
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            width: 14px;
+            height: 14px;
+            border-top: 2px solid rgba(34, 211, 238, 0.55);
+            border-left: 2px solid rgba(34, 211, 238, 0.55);
+            border-top-left-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sf-bento-card::after {
+            content: '';
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            width: 14px;
+            height: 14px;
+            border-bottom: 2px solid rgba(232, 121, 249, 0.55);
+            border-right: 2px solid rgba(232, 121, 249, 0.55);
+            border-bottom-right-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sf-bento-card:hover {
+            transform: translateY(-6px);
+            border-color: rgba(34, 211, 238, 0.4);
+            box-shadow: 0 0 34px rgba(34, 211, 238, 0.12), 0 24px 54px rgba(0, 0, 0, 0.4);
+        }
+
+        .sf-bento-card:hover::before,
+        .sf-bento-card:hover::after { opacity: 1; }
+
+        .sf-bento-card > * { position: relative; }
+
+        .sf-bento-a { grid-column: span 4; grid-row: span 2; }
+        .sf-bento-b { grid-column: span 2; }
+        .sf-bento-c { grid-column: span 2; }
+        .sf-bento-d { grid-column: span 2; }
+        .sf-bento-e { grid-column: span 4; flex-direction: row; align-items: center; gap: 32px; }
+
+        .sf-bento-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            color: #06131a;
+            background: var(--g, linear-gradient(135deg, #22d3ee, #8b5cf6));
+            box-shadow: 0 0 26px rgba(34, 211, 238, 0.3);
+            flex: none;
+        }
+
+        .sf-bento-card h3 {
+            font-size: 21px;
+            font-weight: 800;
+            letter-spacing: -0.01em;
+            margin-bottom: 10px;
+        }
+
+        .sf-bento-card p {
+            font-size: 14.5px;
+            color: var(--sf-text-2);
+            line-height: 1.75;
+        }
+
+        .sf-bento-card ul {
+            margin-top: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+        }
+
+        .sf-bento-card ul li {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-size: 14px;
+            color: var(--sf-text-2);
+        }
+
+        .sf-bento-card ul li::before {
+            content: '';
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            flex: none;
+            background: rgba(52, 211, 153, 0.16) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5.5 10.5l3 3 6-7' stroke='%2334d399' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 11px no-repeat;
+        }
+
+        /* Bento A 内嵌终端 */
+        .sf-term {
+            margin-top: auto;
+            margin-bottom: 4px;
+            padding: 6px 0 0;
+        }
+
+        .sf-term-body {
+            border-radius: 12px;
+            background: rgba(6, 9, 22, 0.94);
+            border: 1px solid rgba(34, 211, 238, 0.28);
+            padding: 16px 18px;
+            font-family: var(--sf-font-mono);
+            font-size: 12.5px;
+            line-height: 1.85;
+            color: #a5b4fc;
+        }
+
+        .sf-term-body .k { color: #22d3ee; }
+        .sf-term-body .s { color: #34d399; }
+        .sf-term-body .m { color: #e879f9; }
+        .sf-term-body .o { color: #67e8f9; }
+
+        /* ============================================================
+           热门模型套餐
+           ============================================================ */
+        .sf-deals {
+            background:
+                radial-gradient(720px 420px at 4% 16%, rgba(34, 211, 238, 0.07), transparent 62%),
+                var(--sf-bg);
+        }
+
+        .sf-deal-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            align-items: stretch;
+        }
+
+        .sf-deal-card {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            padding: 34px 32px;
+            border-radius: 16px;
+            background: var(--sf-card);
+            border: 1px solid var(--sf-line);
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.3);
+            transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
+            overflow: hidden;
+        }
+
+        .sf-deal-card:hover {
+            transform: translateY(-8px);
+            border-color: rgba(34, 211, 238, 0.42);
+            box-shadow: 0 0 34px rgba(34, 211, 238, 0.12), 0 26px 60px rgba(0, 0, 0, 0.42);
+        }
+
+        .sf-deal-hot {
+            border-color: rgba(232, 121, 249, 0.42);
+            background:
+                radial-gradient(600px 300px at 90% -10%, rgba(232, 121, 249, 0.1), transparent 60%),
+                var(--sf-card);
+        }
+
+        .sf-deal-hot:hover {
+            border-color: rgba(232, 121, 249, 0.55);
+            box-shadow: 0 0 34px rgba(232, 121, 249, 0.14), 0 26px 60px rgba(0, 0, 0, 0.42);
+        }
+
+        .sf-deal-badge {
+            align-self: flex-start;
+            padding: 6px 15px;
+            border-radius: 6px;
+            font-family: var(--sf-font-mono);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            color: #fff;
+            background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+            margin-bottom: 20px;
+            box-shadow: 0 0 20px rgba(236, 72, 153, 0.4);
+        }
+
+        .sf-deal-card h3 { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; margin-bottom: 6px; }
+
+        .sf-deal-model {
+            font-family: var(--sf-font-mono);
+            font-size: 13px;
+            color: var(--sf-cyan, #22d3ee);
+            margin-bottom: 14px;
+        }
+
+        .sf-deal-desc {
+            font-size: 14px;
+            color: var(--sf-text-2);
+            line-height: 1.75;
+            margin-bottom: 22px;
+            flex: 1;
+        }
+
+        .sf-deal-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px 20px;
+            padding: 18px 0;
+            border-top: 1px dashed rgba(139, 92, 246, 0.3);
+            margin-bottom: 20px;
+        }
+
+        .sf-deal-meta div { display: flex; flex-direction: column; }
+        .sf-deal-meta span { font-family: var(--sf-font-mono); font-size: 12px; color: var(--sf-text-3); }
+        .sf-deal-meta b { font-size: 14px; font-weight: 700; color: var(--sf-text); }
+
+        .sf-deal-price {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .sf-deal-price b {
+            font-family: var(--sf-font-num);
+            font-size: 40px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: var(--sf-grad);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .sf-deal-price s { font-size: 17px; color: var(--sf-text-3); }
+
+        .sf-deal-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 50px;
+            border-radius: 12px;
+            font-weight: 700;
+            color: #fff;
+            background: var(--sf-grad-btn);
+            background-size: 160% 160%;
+            transition: all 0.25s ease;
+        }
+
+        .sf-deal-btn:hover {
+            background-position: 100% 50%;
+            transform: translateY(-2px);
+            box-shadow: 0 0 28px var(--sf-glow-strong);
+        }
+
+        .sf-deal-hot .sf-deal-btn { box-shadow: 0 0 24px var(--sf-glow-strong); }
+
+        /* ============================================================
+           为什么选择我们（数据带）
+           ============================================================ */
+        .sf-why {
+            background:
+                radial-gradient(900px 500px at 10% 0%, rgba(139, 92, 246, 0.16), transparent 55%),
+                radial-gradient(800px 500px at 92% 100%, rgba(34, 211, 238, 0.1), transparent 55%),
+                var(--sf-card-solid);
+            color: var(--sf-text);
+            border-top: 1px solid var(--sf-line);
+            border-bottom: 1px solid var(--sf-line);
+        }
+
+        .sf-why::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(139, 92, 246, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(139, 92, 246, 0.05) 1px, transparent 1px);
+            background-size: 54px 54px;
+            -webkit-mask-image: radial-gradient(ellipse 82% 80% at 50% 50%, #000 22%, transparent 80%);
+            mask-image: radial-gradient(ellipse 82% 80% at 50% 50%, #000 22%, transparent 80%);
+            pointer-events: none;
+        }
+
+        .sf-why .sf-wrap { position: relative; }
+
+        .sf-why-group-title {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            font-family: var(--sf-font-mono);
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: var(--sf-text-3);
+            margin: 44px 0 22px;
+        }
+
+        .sf-why-group-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, var(--sf-line), transparent);
+        }
+
+        .sf-why-group-title i {
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+            background: var(--sf-grad);
+            box-shadow: 0 0 12px rgba(139, 92, 246, 0.6);
+            flex: none;
+        }
+
+        .sf-stat-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .sf-stat-card {
+            padding: 36px 32px;
+            border-radius: 16px;
+            background: var(--sf-card);
+            border: 1px solid var(--sf-line);
+            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px);
+            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .sf-stat-card:hover {
+            transform: translateY(-6px);
+            border-color: rgba(34, 211, 238, 0.45);
+            box-shadow: 0 0 30px rgba(34, 211, 238, 0.12);
+        }
+
+        .sf-stat-num {
+            font-family: var(--sf-font-num);
+            font-size: clamp(46px, 5vw, 66px);
+            font-weight: 800;
+            line-height: 1.05;
+            letter-spacing: -0.02em;
+            background: var(--sf-grad);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .sf-stat-card h4 { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+        .sf-stat-card p { font-size: 14px; color: var(--sf-text-2); }
+
+        .sf-pillar-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-top: 44px;
+        }
+
+        .sf-pillar {
+            padding: 32px 28px;
+            border-radius: 16px;
+            background: var(--sf-card);
+            border: 1px solid var(--sf-line);
+            transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .sf-pillar:hover {
+            transform: translateY(-6px);
+            border-color: rgba(34, 211, 238, 0.4);
+            box-shadow: 0 0 26px rgba(34, 211, 238, 0.1);
+        }
+
+        .sf-pillar h4 {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 17px;
+            font-weight: 800;
+            margin-bottom: 16px;
+        }
+
+        .sf-pillar h4 i {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(34, 211, 238, 0.12);
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            color: var(--sf-cyan, #22d3ee);
+            flex: none;
+        }
+
+        .sf-pillar ul li {
+            position: relative;
+            padding-left: 18px;
+            font-size: 13.5px;
+            color: var(--sf-text-2);
+            line-height: 1.85;
+            margin-bottom: 8px;
+        }
+
+        .sf-pillar ul li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0.74em;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--sf-green);
+            box-shadow: 0 0 8px rgba(52, 211, 153, 0.6);
+        }
+
+        /* ============================================================
+           行业解决方案（纯 CSS Tab）
+           ============================================================ */
+        .sf-ind {
+            background:
+                radial-gradient(720px 420px at 95% 12%, rgba(139, 92, 246, 0.08), transparent 62%),
+                var(--sf-bg-2);
+        }
+
+        .sf-ind-radio {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            overflow: hidden;
+        }
+
+        .sf-ind-nav {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 36px;
+        }
+
+        .sf-ind-nav label {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 48px;
+            padding: 10px 28px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--sf-text-2);
+            background: var(--sf-card-solid);
+            border: 1px solid var(--sf-line);
+            cursor: pointer;
+            transition: all 0.25s ease;
+            user-select: none;
+        }
+
+        .sf-ind-nav label:hover {
+            color: var(--sf-cyan, #22d3ee);
+            border-color: rgba(34, 211, 238, 0.45);
+            transform: translateY(-2px);
+        }
+
+        #sf-ind-1:checked ~ .sf-ind-nav label[for="sf-ind-1"],
+        #sf-ind-2:checked ~ .sf-ind-nav label[for="sf-ind-2"],
+        #sf-ind-3:checked ~ .sf-ind-nav label[for="sf-ind-3"],
+        #sf-ind-4:checked ~ .sf-ind-nav label[for="sf-ind-4"],
+        #sf-ind-5:checked ~ .sf-ind-nav label[for="sf-ind-5"] {
+            color: #06131a;
+            background: linear-gradient(135deg, #22d3ee 0%, #a78bfa 100%);
+            border-color: transparent;
+            box-shadow: 0 0 26px rgba(34, 211, 238, 0.3);
+        }
+
+        #sf-ind-1:focus-visible ~ .sf-ind-nav label[for="sf-ind-1"],
+        #sf-ind-2:focus-visible ~ .sf-ind-nav label[for="sf-ind-2"],
+        #sf-ind-3:focus-visible ~ .sf-ind-nav label[for="sf-ind-3"],
+        #sf-ind-4:focus-visible ~ .sf-ind-nav label[for="sf-ind-4"],
+        #sf-ind-5:focus-visible ~ .sf-ind-nav label[for="sf-ind-5"] {
+            outline: 2px solid var(--sf-cyan, #22d3ee);
+            outline-offset: 3px;
+        }
+
+        .sf-ind-panel { display: none; }
+
+        #sf-ind-1:checked ~ .sf-ind-body .sf-ind-panel-1,
+        #sf-ind-2:checked ~ .sf-ind-body .sf-ind-panel-2,
+        #sf-ind-3:checked ~ .sf-ind-body .sf-ind-panel-3,
+        #sf-ind-4:checked ~ .sf-ind-body .sf-ind-panel-4,
+        #sf-ind-5:checked ~ .sf-ind-body .sf-ind-panel-5 {
+            display: grid;
+            animation: sf-fade-up 0.5s ease both;
+        }
+
+        .sf-ind-panel {
+            grid-template-columns: 1.35fr 1fr;
+            gap: 0;
+            border-radius: 18px;
+            overflow: hidden;
+            background: var(--sf-card);
+            border: 1px solid var(--sf-line);
+            box-shadow: 0 22px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .sf-ind-info { padding: 50px 46px; }
+
+        .sf-ind-info h3 {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 16px;
+        }
+
+        .sf-ind-info > p {
+            font-size: 15.5px;
+            color: var(--sf-text-2);
+            line-height: 1.85;
+            margin-bottom: 28px;
+        }
+
+        .sf-ind-info ul li {
+            position: relative;
+            padding-left: 32px;
+            font-size: 15px;
+            color: var(--sf-text);
+            font-weight: 500;
+            margin-bottom: 14px;
+        }
+
+        .sf-ind-info ul li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 2px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: rgba(52, 211, 153, 0.14) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5.5 10.5l3 3 6-7' stroke='%2334d399' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 12px no-repeat;
+        }
+
+        .sf-ind-aside {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 48px 42px;
+            color: #fff;
+            background: var(--ag, linear-gradient(135deg, #0891b2 0%, #6366f1 100%));
+            overflow: hidden;
+        }
+
+        .sf-ind-aside::before {
+            content: '';
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            border: 40px solid rgba(255, 255, 255, 0.09);
+            right: -120px;
+            top: -120px;
+        }
+
+        .sf-ind-aside::after {
+            content: '';
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: 26px solid rgba(255, 255, 255, 0.07);
+            left: -80px;
+            bottom: -80px;
+        }
+
+        .sf-ind-aside b {
+            position: relative;
+            font-family: var(--sf-font-num);
+            font-size: clamp(54px, 5vw, 76px);
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: -0.02em;
+            margin-bottom: 12px;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.35);
+        }
+
+        .sf-ind-aside span {
+            position: relative;
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        /* ============================================================
+           合作伙伴
+           ============================================================ */
+        .sf-partners { background: var(--sf-bg); }
+
+        .sf-logo-wall {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 14px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .sf-logo-item {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 54px;
+            padding: 14px 30px;
+            border-radius: 12px;
+            font-family: var(--sf-font-mono);
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            color: var(--sf-text-3);
+            background: var(--sf-card);
+            border: 1px solid var(--sf-line);
+            transition: all 0.25s ease;
+        }
+
+        .sf-logo-item:hover {
+            color: var(--sf-cyan, #22d3ee);
+            border-color: rgba(34, 211, 238, 0.5);
+            transform: translateY(-3px);
+            box-shadow: 0 0 22px rgba(34, 211, 238, 0.16);
+        }
+
+        /* ============================================================
+           CTA
+           ============================================================ */
+        .sf-cta { padding: 20px 0 100px; background: var(--sf-bg); }
+
+        .sf-cta-box {
+            position: relative;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 68px 44px;
+            border-radius: 20px;
+            text-align: center;
+            color: #fff;
+            background:
+                radial-gradient(520px 270px at 14% 0%, rgba(34, 211, 238, 0.3), transparent 62%),
+                radial-gradient(520px 320px at 90% 100%, rgba(232, 121, 249, 0.32), transparent 62%),
+                linear-gradient(135deg, #0e2a44 0%, #1d1748 50%, #2d1042 100%);
+            border: 1px solid rgba(34, 211, 238, 0.25);
+            box-shadow: 0 0 60px rgba(99, 102, 241, 0.24), 0 34px 90px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        .sf-cta-box::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(34, 211, 238, 0.06) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(34, 211, 238, 0.06) 1px, transparent 1px);
+            background-size: 44px 44px;
+            -webkit-mask-image: radial-gradient(ellipse at center, #000 18%, transparent 76%);
+            mask-image: radial-gradient(ellipse at center, #000 18%, transparent 76%);
+        }
+
+        .sf-cta-box h2 {
+            position: relative;
+            font-size: clamp(28px, 4vw, 42px);
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin-bottom: 16px;
+        }
+
+        .sf-cta-box p {
+            position: relative;
+            font-size: 17px;
+            color: rgba(255, 255, 255, 0.82);
+            margin-bottom: 40px;
+        }
+
+        .sf-cta-btns {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .sf-btn-white {
+            color: #06131a;
+            background: linear-gradient(135deg, #22d3ee 0%, #67e8f9 100%);
+            box-shadow: 0 0 34px rgba(34, 211, 238, 0.45), 0 14px 34px rgba(0, 0, 0, 0.35);
+        }
+
+        .sf-btn-white:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0 46px rgba(34, 211, 238, 0.6), 0 18px 44px rgba(0, 0, 0, 0.4);
+        }
+
+        .sf-btn-white:hover svg { transform: translateX(4px); }
+
+        .sf-btn-outline-w {
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.09);
+            -webkit-backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px);
+        }
+
+        .sf-btn-outline-w:hover {
+            background: rgba(255, 255, 255, 0.18);
+            transform: translateY(-3px);
+        }
+
+        /* ============================================================
+           滚动驱动入场动画（渐进增强，不支持的浏览器直接显示）
+           ============================================================ */
+        .sf-reveal { opacity: 1; }
+
+        @supports (animation-timeline: view()) {
+            .sf-reveal {
+                opacity: 0;
+                transform: translateY(30px);
+                animation: sf-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+                animation-timeline: view();
+                animation-range: entry 0% cover 26%;
+            }
+
+            .sf-bento-card { animation-delay: 0.05s; }
+        }
+
+        @keyframes sf-rise {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ============================================================
+           动画
+           ============================================================ */
+        @keyframes sf-drift {
+            from { transform: translate(0, 0) scale(1); }
+            to { transform: translate(40px, 30px) scale(1.12); }
+        }
+
+        @keyframes sf-spin { to { transform: rotate(360deg); } }
+        @keyframes sf-spin-rev { to { transform: rotate(-360deg); } }
+
+        @keyframes sf-chip-stay {
+            from { transform: translate(-50%, -50%) rotate(0deg); }
+            to { transform: translate(-50%, -50%) rotate(-360deg); }
+        }
+
+        @keyframes sf-chip-stay-rev {
+            from { transform: translate(-50%, -50%) rotate(0deg); }
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        @keyframes sf-core-pulse {
+            0%, 100% {
+                box-shadow:
+                    0 0 0 1px rgba(34, 211, 238, 0.4),
+                    0 0 42px rgba(34, 211, 238, 0.45),
+                    0 0 90px rgba(139, 92, 246, 0.3),
+                    0 24px 70px rgba(0, 0, 0, 0.5);
+            }
+            50% {
+                box-shadow:
+                    0 0 0 1px rgba(34, 211, 238, 0.55),
+                    0 0 60px rgba(34, 211, 238, 0.6),
+                    0 0 120px rgba(139, 92, 246, 0.4),
+                    0 24px 80px rgba(0, 0, 0, 0.55);
+            }
+        }
+
+        @keyframes sf-float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-14px); }
+        }
+
+        @keyframes sf-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.35; }
+        }
+
+        @keyframes sf-marquee {
+            to { transform: translateX(-50%); }
+        }
+
+        @keyframes sf-marquee-rev {
+            from { transform: translateX(-50%); }
+            to { transform: translateX(0); }
+        }
+
+        @keyframes sf-fade-up {
+            from { opacity: 0; transform: translateY(24px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ============================================================
+           浅色模式反色适配（宿主应用无 html.dark 时为浅色主题）
+           ============================================================ */
+        html:not(.dark) .sf-landing {
+            color-scheme: light;
+            --sf-text: #0d1128;
+            --sf-text-2: #52598a;
+            --sf-text-3: #8a90b6;
+            --sf-bg: #f5f6fb;
+            --sf-bg-2: #eceef8;
+            --sf-card: #ffffff;
+            --sf-card-solid: #ffffff;
+            --sf-line: rgba(84, 87, 232, 0.16);
+            --sf-glass: rgba(255, 255, 255, 0.72);
+            --sf-glow: rgba(34, 211, 238, 0.28);
+            --sf-glow-strong: rgba(99, 102, 241, 0.24);
+            --sf-scan-opacity: 0.028;
+            --sf-hero-bg:
+                radial-gradient(900px 520px at 12% -6%, rgba(34, 211, 238, 0.12), transparent 60%),
+                radial-gradient(820px 520px at 92% 0%, rgba(139, 92, 246, 0.12), transparent 60%),
+                radial-gradient(640px 420px at 50% 118%, rgba(232, 121, 249, 0.07), transparent 60%),
+                linear-gradient(180deg, #ffffff 0%, #f5f6fb 100%);
+        }
+
+        html:not(.dark) .sf-marquee-sec {
+            background: linear-gradient(180deg, #f5f6fb 0%, #eceef8 100%);
+        }
+
+        html:not(.dark) .sf-products {
+            background:
+                radial-gradient(760px 420px at 92% 6%, rgba(139, 92, 246, 0.08), transparent 62%),
+                radial-gradient(680px 400px at 6% 94%, rgba(34, 211, 238, 0.07), transparent 62%),
+                #eceef8;
+        }
+
+        html:not(.dark) .sf-deals {
+            background:
+                radial-gradient(720px 420px at 4% 16%, rgba(34, 211, 238, 0.07), transparent 62%),
+                #f5f6fb;
+        }
+
+        html:not(.dark) .sf-ind {
+            background:
+                radial-gradient(720px 420px at 95% 12%, rgba(139, 92, 246, 0.08), transparent 62%),
+                #eceef8;
+        }
+
+        html:not(.dark) .sf-partners,
+        html:not(.dark) .sf-cta { background: #f5f6fb; }
+
+        html:not(.dark) .sf-why {
+            background:
+                radial-gradient(900px 500px at 10% 0%, rgba(139, 92, 246, 0.08), transparent 55%),
+                radial-gradient(800px 500px at 92% 100%, rgba(34, 211, 238, 0.06), transparent 55%),
+                #eceef8;
+        }
+
+        /* 浅色下减弱霓虹光晕与终端底色 */
+        html:not(.dark) .sf-core,
+        html:not(.dark) .sf-chip,
+        html:not(.dark) .sf-m-chip {
+            box-shadow: 0 10px 26px rgba(20, 22, 58, 0.1);
+        }
+
+        html:not(.dark) .sf-code-card,
+        html:not(.dark) .sf-term-body {
+            background: #0e1226;
+        }
+
+        html:not(.dark) .sf-bento-card,
+        html:not(.dark) .sf-deal-card,
+        html:not(.dark) .sf-ind-panel,
+        html:not(.dark) .sf-stat-card,
+        html:not(.dark) .sf-pillar,
+        html:not(.dark) .sf-logo-item {
+            box-shadow: 0 10px 32px rgba(20, 22, 58, 0.08);
+        }
+
+        html:not(.dark) .sf-bento-card:hover,
+        html:not(.dark) .sf-deal-card:hover {
+            box-shadow: 0 20px 48px rgba(84, 87, 232, 0.14);
+        }
+
+        html:not(.dark) .sf-ind-nav label {
+            background: #ffffff;
+            color: #52598a;
+        }
+
+        html:not(.dark) .sf-ind-nav label:hover {
+            color: #0ea5c4;
+            border-color: rgba(34, 211, 238, 0.5);
+        }
+
+        html:not(.dark) .sf-btn-primary {
+            box-shadow: 0 14px 34px rgba(84, 87, 232, 0.3);
+        }
+
+        html:not(.dark) .sf-btn-primary:hover {
+            box-shadow: 0 20px 44px rgba(84, 87, 232, 0.36);
+        }
+
+        html:not(.dark) .sf-cta-box {
+            background:
+                radial-gradient(520px 270px at 14% 0%, rgba(34, 211, 238, 0.28), transparent 62%),
+                radial-gradient(520px 320px at 90% 100%, rgba(139, 92, 246, 0.4), transparent 62%),
+                linear-gradient(135deg, #0e2a44 0%, #1d1748 50%, #2d1042 100%);
+            box-shadow: 0 34px 90px rgba(84, 87, 232, 0.34);
+        }
+
+        /* ============================================================
+           响应式
+           ============================================================ */
+        @media (max-width: 1080px) {
+            .sf-bento { grid-auto-rows: minmax(170px, auto); }
+            .sf-bento-a { grid-column: span 6; }
+            .sf-bento-b,
+            .sf-bento-c,
+            .sf-bento-d { grid-column: span 2; }
+            .sf-bento-e { grid-column: span 6; }
+            .sf-hero-visual { transform: scale(0.9); }
+            .sf-code-card { left: -30px; }
+        }
+
+        @media (max-width: 900px) {
+            .sf-section { padding: 72px 0; }
+            .sf-deal-grid { grid-template-columns: repeat(2, 1fr); }
+            .sf-deal-card:last-child { grid-column: span 2; }
+            .sf-stat-row,
+            .sf-pillar-grid { grid-template-columns: repeat(2, 1fr); }
+            .sf-bento-b,
+            .sf-bento-c,
+            .sf-bento-d { grid-column: span 3; }
+            .sf-ind-panel { grid-template-columns: 1fr; }
+            .sf-ind-aside { min-height: 220px; }
+            .sf-bento-e { flex-direction: column; align-items: flex-start; gap: 16px; }
+        }
+
+        @media (max-width: 640px) {
+            .sf-section { padding: 60px 0; }
+            .sf-nav-dock { right: 16px; bottom: 16px; }
+            .sf-nav-fab { width: 48px; height: 48px; border-radius: 15px; }
+            .sf-nav-menu a { padding: 9px 16px; font-size: 13.5px; }
+            .sf-hero { padding-top: 64px; }
+            .sf-hero-stats { gap: 18px 0; }
+            .sf-hero-stat { padding: 0 16px; }
+            .sf-hero-stat b { font-size: 26px; }
+            .sf-hero-stat + .sf-hero-stat::before { height: 38px; }
+            .sf-hero-visual {
+                --r-out: 168px;
+                --r-in: 104px;
+                width: 430px;
+                height: 430px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            .sf-chip { padding: 8px 14px; font-size: 12px; }
+            .sf-code-card { display: none; }
+            .sf-deal-grid { grid-template-columns: 1fr; }
+            .sf-deal-card:last-child { grid-column: auto; }
+            .sf-stat-row,
+            .sf-pillar-grid { grid-template-columns: 1fr; }
+            .sf-bento-b,
+            .sf-bento-c,
+            .sf-bento-d { grid-column: span 6; }
+            .sf-bento { grid-auto-rows: minmax(150px, auto); }
+            .sf-bento-a { grid-row: span 1; }
+            .sf-bento-card { padding: 26px 22px; }
+            .sf-ind-info { padding: 36px 26px; }
+            .sf-ind-nav { gap: 8px; }
+            .sf-ind-nav label { padding: 9px 20px; font-size: 14px; }
+            .sf-cta { padding-bottom: 72px; }
+            .sf-cta-box { padding: 54px 26px; border-radius: 18px; }
+            .sf-hero-btns, .sf-cta-btns { flex-direction: column; align-items: center; }
+            .sf-btn { width: 100%; }
+        }
+
+        /* 尊重减少动态偏好 */
+        @media (prefers-reduced-motion: reduce) {
+            .sf-landing *,
+            .sf-landing *::before,
+            .sf-landing *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                animation-timeline: auto !important;
+            }
+
+            .sf-reveal { opacity: 1 !important; transform: none !important; }
+        }
+    </style>
+</head>
+<body>
+<div class="sf-landing">
+
+    <!-- 极光 + 扫描线背景层 -->
+    <div class="sf-aurora" aria-hidden="true"></div>
+    <div class="sf-scanlines" aria-hidden="true"></div>
+
+    <!-- ================= HERO ================= -->
+    <section class="sf-hero">
+        <div class="sf-hero-grid"></div>
+        <div class="sf-hero-noise"></div>
+        <div class="sf-hero-inner">
+            <div class="sf-pill">
+                <span class="sf-pill-badge">SYSTEM ONLINE</span>
+                <span>旗舰模型高速专线上线 · GLM / DeepSeek / Qwen 即开即用</span>
+                <a href="/console">立即体验 →</a>
+            </div>
+            <h1>
+                一站式大模型<br>
+                <span class="sf-grad-text">API 聚合分发平台</span>
+            </h1>
+            <p class="sf-hero-sub">
+                聚合全球 40+ 主流模型供应商，统一接口、统一计费、智能路由调度。
+                一次接入，让企业级 AI 应用快人一步。
+            </p>
+            <div class="sf-hero-btns">
+                <a href="/console" class="sf-btn sf-btn-primary">
+                    立即体验
+                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 10h12M12 6l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </a>
+                <a href="/pricing" class="sf-btn sf-btn-ghost">
+                    查看模型定价
+                </a>
+            </div>
+            <div class="sf-hero-stats">
+                <div class="sf-hero-stat"><b>40+</b><span>模型供应商</span></div>
+                <div class="sf-hero-stat"><b>200+</b><span>在线模型</span></div>
+                <div class="sf-hero-stat"><b>99.9%</b><span>服务可用性</span></div>
+                <div class="sf-hero-stat"><b>24h</b><span>技术支持响应</span></div>
+            </div>
+        </div>
+
+        <!-- 轨道视觉（霓虹） -->
+        <div class="sf-hero-visual" aria-hidden="true">
+            <div class="sf-ring sf-ring-out"></div>
+            <div class="sf-ring sf-ring-in"></div>
+            <div class="sf-core">AI</div>
+            <div class="sf-orbit sf-orbit-out">
+                <div class="sf-sat" style="--a: 0deg"><span class="sf-chip" style="--c:#22d3ee">DeepSeek</span></div>
+                <div class="sf-sat" style="--a: 60deg"><span class="sf-chip" style="--c:#34d399">Qwen</span></div>
+                <div class="sf-sat" style="--a: 120deg"><span class="sf-chip" style="--c:#a78bfa">GLM</span></div>
+                <div class="sf-sat" style="--a: 180deg"><span class="sf-chip" style="--c:#f472b6">Kimi</span></div>
+                <div class="sf-sat" style="--a: 240deg"><span class="sf-chip" style="--c:#fbbf24">Doubao</span></div>
+                <div class="sf-sat" style="--a: 300deg"><span class="sf-chip" style="--c:#2dd4bf">Hunyuan</span></div>
+            </div>
+            <div class="sf-orbit sf-orbit-in">
+                <div class="sf-sat" style="--a: 45deg"><span class="sf-chip" style="--c:#fb923c">Claude</span></div>
+                <div class="sf-sat" style="--a: 135deg"><span class="sf-chip" style="--c:#38bdf8">GPT</span></div>
+                <div class="sf-sat" style="--a: 225deg"><span class="sf-chip" style="--c:#818cf8">Gemini</span></div>
+                <div class="sf-sat" style="--a: 315deg"><span class="sf-chip" style="--c:#94a3b8">Grok</span></div>
+            </div>
+            <div class="sf-code-card">
+                <div class="sf-code-head">
+                    <i></i><i></i><i></i>
+                    <span>api-request.sh</span>
+                </div>
+                <div class="sf-code-body">
+                    <span class="m">POST</span> /v1/chat/completions<br>
+                    {<br>
+                    &nbsp;&nbsp;<span class="k">"model"</span>: <span class="s">"DeepSeek-V4"</span>,<br>
+                    &nbsp;&nbsp;<span class="k">"stream"</span>: <span class="m">true</span><br>
+                    }<br>
+                    <span class="m">→</span> <span class="s">200 OK</span> · 智能路由 · 128ms
+                </div>
+                <div class="sf-code-foot">
+                    <i></i> STATUS_NORMAL · 毫秒级响应
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= 供应商跑马灯 ================= -->
+    <section class="sf-marquee-sec">
+        <p class="sf-marquee-note">SUPPORTED PROVIDERS</p>
+        <div class="sf-marquee">
+            <div class="sf-marquee-track">
+                <span class="sf-m-chip" style="--c:#38bdf8">OpenAI</span>
+                <span class="sf-m-chip" style="--c:#fb923c">Claude</span>
+                <span class="sf-m-chip" style="--c:#818cf8">Gemini</span>
+                <span class="sf-m-chip" style="--c:#22d3ee">DeepSeek</span>
+                <span class="sf-m-chip" style="--c:#34d399">Qwen</span>
+                <span class="sf-m-chip" style="--c:#a78bfa">GLM</span>
+                <span class="sf-m-chip" style="--c:#f472b6">Kimi</span>
+                <span class="sf-m-chip" style="--c:#fbbf24">Doubao</span>
+                <span class="sf-m-chip" style="--c:#94a3b8">Grok</span>
+                <span class="sf-m-chip" style="--c:#e879f9">MiniMax</span>
+                <span class="sf-m-chip" style="--c:#38bdf8">OpenAI</span>
+                <span class="sf-m-chip" style="--c:#fb923c">Claude</span>
+                <span class="sf-m-chip" style="--c:#818cf8">Gemini</span>
+                <span class="sf-m-chip" style="--c:#22d3ee">DeepSeek</span>
+                <span class="sf-m-chip" style="--c:#34d399">Qwen</span>
+                <span class="sf-m-chip" style="--c:#a78bfa">GLM</span>
+                <span class="sf-m-chip" style="--c:#f472b6">Kimi</span>
+                <span class="sf-m-chip" style="--c:#fbbf24">Doubao</span>
+                <span class="sf-m-chip" style="--c:#94a3b8">Grok</span>
+                <span class="sf-m-chip" style="--c:#e879f9">MiniMax</span>
+            </div>
+        </div>
+        <div class="sf-marquee sf-marquee-rev">
+            <div class="sf-marquee-track">
+                <span class="sf-m-chip" style="--c:#2dd4bf">Hunyuan</span>
+                <span class="sf-m-chip" style="--c:#f87171">Wenxin</span>
+                <span class="sf-m-chip" style="--c:#60a5fa">Spark</span>
+                <span class="sf-m-chip" style="--c:#c084fc">Midjourney</span>
+                <span class="sf-m-chip" style="--c:#fbbf24">Suno</span>
+                <span class="sf-m-chip" style="--c:#4ade80">Llama</span>
+                <span class="sf-m-chip" style="--c:#fb923c">Mistral</span>
+                <span class="sf-m-chip" style="--c:#2dd4bf">Cohere</span>
+                <span class="sf-m-chip" style="--c:#38bdf8">Azure AI</span>
+                <span class="sf-m-chip" style="--c:#a78bfa">Xinference</span>
+                <span class="sf-m-chip" style="--c:#2dd4bf">Hunyuan</span>
+                <span class="sf-m-chip" style="--c:#f87171">Wenxin</span>
+                <span class="sf-m-chip" style="--c:#60a5fa">Spark</span>
+                <span class="sf-m-chip" style="--c:#c084fc">Midjourney</span>
+                <span class="sf-m-chip" style="--c:#fbbf24">Suno</span>
+                <span class="sf-m-chip" style="--c:#4ade80">Llama</span>
+                <span class="sf-m-chip" style="--c:#fb923c">Mistral</span>
+                <span class="sf-m-chip" style="--c:#2dd4bf">Cohere</span>
+                <span class="sf-m-chip" style="--c:#38bdf8">Azure AI</span>
+                <span class="sf-m-chip" style="--c:#a78bfa">Xinference</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= 核心能力 · Bento 网格 ================= -->
+    <section class="sf-section sf-products" id="sf-features">
+        <div class="sf-wrap">
+            <div class="sf-head sf-reveal">
+                <span class="sf-eyebrow">core modules</span>
+                <h2 class="sf-title">全场景产品矩阵，支撑 AI 应用全流程落地</h2>
+                <p class="sf-sub">助力用户一站式实现 AI 能力与应用的快速对接</p>
+            </div>
+            <div class="sf-bento">
+                <div class="sf-bento-card sf-bento-a sf-reveal">
+                    <div class="sf-bento-icon" style="--g:linear-gradient(135deg,#22d3ee,#a78bfa)">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M13 2L4.5 13.5H11L10 22L19.5 10H13L13 2Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                    </div>
+                    <h3>开箱即用的大模型 API</h3>
+                    <p>覆盖语言、语音、图片、视频等场景，统一 OpenAI 兼容接口，按量计费。替换 Base URL 即可完成接入，让应用快速上线。</p>
+                    <div class="sf-term">
+                        <div class="sf-term-body">
+                            <span class="k">base_url</span> = <span class="s">https://api.your-site.com/v1</span><br>
+                            <span class="k">model</span> = <span class="s">"DeepSeek-V4"</span> · <span class="m">stream</span>: <span class="o">true</span><br>
+                            <span class="m">→</span> 一次配置，全模型可用
+                        </div>
+                    </div>
+                </div>
+                <div class="sf-bento-card sf-bento-b sf-reveal">
+                    <div class="sf-bento-icon" style="--g:linear-gradient(135deg,#06b6d4,#6366f1)">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><circle cx="5" cy="12" r="2.4" stroke="currentColor" stroke-width="1.8"/><circle cx="19" cy="5.5" r="2.4" stroke="currentColor" stroke-width="1.8"/><circle cx="19" cy="18.5" r="2.4" stroke="currentColor" stroke-width="1.8"/><path d="M7.2 11L16.8 6.3M7.2 13l9.6 4.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+                    </div>
+                    <h3>智能渠道路由</h3>
+                    <p>多渠道负载均衡与自动故障转移，毫秒级调度最优线路。</p>
+                </div>
+                <div class="sf-bento-card sf-bento-c sf-reveal">
+                    <div class="sf-bento-icon" style="--g:linear-gradient(135deg,#f59e0b,#ec4899)">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v10M9 9.5c0-1 1.2-2 3-2s3 .8 3 2-1 1.7-3 2.2-3 1.1-3 2.3 1.2 2 3 2 3-.9 3-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                    </div>
+                    <h3>令牌分发与精细计费</h3>
+                    <p>额度管控、分组定价与实时账单，每一分 Token 清晰可追溯。</p>
+                </div>
+                <div class="sf-bento-card sf-bento-d sf-reveal">
+                    <div class="sf-bento-icon" style="--g:linear-gradient(135deg,#10b981,#0d9488)">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v5c0 4.6-3 8.4-7 10-4-1.6-7-5.4-7-10V6l7-3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 12l2.2 2.2L15.5 10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <h3>企业级安全</h3>
+                    <p>Token 权限管控、审计日志与数据脱敏。</p>
+                </div>
+                <div class="sf-bento-card sf-bento-e sf-reveal">
+                    <div class="sf-bento-icon" style="--g:linear-gradient(135deg,#8b5cf6,#e879f9)">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 1 1 8 0v3" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="15" r="1.6" fill="currentColor"/></svg>
+                    </div>
+                    <div>
+                        <h3>私有化部署，数据完全自主可控</h3>
+                        <p>提供企业级私有化部署方案，一站式解决模型管理、权限控制与安全合规需求，支持混合云灵活部署。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= 热门模型套餐 ================= -->
+    <section class="sf-section sf-deals" id="sf-deals">
+        <div class="sf-wrap">
+            <div class="sf-head sf-reveal">
+                <span class="sf-eyebrow">hot deals</span>
+                <h2 class="sf-title">精选热门模型套餐</h2>
+                <p class="sf-sub">专享优惠折扣，即买即用，助力业务快速起跑</p>
+            </div>
+            <div class="sf-deal-grid">
+                <div class="sf-deal-card sf-reveal">
+                    <span class="sf-deal-badge">HOT</span>
+                    <h3>豆包视频模型 2.0</h3>
+                    <p class="sf-deal-model">doubao-seedance-2-0-260128</p>
+                    <p class="sf-deal-desc">豆包新一代专业级多模态创作视频模型，深度适配商业广告、影视制作与社交媒体营销等核心场景。</p>
+                    <div class="sf-deal-meta">
+                        <div><span>形态</span><b>节省计划递减</b></div>
+                        <div><span>有效期</span><b>3 个月</b></div>
+                        <div><span>规格</span><b>500 万 Tokens</b></div>
+                    </div>
+                    <div class="sf-deal-price"><b>¥138</b><s>¥230</s></div>
+                    <a href="/console" class="sf-deal-btn">立即购买</a>
+                </div>
+                <div class="sf-deal-card sf-deal-hot sf-reveal">
+                    <span class="sf-deal-badge">HOT</span>
+                    <h3>Kimi 3</h3>
+                    <p class="sf-deal-model">kimi-k3</p>
+                    <p class="sf-deal-desc">月之暗面最新一代旗舰大模型，推理、编程与智能体任务全面跃升，原生支持超长上下文，深度适配复杂工作流与 Agent 应用场景。</p>
+                    <div class="sf-deal-meta">
+                        <div><span>形态</span><b>节省计划递减</b></div>
+                        <div><span>有效期</span><b>3 个月</b></div>
+                        <div><span>规格</span><b>1000 万 Tokens</b></div>
+                    </div>
+                    <div class="sf-deal-price"><b>¥192</b><s>¥240</s></div>
+                    <a href="/console" class="sf-deal-btn">立即购买</a>
+                </div>
+                <div class="sf-deal-card sf-reveal">
+                    <span class="sf-deal-badge">HOT</span>
+                    <h3>万相 2.2</h3>
+                    <p class="sf-deal-model">Wan-2.2</p>
+                    <p class="sf-deal-desc">阿里通义万相新一代视觉生成模型，覆盖文生图、文生视频与图生视频，电影级画面质感与运动控制，适配广告创意与内容生产场景。</p>
+                    <div class="sf-deal-meta">
+                        <div><span>形态</span><b>节省计划递减</b></div>
+                        <div><span>有效期</span><b>3 个月</b></div>
+                        <div><span>规格</span><b>500 万 Tokens</b></div>
+                    </div>
+                    <div class="sf-deal-price"><b>¥160</b><s>¥200</s></div>
+                    <a href="/console" class="sf-deal-btn">立即购买</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= 为什么选择我们（数据带） ================= -->
+    <section class="sf-section sf-why" id="sf-why">
+        <div class="sf-wrap">
+            <div class="sf-head sf-reveal">
+                <span class="sf-eyebrow">why us</span>
+                <h2 class="sf-title">为什么选择我们</h2>
+                <p class="sf-sub">更高速、更经济、更稳定的企业级大模型基础设施</p>
+            </div>
+
+            <div class="sf-why-group-title"><i></i>high-speed engine</div>
+            <div class="sf-stat-row">
+                <div class="sf-stat-card sf-reveal">
+                    <div class="sf-stat-num">100ms</div>
+                    <h4>故障自动切换</h4>
+                    <p>多渠道毫秒级探测，异常线路瞬时摘除</p>
+                </div>
+                <div class="sf-stat-card sf-reveal">
+                    <div class="sf-stat-num">10x</div>
+                    <h4>峰值弹性扩容</h4>
+                    <p>突发流量自动扩容，从容应对业务高峰</p>
+                </div>
+                <div class="sf-stat-card sf-reveal">
+                    <div class="sf-stat-num">全球</div>
+                    <h4>多线加速网络</h4>
+                    <p>多地域线路智能优选，延迟一降到底</p>
+                </div>
+            </div>
+
+            <div class="sf-why-group-title"><i></i>cost-effective</div>
+            <div class="sf-stat-row">
+                <div class="sf-stat-card sf-reveal">
+                    <div class="sf-stat-num">40%</div>
+                    <h4>综合成本节省</h4>
+                    <p>智能调度高性价比渠道，成本持续优化</p>
+                </div>
+                <div class="sf-stat-card sf-reveal">
+                    <div class="sf-stat-num">50%+</div>
+                    <h4>渠道折扣上限</h4>
+                    <p>聚合议价能力，热门模型折扣直达底线</p>
+                </div>
+                <div class="sf-stat-card sf-reveal">
+                    <div class="sf-stat-num">0 元</div>
+                    <h4>接入成本</h4>
+                    <p>OpenAI 兼容协议，替换基址即刻上线</p>
+                </div>
+            </div>
+
+            <div class="sf-pillar-grid">
+                <div class="sf-pillar sf-reveal">
+                    <h4><i><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 12h4l3-8 4 16 3-8h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></i>高稳定性</h4>
+                    <ul>
+                        <li>经过大规模开发者验证，保障高可靠稳定运行</li>
+                        <li>完善的监控告警与容错机制，兜底服务能力</li>
+                        <li>7×24 专业技术支持，企业级场景无忧</li>
+                    </ul>
+                </div>
+                <div class="sf-pillar sf-reveal">
+                    <h4><i><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3a5 5 0 0 1 5 5c0 1.5-.7 2.8-1.7 3.8-.8.8-1.3 1.5-1.3 2.2h-4c0-.7-.5-1.4-1.3-2.2A5.7 5.7 0 0 1 7 8a5 5 0 0 1 5-5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 18h4M10.5 21h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></i>高智能</h4>
+                    <ul>
+                        <li>语言 / 语音 / 图像 / 视频多模态全覆盖</li>
+                        <li>智能路由灵活适配业务规模与场景</li>
+                        <li>智能成本分析，助力降本增效决策</li>
+                    </ul>
+                </div>
+                <div class="sf-pillar sf-reveal">
+                    <h4><i><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10V7a4 4 0 1 1 8 0v3" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="15" r="1.6" fill="currentColor"/></svg></i>高安全性</h4>
+                    <ul>
+                        <li>端到端 HTTPS/TLS 加密，传输全程防护</li>
+                        <li>Token 级权限管控与完整审计日志</li>
+                        <li>数据脱敏与合规支持，满足监管要求</li>
+                    </ul>
+                </div>
+                <div class="sf-pillar sf-reveal">
+                    <h4><i><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 17V7l8-4 8 4v10l-8 4-8-4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 7l8 4 8-4M12 11v10" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></i>高扩展性</h4>
+                    <ul>
+                        <li>动态扩容无缝适配业务增长曲线</li>
+                        <li>自定义渠道一键接入，快速上线</li>
+                        <li>开放 API，支持混合云灵活部署</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= 行业解决方案 ================= -->
+    <section class="sf-section sf-ind" id="sf-ind">
+        <div class="sf-wrap">
+            <div class="sf-head sf-reveal">
+                <span class="sf-eyebrow">solutions</span>
+                <h2 class="sf-title">面向不同行业及需求场景，提供灵活的解决方案</h2>
+                <p class="sf-sub">从互联网到政务，从智算中心到 AI 硬件，全面赋能产业智能化升级</p>
+            </div>
+
+            <div class="sf-ind-tabs sf-reveal">
+                <input class="sf-ind-radio" type="radio" name="sf-ind" id="sf-ind-1" checked>
+                <input class="sf-ind-radio" type="radio" name="sf-ind" id="sf-ind-2">
+                <input class="sf-ind-radio" type="radio" name="sf-ind" id="sf-ind-3">
+                <input class="sf-ind-radio" type="radio" name="sf-ind" id="sf-ind-4">
+                <input class="sf-ind-radio" type="radio" name="sf-ind" id="sf-ind-5">
+
+                <div class="sf-ind-nav">
+                    <label for="sf-ind-1">互联网</label>
+                    <label for="sf-ind-2">教育</label>
+                    <label for="sf-ind-3">政务</label>
+                    <label for="sf-ind-4">智算中心</label>
+                    <label for="sf-ind-5">AI 硬件</label>
+                </div>
+
+                <div class="sf-ind-body">
+                    <div class="sf-ind-panel sf-ind-panel-1">
+                        <div class="sf-ind-info">
+                            <h3>互联网</h3>
+                            <p>提供高效智能的内容生成与个性化推荐服务，支持快速切换模型，加速 AIGC 生产效率，优化算力使用成本，助力平台突破性能瓶颈，全面提升用户体验与运营效率。</p>
+                            <ul>
+                                <li>高并发内容生成与智能审核</li>
+                                <li>个性化推荐与搜索语义增强</li>
+                                <li>弹性算力调度，成本实时可见</li>
+                            </ul>
+                        </div>
+                        <div class="sf-ind-aside" style="--ag:linear-gradient(135deg,#0891b2,#7c3aed)">
+                            <b>50%</b>
+                            <span>内容生产效率提升</span>
+                        </div>
+                    </div>
+                    <div class="sf-ind-panel sf-ind-panel-2">
+                        <div class="sf-ind-info">
+                            <h3>教育</h3>
+                            <p>为智慧教育场景提供稳定可靠的大模型能力，支撑智能批改、个性化学习路径规划与 AI 助教应用快速落地，让优质教育资源普惠每一位学习者。</p>
+                            <ul>
+                                <li>AI 助教与学科智能问答</li>
+                                <li>作业批改与学情分析洞察</li>
+                                <li>内容安全过滤，绿色合规</li>
+                            </ul>
+                        </div>
+                        <div class="sf-ind-aside" style="--ag:linear-gradient(135deg,#06b6d4,#3b82f6)">
+                            <b>70%</b>
+                            <span>教师重复工作量降低</span>
+                        </div>
+                    </div>
+                    <div class="sf-ind-panel sf-ind-panel-3">
+                        <div class="sf-ind-info">
+                            <h3>政务</h3>
+                            <p>面向政务数字化转型，提供安全合规的大模型服务与私有化部署方案，数据不出域、全程可审计，助力政务服务智能化升级。</p>
+                            <ul>
+                                <li>私有化部署，数据不出域</li>
+                                <li>政务知识库智能问答</li>
+                                <li>全流程审计与合规保障</li>
+                            </ul>
+                        </div>
+                        <div class="sf-ind-aside" style="--ag:linear-gradient(135deg,#10b981,#0d9488)">
+                            <b>100%</b>
+                            <span>数据自主可控</span>
+                        </div>
+                    </div>
+                    <div class="sf-ind-panel sf-ind-panel-4">
+                        <div class="sf-ind-info">
+                            <h3>智算中心</h3>
+                            <p>为智算中心提供模型运营与分发能力，统一计费、多租户管理与开放 API，让算力资源快速产品化，加速算力变现。</p>
+                            <ul>
+                                <li>多租户令牌分发体系</li>
+                                <li>统一计费与分账结算</li>
+                                <li>开放 API 快速对接生态</li>
+                            </ul>
+                        </div>
+                        <div class="sf-ind-aside" style="--ag:linear-gradient(135deg,#f59e0b,#f43f5e)">
+                            <b>10 分钟</b>
+                            <span>完成平台化部署</span>
+                        </div>
+                    </div>
+                    <div class="sf-ind-panel sf-ind-panel-5">
+                        <div class="sf-ind-info">
+                            <h3>AI 硬件</h3>
+                            <p>为 AI 终端与智能硬件提供轻量级云端大模型接入，一套 API 覆盖语音、视觉与对话能力，让硬件快速拥有 AI 大脑。</p>
+                            <ul>
+                                <li>语音对话与视觉理解能力</li>
+                                <li>低延迟云端推理加速</li>
+                                <li>按量计费，灵活扩容</li>
+                            </ul>
+                        </div>
+                        <div class="sf-ind-aside" style="--ag:linear-gradient(135deg,#8b5cf6,#ec4899)">
+                            <b>100ms</b>
+                            <span>级端云协同响应</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= 合作伙伴 ================= -->
+    <section class="sf-section sf-partners" id="sf-partners">
+        <div class="sf-wrap">
+            <div class="sf-head sf-reveal">
+                <span class="sf-eyebrow">ecosystem</span>
+                <h2 class="sf-title">渠道合作伙伴</h2>
+                <p class="sf-sub">与全球领先的模型厂商及云服务商深度合作</p>
+            </div>
+            <div class="sf-logo-wall">
+                <span class="sf-logo-item">OpenAI</span>
+                <span class="sf-logo-item">Anthropic</span>
+                <span class="sf-logo-item">Google</span>
+                <span class="sf-logo-item">Microsoft Azure</span>
+                <span class="sf-logo-item">AWS</span>
+                <span class="sf-logo-item">阿里云</span>
+                <span class="sf-logo-item">腾讯云</span>
+                <span class="sf-logo-item">火山引擎</span>
+                <span class="sf-logo-item">百度智能云</span>
+                <span class="sf-logo-item">华为云</span>
+                <span class="sf-logo-item">智谱 AI</span>
+                <span class="sf-logo-item">Moonshot AI</span>
+                <span class="sf-logo-item">DeepSeek</span>
+                <span class="sf-logo-item">MiniMax</span>
+                <span class="sf-logo-item">科大讯飞</span>
+                <span class="sf-logo-item">商汤科技</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= CTA ================= -->
+    <section class="sf-cta">
+        <div class="sf-wrap">
+            <div class="sf-cta-box sf-reveal">
+                <h2>准备好接入企业级大模型服务了吗？</h2>
+                <p>立即注册，让每一个想法都能快速落地为 AI 应用</p>
+                <div class="sf-cta-btns">
+                    <a href="/register" class="sf-btn sf-btn-white">
+                        免费开始使用
+                        <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 10h12M12 6l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </a>
+                    <a href="/pricing" class="sf-btn sf-btn-outline-w">查看模型定价</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= 右下角悬浮锚点导航 ================= -->
+    <div class="sf-nav-dock" role="navigation" aria-label="页面导航">
+        <input class="sf-nav-radio" type="radio" name="sf-nav-toggle" id="sf-nav-open">
+        <input class="sf-nav-radio" type="radio" name="sf-nav-toggle" id="sf-nav-close">
+
+        <div class="sf-nav-menu">
+            <a href="#sf-features">核心能力</a>
+            <a href="#sf-deals">热门套餐</a>
+            <a href="#sf-why">为什么选我们</a>
+            <a href="#sf-ind">解决方案</a>
+            <a href="#sf-partners">合作伙伴</a>
+            <a class="sf-nav-cta" href="/console">立即开始</a>
+        </div>
+
+        <label class="sf-nav-fab sf-nav-fab-open" for="sf-nav-open" aria-label="展开页面导航" role="button">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 9l5 5 5-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </label>
+        <label class="sf-nav-fab sf-nav-fab-close" for="sf-nav-close" aria-label="收起页面导航" role="button">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 15l5-5 5 5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </label>
+    </div>
+
+</div>
+</body>
+</html>
