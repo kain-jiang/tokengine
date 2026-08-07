@@ -27,6 +27,7 @@ const Navigation = ({
   isLoading,
   userState,
   pricingRequireAuth,
+  rankingsRequireAuth,
 }) => {
   const renderNavLinks = () => {
     const baseClasses =
@@ -65,9 +66,18 @@ const Navigation = ({
       if (link.itemKey === 'pricing' && pricingRequireAuth && !userState.user) {
         targetPath = '/login';
       }
+      if (link.itemKey === 'rankings' && rankingsRequireAuth && !userState.user) {
+        targetPath = '/login?reason=rankings';
+        linkState = { from: '/rankings' };
+      }
 
       return (
-        <Link key={link.itemKey} to={targetPath} state={linkState} className={commonLinkClasses}>
+        <Link
+          key={link.itemKey}
+          to={targetPath}
+          state={linkState}
+          className={commonLinkClasses}
+        >
           {linkContent}
         </Link>
       );
