@@ -54,6 +54,14 @@ const SIZE_OPTIONS = [
   { label: '768×1024', value: '768x1024' },
 ];
 
+const isQuotaInsufficientError = (payload) => {
+  const error = payload?.error || payload;
+  return (
+    error?.code === 'insufficient_user_quota' ||
+    error?.message === 'quota.insufficient'
+  );
+};
+
 const TextToImage = () => {
   const { t } = useTranslation();
   const [userState] = useContext(UserContext);
@@ -204,6 +212,11 @@ const TextToImage = () => {
         return;
       }
       if (!res.ok) {
+        if (isQuotaInsufficientError(json)) {
+          showError(t('余额不足'));
+          setShowGenerationPreview(false);
+          return;
+        }
         const msg =
           json?.error?.message ||
           json?.message ||

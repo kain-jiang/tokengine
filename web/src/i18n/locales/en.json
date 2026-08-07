@@ -1605,6 +1605,7 @@
     "文生图功能模块": "Text-to-image playground entry",
     "文生图说明": "Generate images with the z-image model. Billing follows the same rules as /v1/images/generations.",
     "文生图请求失败": "Image generation request failed",
+    "余额不足": "Insufficient balance",
     "图片生成完成": "Image generated",
     "正在生成图片": "Generating image…",
     "生成结果": "Result",
