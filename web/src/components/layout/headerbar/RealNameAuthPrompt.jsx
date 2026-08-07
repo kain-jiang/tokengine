@@ -54,26 +54,35 @@ const RealNameAuthPrompt = ({ userState, navigate, t }) => {
     return null;
   }
 
-  // 如果没有实名认证记录(authInfo为null)，说明未认证，显示提示
-  // 如果审核拒绝，也显示提示
-  const isUnauthorized = !authInfo || authInfo.status === 'AuditRejected';
-  if (!isUnauthorized) {
+  // 实名认证通过后不再提示
+  if (authInfo && authInfo.status === 'AuditPassed') {
     return null;
   }
+
+  // 待认证：已选择用户类型（user_type 1/2）但尚未实名认证通过
+  // 未认证：尚未选择用户类型（user_type 0）
+  const userType = userState?.user?.user_type;
+  const hasSelectedType = userType === 1 || userType === 2;
+  const isPending = hasSelectedType;
+  const isUnauthorized = !hasSelectedType;
 
   const handleClick = () => {
     navigate('/console/personal?tab=realname');
   };
 
+  // 待认证：蓝色；未认证：橙色
+  const fgColor = isPending ? '#1677ff' : '#FF8C00';
+  const bgColor = isPending ? '#EBF4FF' : '#FFF7E6';
+
   return (
     <Button
       onClick={handleClick}
       style={{
-        background: '#FFF7E6',
+        background: bgColor,
         border: 'none',
         fontWeight: '500',
         fontSize: '14px',
-        color: '#FF8C00',
+        color: fgColor,
         padding: '0 12px 0 8px',
         height: '36px',
         borderRadius: '18px',
@@ -84,9 +93,9 @@ const RealNameAuthPrompt = ({ userState, navigate, t }) => {
         cursor: 'pointer',
       }}
     >
-      <AlertCircle size={18} color='#FF8C00' />
-      <span>未认证</span>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF8C00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <AlertCircle size={18} color={fgColor} />
+      <span>{isPending ? t('待认证') : t('未认证')}</span>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={fgColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M9 18l6-6-6-6" />
       </svg>
     </Button>
