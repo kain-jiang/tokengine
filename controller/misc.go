@@ -139,6 +139,8 @@ func GetStatus(c *gin.Context) {
 		"uptime_kuma_enabled":   cs.UptimeKumaEnabled,
 		"announcements_enabled": cs.AnnouncementsEnabled,
 		"faq_enabled":           cs.FAQEnabled,
+		// Prometheus 数据源是否已配置（PROMETHEUS_URL 非空时启用 Token 工厂看板）
+		"prometheus_enabled": common.PrometheusURL != "",
 
 		// 模块管理配置
 		"HeaderNavModules":    common.OptionMap["HeaderNavModules"],

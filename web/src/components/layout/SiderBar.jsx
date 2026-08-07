@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getLucideIcon } from '../../helpers/render';
@@ -26,6 +26,7 @@ import { useSidebarCollapsed } from '../../hooks/common/useSidebarCollapsed';
 import { useSidebar } from '../../hooks/common/useSidebar';
 import { useMinimumLoadingTime } from '../../hooks/common/useMinimumLoadingTime';
 import { isAdmin, isRoot, showError, isFinanceAdmin } from '../../helpers';
+import { StatusContext } from '../../context/Status';
 import SkeletonWrapper from './components/SkeletonWrapper';
 
 import { Nav, Divider, Button } from '@douyinfe/semi-ui';
@@ -69,6 +70,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [collapsed, toggleCollapsed] = useSidebarCollapsed();
+  const [statusState] = useContext(StatusContext);
   const {
     isModuleVisible,
     hasSectionVisibleModules,
@@ -103,12 +105,6 @@ const SiderBar = ({ onNavigate = () => {} }) => {
           localStorage.getItem('enable_data_export') === 'true'
             ? ''
             : 'tableHiddle',
-      },
-      {
-        text: t('Token工厂看板'),
-        itemKey: 'tokenFactoryBoard',
-        to: '/console/token-factory-board',
-        className: isAdmin() ? '' : 'tableHiddle',
       },
       {
         text: t('使用日志'),
@@ -264,6 +260,15 @@ const SiderBar = ({ onNavigate = () => {} }) => {
         className: isAdmin() ? '' : 'tableHiddle',
       },
       {
+        text: t('Token工厂看板'),
+        itemKey: 'tokenFactoryBoard',
+        to: '/console/token-factory-board',
+        className:
+          isAdmin() && statusState?.status?.prometheus_enabled
+            ? ''
+            : 'tableHiddle',
+      },
+      {
         text: t('系统设置'),
         itemKey: 'setting',
         to: '/setting',
@@ -278,7 +283,7 @@ const SiderBar = ({ onNavigate = () => {} }) => {
     });
 
     return filteredItems;
-  }, [isAdmin(), isRoot(), t, isModuleVisible]);
+  }, [isAdmin(), isRoot(), t, isModuleVisible, statusState?.status?.prometheus_enabled]);
 
   const chatMenuItems = useMemo(() => {
     const items = [
