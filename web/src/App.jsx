@@ -76,6 +76,7 @@ const Home = lazy(() => import('./pages/Home'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const DashboardBoard = lazy(() => import('./pages/DashboardBoard'));
 const TokenFactory = lazy(() => import('./pages/TokenFactory'));
+const Rankings = lazy(() => import('./pages/Rankings'));
 const About = lazy(() => import('./pages/About'));
 const UserAgreement = lazy(() => import('./pages/UserAgreement'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
@@ -111,6 +112,23 @@ function App() {
     return false; // 默认不需要登录
   }, [statusState?.status?.HeaderNavModules]);
 
+  // 获取排行榜权限配置
+  const rankingsRequireAuth = useMemo(() => {
+    const headerNavModulesConfig = statusState?.status?.HeaderNavModules;
+    if (headerNavModulesConfig) {
+      try {
+        const modules = JSON.parse(headerNavModulesConfig);
+        if (typeof modules.rankings === 'boolean') {
+          return true;
+        }
+        return modules.rankings?.requireAuth !== false;
+      } catch (error) {
+        console.error('解析顶栏模块配置失败:', error);
+        return true;
+      }
+    }
+    return true;
+  }, [statusState?.status?.HeaderNavModules]);
   return (
     <SetupCheck>
       <Routes>
@@ -335,6 +353,25 @@ function App() {
                 <TokenFactory />
               </Suspense>
             </AdminRoute>
+          }
+        />
+        <Route
+          path='/rankings'
+          element={
+            rankingsRequireAuth ? (
+              <PrivateRoute>
+                <Suspense
+                  fallback={<Loading></Loading>}
+                  key={location.pathname}
+                >
+                  <Rankings />
+                </Suspense>
+              </PrivateRoute>
+            ) : (
+              <Suspense fallback={<Loading></Loading>} key={location.pathname}>
+                <Rankings />
+              </Suspense>
+            )
           }
         />
         <Route

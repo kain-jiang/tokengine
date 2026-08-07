@@ -117,6 +117,7 @@ const LoginForm = () => {
   const [githubButtonState, setGithubButtonState] = useState('idle');
   const [githubButtonDisabled, setGithubButtonDisabled] = useState(false);
   const githubTimeoutRef = useRef(null);
+  const loginReasonToastShownRef = useRef(false);
   const githubButtonText = t(githubButtonTextKeyByState[githubButtonState]);
   const [customOAuthLoading, setCustomOAuthLoading] = useState({});
 
@@ -174,11 +175,19 @@ const LoginForm = () => {
   }, []);
 
   useEffect(() => {
+    if (loginReasonToastShownRef.current) {
+      return;
+    }
+    loginReasonToastShownRef.current = true;
+
     if (searchParams.get('expired')) {
       showError(t('未登录或登录已过期，请重新登录'));
     }
     if (searchParams.get('reason') === 'canvas_tool') {
       showInfo(t('使用画布工具需要登录'));
+    }
+    if (searchParams.get('reason') === 'rankings') {
+      showInfo(t('查看排行榜需要登录'));
     }
   }, []);
 

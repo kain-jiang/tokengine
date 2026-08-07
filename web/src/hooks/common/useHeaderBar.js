@@ -61,11 +61,23 @@ export const useHeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
       try {
         const modules = JSON.parse(headerNavModulesConfig);
 
-        // 处理向后兼容性：如果pricing是boolean，转换为对象格式
+        // 处理向后兼容性：如果对象型模块是boolean，转换为对象格式
         if (typeof modules.pricing === 'boolean') {
           modules.pricing = {
             enabled: modules.pricing,
             requireAuth: false, // 默认不需要登录鉴权
+          };
+        }
+        if (typeof modules.rankings === 'boolean') {
+          modules.rankings = {
+            enabled: modules.rankings,
+            requireAuth: true,
+          };
+        }
+        if (!('rankings' in modules)) {
+          modules.rankings = {
+            enabled: true,
+            requireAuth: true,
           };
         }
 
@@ -86,6 +98,15 @@ export const useHeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
         : false; // 默认不需要登录
     }
     return false; // 默认不需要登录
+  }, [headerNavModules]);
+  // 获取排行榜权限配置
+  const rankingsRequireAuth = useMemo(() => {
+    if (headerNavModules?.rankings) {
+      return typeof headerNavModules.rankings === 'object'
+        ? headerNavModules.rankings.requireAuth !== false
+        : true;
+    }
+    return true;
   }, [headerNavModules]);
 
   const isConsoleRoute = location.pathname.startsWith('/console');
@@ -238,6 +259,7 @@ export const useHeaderBar = ({ onMobileMenuToggle, drawerOpen }) => {
     drawerOpen,
     headerNavModules,
     pricingRequireAuth,
+    rankingsRequireAuth,
 
     // Actions
     logout,

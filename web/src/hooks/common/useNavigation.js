@@ -26,6 +26,10 @@ export const useNavigation = (t, docsLink, headerNavModules) => {
       home: true,
       console: true,
       pricing: true,
+      rankings: {
+        enabled: true,
+        requireAuth: true,
+      },
       docs: true,
       canvasTool: true,
       about: true,
@@ -49,6 +53,11 @@ export const useNavigation = (t, docsLink, headerNavModules) => {
         text: t('模型广场'),
         itemKey: 'pricing',
         to: '/pricing',
+      },
+      {
+        text: t('排行榜'),
+        itemKey: 'rankings',
+        to: '/rankings',
       },
       ...(docsLink
         ? [
@@ -77,11 +86,14 @@ export const useNavigation = (t, docsLink, headerNavModules) => {
       if (link.itemKey === 'docs') {
         return docsLink && modules.docs;
       }
-      if (link.itemKey === 'pricing') {
-        // 支持新的pricing配置格式
-        return typeof modules.pricing === 'object'
-          ? modules.pricing.enabled
-          : modules.pricing;
+      if (link.itemKey === 'pricing' || link.itemKey === 'rankings') {
+        const moduleConfig = modules[link.itemKey];
+        if (moduleConfig === undefined) {
+          return true;
+        }
+        return typeof moduleConfig === 'object'
+          ? moduleConfig.enabled
+          : moduleConfig;
       }
       // 向后兼容：如果配置中没有该 key，默认显示
       if (link.itemKey in modules) {

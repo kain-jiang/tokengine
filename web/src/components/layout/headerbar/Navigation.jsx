@@ -27,6 +27,7 @@ const Navigation = ({
   isLoading,
   userState,
   pricingRequireAuth,
+  rankingsRequireAuth,
 }) => {
   const location = useLocation();
 
@@ -76,6 +77,10 @@ const Navigation = ({
       }
       if (link.itemKey === 'pricing' && pricingRequireAuth && !userState.user) {
         targetPath = '/login';
+      }
+      if (link.itemKey === 'rankings' && rankingsRequireAuth && !userState.user) {
+        targetPath = '/login?reason=rankings';
+        linkState = { from: '/rankings' };
       }
 
       return (

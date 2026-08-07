@@ -23,6 +23,7 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/status", controller.GetStatus)
 		apiRouter.GET("/uptime/status", controller.GetUptimeKumaStatus)
 		apiRouter.GET("/models", middleware.UserAuth(), controller.DashboardListModels)
+		apiRouter.GET("/rankings", middleware.RankingsAuth(), controller.GetRankings)
 		apiRouter.GET("/status/test", middleware.AdminAuth(), controller.TestStatus)
 		// Dashboard Board API (大屏数据接口)
 		apiRouter.GET("/dashboard/board/stats", middleware.AdminAuth(), controller.GetDashboardBoardStats)
