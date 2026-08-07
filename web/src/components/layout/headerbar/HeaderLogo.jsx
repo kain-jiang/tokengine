@@ -39,7 +39,7 @@ const HeaderLogo = ({
 
   return (
     <Link to='/' className='group flex items-center gap-2'>
-      <div className='relative w-8 h-8 md:w-8 md:h-8 rounded-full ring-1 ring-semi-color-border shadow-sm transition-shadow duration-200 group-hover:shadow-md group-hover:ring-semi-color-primary-light-active'>
+      <div className='relative w-8 h-8 md:w-8 md:h-8 rounded-full transition-transform duration-200 group-hover:scale-105'>
         <SkeletonWrapper loading={isLoading || !logoLoaded} type='image' />
         <img
           src={logo}
@@ -65,7 +65,7 @@ const HeaderLogo = ({
           {(isSelfUseMode || isDemoSiteMode) && !isLoading && (
             <Tag
               color={isSelfUseMode ? 'purple' : 'blue'}
-              className='text-xs px-1.5 py-0.5 rounded whitespace-nowrap shadow-sm'
+              className='text-xs px-1.5 py-0.5 rounded whitespace-nowrap'
               size='small'
               shape='circle'
             >

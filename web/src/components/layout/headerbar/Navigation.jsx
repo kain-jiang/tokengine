@@ -42,10 +42,10 @@ const Navigation = ({
       const active = isLinkActive(link);
 
       const baseClasses = [
-        'relative flex-shrink-0 flex items-center gap-1 rounded-full px-3.5 py-2',
+        'relative flex-shrink-0 flex items-center gap-1 rounded-md px-3.5 py-2',
         'text-sm font-medium transition-all duration-200 ease-in-out select-none whitespace-nowrap',
         active
-          ? 'text-semi-color-primary bg-semi-color-primary-light-default shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]'
+          ? 'text-semi-color-text-0 font-semibold after:absolute after:left-1/2 after:-translate-x-1/2 after:bottom-1 after:h-[2px] after:w-5 after:rounded-full after:bg-semi-color-text-0'
           : 'text-semi-color-text-1 hover:text-semi-color-text-0 hover:bg-semi-color-fill-1 active:scale-95',
       ].join(' ');
 
@@ -87,7 +87,7 @@ const Navigation = ({
   };
 
   return (
-    <nav className='flex items-center gap-1 mx-2 px-2 py-1.5 rounded-full bg-semi-color-fill-0 overflow-x-auto scrollbar-hide md:mx-4'>
+    <nav className='flex items-center gap-1.5 mx-2 overflow-x-auto scrollbar-hide md:mx-4'>
       <SkeletonWrapper
         loading={isLoading}
         type='navigation'

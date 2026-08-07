@@ -160,30 +160,11 @@ code {
 }
 
 
-/* ==================== 顶栏玻璃拟态 ==================== */
+/* ==================== 顶栏 ==================== */
 .app-header {
-  position: relative;
-  background: var(--semi-color-bg-0);
+  background: var(--semi-color-nav-bg);
   border-bottom: 1px solid var(--semi-color-border);
   transition: background-color 0.3s ease;
-}
-
-@supports (backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px)) {
-  .app-header {
-    background: color-mix(in srgb, var(--semi-color-bg-0) 76%, transparent);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    backdrop-filter: blur(20px) saturate(160%);
-  }
-}
-
-/* 顶栏顶部主色渐变高光线 */
-.app-header-accent {
-  background: linear-gradient(
-    to right,
-    rgba(0, 0, 0, 0),
-    var(--semi-color-primary) 50%,
-    rgba(0, 0, 0, 0)
-  );
 }
 
 /* ==================== 布局相关样式 ==================== */
